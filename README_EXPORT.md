@@ -3,7 +3,7 @@
 Votre `.gitignore` a été réinitialisé pour inclure TOUT le projet (Next.js + Firebase).
 
 ## 🚀 Étape 1 : Nettoyer l'index Git
-Pour être sûr que tous vos fichiers (src, app, etc.) sont bien visibles et que les anciennes archives lourdes sont supprimées :
+Pour être sûr que tous vos fichiers (src, app, etc.) sont bien visibles et que les anciennes archives lourdes sont supprimées de l'historique :
 ```bash
 git rm -r --cached .
 git add .
@@ -19,3 +19,5 @@ git push origin main
 1. Allez sur votre dashboard Vercel.
 2. Assurez-vous que le **Root Directory** est bien la racine du projet (et non le dossier `functions`).
 3. Vercel devrait maintenant détecter automatiquement Next.js.
+
+*Note : Le dossier /functions est ignoré par Vercel mais utilisé par Firebase.*
