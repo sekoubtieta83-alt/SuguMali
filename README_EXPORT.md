@@ -1,23 +1,21 @@
-# Guide d'Exportation SuguMali - PARTIE 1
+# Guide de Déploiement Vercel & GitHub
 
-Cette étape permet d'envoyer la structure de base et la configuration du projet sur GitHub sans dépasser les limites de taille.
+Votre `.gitignore` a été réinitialisé pour inclure TOUT le projet (Next.js + Firebase).
 
 ## 🚀 Étape 1 : Nettoyer l'index Git
-Avant d'envoyer, nous devons forcer Git à ignorer les fichiers volumineux (`project.zip`) qui bloquaient l'envoi précédemment.
-
-Copiez cette commande dans votre terminal :
+Pour être sûr que tous vos fichiers (src, app, etc.) sont bien visibles :
 ```bash
 git rm -r --cached .
-```
-
-## 🚀 Étape 2 : Ajouter et Envoyer la Partie 1
-Maintenant, nous ajoutons uniquement les fichiers autorisés par le nouveau `.gitignore`.
-
-```bash
 git add .
-git commit -m "Export Partie 1 : Infrastructure et Configuration"
-git push -f origin main
 ```
 
----
-**Une fois cette étape réussie, dites-le moi pour que je prépare la Partie 2 (Composants et Pages) !**
+## 🚀 Étape 2 : Envoyer sur GitHub
+```bash
+git commit -m "Fix: Restauration de la structure complète pour Vercel"
+git push origin main
+```
+
+## 🚀 Étape 3 : Sur Vercel
+1. Allez sur votre dashboard Vercel.
+2. Assurez-vous que le **Root Directory** est bien la racine du projet (et non le dossier `functions`).
+3. Vercel devrait maintenant détecter automatiquement Next.js.
