@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
@@ -9,6 +9,13 @@ import { SupportChatWidget } from '@/components/support-chat/support-chat-widget
 export const metadata: Metadata = {
   title: 'SuguMali - Le MALI achète et vend ici',
   description: 'Votre plateforme de confiance pour acheter et vendre localement au Mali.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
