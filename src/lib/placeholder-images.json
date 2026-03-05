@@ -1,0 +1,76 @@
+{
+  "placeholderImages": [
+    {
+      "id": "avatar1",
+      "description": "User avatar 1",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzAwMTIyNzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "avatar2",
+      "description": "User avatar 2",
+      "imageUrl": "https://images.unsplash.com/photo-1604072366595-e75dc92d6bdc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d29tYW4lMjBmYWNlfGVufDB8fHx8MTc3MDA0OTEyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman face"
+    },
+    {
+      "id": "avatar3",
+      "description": "User avatar 3",
+      "imageUrl": "https://images.unsplash.com/photo-1621624666561-84d0107001dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc3MDAyMjI1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man smiling"
+    },
+    {
+      "id": "avatar4",
+      "description": "User avatar 4",
+      "imageUrl": "https://images.unsplash.com/photo-1529232356377-57971f020a94?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwcm9maWxlfGVufDB8fHx8MTc3MDA4NTA0Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person profile"
+    },
+    {
+      "id": "post1",
+      "description": "A beautiful landscape",
+      "imageUrl": "https://images.unsplash.com/photo-1576068036336-328de1be1f2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzAwMDgzODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain landscape"
+    },
+    {
+      "id": "post2",
+      "description": "City skyline at night",
+      "imageUrl": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y2l0eSUyMHNreWxpbmV8ZW58MHx8fHwxNzcwMDY3MjY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city skyline"
+    },
+    {
+      "id": "post3",
+      "description": "Close-up of a flower",
+      "imageUrl": "https://images.unsplash.com/photo-1528834342297-fdefb9a5a92b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYWNybyUyMGZsb3dlcnxlbnwwfHx8fDE3NzAwODUwNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "macro flower"
+    },
+    {
+      "id": "post4",
+      "description": "A modern architectural building",
+      "imageUrl": "https://images.unsplash.com/photo-1519662978799-2f05096d3636?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmV8ZW58MHx8fHwxNzcwMDU4OTM0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern architecture"
+    },
+    {
+      "id": "post5",
+      "description": "A plate of delicious food",
+      "imageUrl": "https://images.unsplash.com/photo-1596189181426-7f63a1737f0d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxnb3VybWV0JTIwZm9vZHxlbnwwfHx8fDE3NzAwMDU0NzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gourmet food"
+    },
+    {
+      "id": "post6",
+      "description": "A person working on a laptop",
+      "imageUrl": "https://images.unsplash.com/photo-1590870102494-ab6ed490f869?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBsYXB0b3B8ZW58MHx8fHwxNzY5OTk4ODYwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person laptop"
+    },
+    {
+      "id": "product1",
+      "description": "A stylish watch",
+      "imageUrl": "https://images.unsplash.com/photo-1769240141559-ac3d6fa87ae8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3R5bGlzaCUyMHdhdGNofGVufDB8fHx8MTc3MDA4NTA0Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "stylish watch"
+    },
+    {
+      "id": "product2",
+      "description": "Wireless headphones",
+      "imageUrl": "https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3aXJlbGVzcyUyMGhlYWRwaG9uZXN8ZW58MHx8fHwxNzcwMDcyODE3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wireless headphones"
+    }
+  ]
+}

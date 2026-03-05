@@ -1,0 +1,80 @@
+
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "A user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "isVerified": { "type": "boolean", "default": false },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "verificationStatus": { "type": "string", "enum": ["none", "pending", "verified", "rejected"], "default": "none" },
+        "isVerificationPaid": { "type": "boolean", "default": false },
+        "idDocumentUrl": { "type": "string", "format": "uri" },
+        "isBanned": { "type": "boolean", "default": false },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "fcmTokens": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "displayName", "photoURL"]
+    },
+    "annonce": {
+      "title": "Annonce",
+      "description": "An advertisement or listing on the platform.",
+      "type": "object",
+      "properties": {
+        "titre": { "type": "string" },
+        "prix": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
+        "vendeurId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "shadowed"], "default": "pending" },
+        "moderationReason": { "type": "string" },
+        "description": { "type": "string" },
+        "localisation": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "categorie": { "type": "string" },
+        "etat": { "type": "string" },
+        "manualReviewRequested": { "type": "boolean", "default": false },
+        "views": { "type": "number", "default": 0 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titre", "prix", "image", "vendeurId"]
+    },
+    "auditLog": {
+      "title": "Audit Log",
+      "description": "A record of an administrative or system action.",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["action", "userId", "userName", "timestamp"]
+    }
+  },
+  "auth": {
+    "providers": ["email", "google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "Stores public user profile information."
+    },
+    "/annonces/{annonceId}": {
+      "schema": { "$ref": "#/entities/annonce" },
+      "description": "Stores all listings/advertisements on the platform."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/auditLog" },
+      "description": "Stores system and moderation activity logs."
+    }
+  }
+}
