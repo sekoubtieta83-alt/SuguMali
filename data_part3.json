@@ -1,0 +1,26 @@
+{
+  "users": [
+    { "id": "5", "name": "Ethan Hunt", "email": "ethan@example.com", "avatar": "https://picsum.photos/seed/avatar5/100/100", "isVerified": false, "joined": "2023-05-21" }
+  ],
+  "posts": [
+    {
+      "id": "p5",
+      "userId": "1",
+      "content": "Magnifique appartement meublé à louer à Sébénikoro. Calme et sécurisé. 🏠",
+      "media": [{ "url": "https://picsum.photos/seed/apt5/600/400", "type": "image" }],
+      "createdAt": "2023-10-05T09:00:00Z",
+      "likes": 120,
+      "comments": 34,
+      "isProduct": true,
+      "location": "Sébénikoro",
+      "status": "approved",
+      "whatsappNumber": "+22376000005",
+      "category": "Appartements (Location)",
+      "product": {
+        "name": "Appartement Meublé",
+        "price": "450000 FCFA",
+        "url": "/annonces/p5"
+      }
+    }
+  ]
+}
