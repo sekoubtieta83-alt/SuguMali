@@ -3,7 +3,7 @@
 Votre `.gitignore` a été réinitialisé pour inclure TOUT le projet (Next.js + Firebase).
 
 ## 🚀 Étape 1 : Nettoyer l'index Git
-Pour être sûr que tous vos fichiers (src, app, etc.) sont bien visibles :
+Pour être sûr que tous vos fichiers (src, app, etc.) sont bien visibles et que les anciennes archives lourdes sont supprimées :
 ```bash
 git rm -r --cached .
 git add .
