@@ -38,5 +38,5 @@ project.tar.gz
 project_zip_part_*
 
 # Parties de données (On n'autorise que la partie 1 pour le moment)
-data_part3.json
+data_part2.json
 data_part1.json
