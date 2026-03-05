@@ -1,0 +1,51 @@
+name: Deploy Frontend to Vercel
+
+# Déclencheurs : quand pousser sur main ET que les changements concernent le backend
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'firebase.json'
+      - 'database.rules.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Étape 1 : Récupérer le code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Étape 2 : Configurer Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      # Étape 3 : Installer les dépendances du frontend
+      - name: Install dependencies
+        run: |
+          cd src
+          npm install
+          
+      # Étape 4 : Build le projet (si nécessaire)
+      - name: Build project
+        run: |
+          cd src
+          npm run build
+        env:
+          CI: false
+          
+      # Étape 5 : Déployer sur Vercel
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.ORG_ID }}
+          vercel-project-id: ${{ secrets.PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./src
