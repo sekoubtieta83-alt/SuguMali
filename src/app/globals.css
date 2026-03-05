@@ -58,3 +58,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Pour téléphones */
+@media screen and (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+}
+
+/* Pour très petits écrans */
+@media screen and (max-width: 480px) {
+  .menu {
+    flex-direction: column;
+  }
+}
