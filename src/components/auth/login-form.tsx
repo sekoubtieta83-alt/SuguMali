@@ -127,11 +127,11 @@ export function LoginForm() {
         }
       } catch (error: any) {
         if (mounted) {
-          console.error("Auth Redirect Error:", error);
-          setAuthError(error.message);
+          console.error("CODE ERREUR AUTH REDIRECT (LOGIN):", error.code);
+          setAuthError(`Erreur (${error.code}) : ${error.message}`);
           toast({
             variant: 'destructive',
-            title: 'Erreur de connexion',
+            title: 'Erreur de connexion social',
             description: "Impossible de finaliser l'authentification. Vérifiez votre connexion.",
           });
           setIsSocialLoading(false);
@@ -160,15 +160,18 @@ export function LoginForm() {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       router.push('/dashboard');
     } catch (error: any) {
+      console.log("CODE ERREUR FIREBASE (LOGIN):", error.code);
       console.error("Email login error:", error);
-      let message = "Une erreur est survenue lors de la connexion.";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      let message = error.message;
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         message = "Email ou mot de passe incorrect.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = "La méthode Email/Mot de passe n'est pas activée.";
       }
       toast({
         variant: 'destructive',
         title: 'Échec de la connexion',
-        description: message,
+        description: `Code: ${error.code}. ${message}`,
       });
       setIsLoading(false);
     }
@@ -183,11 +186,11 @@ export function LoginForm() {
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Google login error:", error);
+      console.error("Google login init error:", error.code);
       toast({
         variant: 'destructive',
         title: 'Erreur Google',
-        description: "Échec de l'initialisation de la connexion Google.",
+        description: `Code: ${error.code}. Échec de l'initialisation.`,
       });
       setIsSocialLoading(false);
     }
@@ -203,11 +206,11 @@ export function LoginForm() {
       provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Apple login error:", error);
+      console.error("Apple login init error:", error.code);
       toast({
         variant: 'destructive',
         title: 'Erreur Apple',
-        description: "Échec de l'initialisation de la connexion Apple.",
+        description: `Code: ${error.code}. Échec de l'initialisation.`,
       });
       setIsSocialLoading(false);
     }
