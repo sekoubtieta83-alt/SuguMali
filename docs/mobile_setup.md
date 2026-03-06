@@ -11,14 +11,20 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
     -   Bundle ID : `com.sugumali.app`
 
 ## 2. Générer les empreintes SHA (Android)
-Ouvrez votre terminal et exécutez la commande suivante selon votre OS :
 
-### Windows
+**Attention :** Si vous utilisez le terminal de **Firebase Studio** (qui est un environnement Linux/Bash), utilisez la commande Linux ci-dessous. La commande Windows ne fonctionnera pas dans ce terminal.
+
+### Pour le Terminal Firebase Studio (Linux / Bash)
+```bash
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+### Pour votre ordinateur personnel (Windows PowerShell)
 ```bash
 keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
 ```
 
-### macOS / Linux
+### Pour votre ordinateur personnel (macOS / Linux)
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
