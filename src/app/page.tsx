@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Loader2, X } from 'lucide-react';
+import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Loader2 } from 'lucide-react';
 import Footer from '@/components/footer';
 import ThemeToggle from '@/components/theme-toggle';
 import { useAuth, useUser, useFirestore } from '@/firebase';
@@ -15,9 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post, posts as mockPosts } from '@/lib/data';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { parseSearchQuery } from '@/ai/flows/search-parser-flow';
-import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -45,15 +44,7 @@ const FeaturedProductCard = ({ id, title, price, location, image, condition }: {
   </Link>
 );
 
-interface HeaderProps {
-  showSearch?: boolean;
-  searchValue: string;
-  setSearchValue: (val: string) => void;
-  onSearch: () => void;
-  isSearching: boolean;
-}
-
-function Header({ showSearch, searchValue, setSearchValue, onSearch, isSearching }: HeaderProps) {
+function Header() {
   const router = useRouter();
   const { user, loading } = useUser();
   const auth = useAuth();
@@ -68,35 +59,9 @@ function Header({ showSearch, searchValue, setSearchValue, onSearch, isSearching
     <header className="fixed top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 min-w-fit group">
-          <Logo className="h-7 w-7 sm:h-8 sm:h-8 transition-transform group-hover:scale-110" />
+          <Logo className="h-7 w-7 sm:h-8 transition-transform group-hover:scale-110" />
           <span className="text-xl sm:text-2xl font-black text-foreground tracking-tight hidden xs:inline">Sugu<span className="text-accent">Mali</span></span>
         </Link>
-        
-        {/* Sticky Search Bar */}
-        <div className={cn(
-          "flex-1 max-w-md mx-4 transition-all duration-300",
-          showSearch ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none hidden md:block"
-        )}>
-          <div className="relative flex items-center bg-secondary/50 rounded-full border border-white/5 px-3 py-1.5 focus-within:ring-2 focus-within:ring-accent/50">
-            <Search className="h-4 w-4 text-muted-foreground ml-1" />
-            <input 
-              type="text" 
-              placeholder="Rechercher..." 
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-2 outline-none"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') onSearch() }}
-              disabled={isSearching}
-            />
-            {isSearching ? (
-              <Loader2 className="h-4 w-4 animate-spin text-accent" />
-            ) : (
-              <button onClick={onSearch} className="text-accent hover:scale-110 transition-transform">
-                <Sparkles className="h-4 w-4 fill-accent" />
-              </button>
-            )}
-          </div>
-        </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
@@ -159,15 +124,11 @@ export default function HomePage() {
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showStickySearch, setShowStickySearch] = useState(false);
-  
-  const heroSearchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!firestore) return;
 
     const annoncesRef = collection(firestore, 'annonces');
-    // On retire l'orderBy car il nécessite un index composite avec le filtre status
     const q = query(annoncesRef, where('status', '==', 'approved'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -195,13 +156,10 @@ export default function HomePage() {
           } as Post;
         });
 
-      // Tri côté client : Sponsorisés d'abord, puis par date décroissante
       const sorted = [...postsFromFirestore].sort((a, b) => {
-        // Priorité aux sponsorisés
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
         
-        // Puis par date (plus récent en haut)
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
@@ -220,23 +178,6 @@ export default function HomePage() {
 
     return () => unsubscribe();
   }, [firestore]);
-
-  // Observer for sticky search
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Show sticky search when hero search is not visible
-        setShowStickySearch(!entry.isIntersecting);
-      },
-      { threshold: 0 }
-    );
-
-    if (heroSearchRef.current) {
-      observer.observe(heroSearchRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const handleSearch = async () => {
     if (!searchValue.trim()) {
@@ -272,13 +213,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
-      <Header 
-        showSearch={showStickySearch} 
-        searchValue={searchValue}
-        setSearchValue={setSearchValue}
-        onSearch={handleSearch}
-        isSearching={isAiSearching}
-      />
+      <Header />
       <main className="flex-1">
         <section className="relative pt-32 sm:pt-40 pb-16 sm:pb-24 px-4 sm:px-6 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
@@ -289,10 +224,7 @@ export default function HomePage() {
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
             
-            <div 
-              ref={heroSearchRef}
-              className="mt-8 sm:mt-12 max-w-2xl mx-auto relative group"
-            >
+            <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative group">
               <div className="flex items-center p-1.5 sm:p-2 rounded-full bg-secondary/50 border border-white/5 backdrop-blur-xl transition-all duration-300 focus-within:ring-2 focus-within:ring-accent focus-within:bg-secondary shadow-xl sm:shadow-2xl">
                 <div className="pl-3 sm:pl-6 text-muted-foreground">
                   {isAiSearching ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-accent" /> : <Search className="h-5 w-5 sm:h-6 sm:w-6" />}
