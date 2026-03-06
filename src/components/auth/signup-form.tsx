@@ -23,7 +23,7 @@ import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 const signupSchema = z.object({
   fullName: z.string().min(1, { message: 'Le nom complet est requis' }),
@@ -123,6 +123,8 @@ export function SignupForm() {
             });
           }
           router.push('/dashboard');
+        } else if (mounted) {
+          setIsSocialLoading(false);
         }
       } catch (error: any) {
         if (mounted) {
@@ -130,11 +132,10 @@ export function SignupForm() {
           toast({
             variant: 'destructive',
             title: 'Échec de la connexion',
-            description: error.message,
+            description: "Une erreur est survenue lors de l'authentification réseau.",
           });
+          setIsSocialLoading(false);
         }
-      } finally {
-        if (mounted) setIsSocialLoading(false);
       }
     };
 
@@ -142,7 +143,7 @@ export function SignupForm() {
     
     const timeout = setTimeout(() => {
       if (mounted) setIsSocialLoading(false);
-    }, 5000);
+    }, 7000);
 
     return () => {
       mounted = false;
@@ -175,15 +176,20 @@ export function SignupForm() {
 
       toast({
         title: "Compte créé !",
-        description: "Un e-mail de vérification vous a été envoyé. Veuillez vérifier votre boîte de réception.",
+        description: "Un e-mail de vérification vous a été envoyé. Vérifiez votre boîte de réception.",
       });
 
       router.push('/dashboard');
     } catch (error: any) {
+      console.error("Signup error:", error);
+      let message = error.message;
+      if (error.code === 'auth/email-already-in-use') {
+        message = "Cette adresse e-mail est déjà utilisée.";
+      }
       toast({
         variant: 'destructive',
         title: "L'inscription a échoué",
-        description: error.message,
+        description: message,
       });
       setIsLoading(false);
     }
@@ -194,12 +200,14 @@ export function SignupForm() {
     setIsSocialLoading(true);
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
+      console.error("Google login error:", error);
       toast({
         variant: 'destructive',
-        title: 'Échec de la connexion avec Google',
-        description: error.message,
+        title: 'Erreur Google',
+        description: "Impossible d'ouvrir la fenêtre Google.",
       });
       setIsSocialLoading(false);
     }
@@ -214,10 +222,11 @@ export function SignupForm() {
       provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
+      console.error("Apple login error:", error);
       toast({
         variant: 'destructive',
-        title: 'Échec de la connexion avec Apple',
-        description: error.message,
+        title: 'Erreur Apple',
+        description: "Impossible d'ouvrir la fenêtre Apple.",
       });
       setIsSocialLoading(false);
     }
