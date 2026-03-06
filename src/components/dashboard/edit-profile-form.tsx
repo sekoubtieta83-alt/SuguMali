@@ -33,7 +33,6 @@ interface EditProfileFormProps {
   onFinished: () => void;
 }
 
-// Helper function to create a cropped image
 async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string> {
     const canvas = document.createElement('canvas');
     const scaleX = image.naturalWidth / image.width;
@@ -71,14 +70,12 @@ export function EditProfileForm({ userProfile, onFinished }: EditProfileFormProp
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
-  // Cropping states
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [isCropping, setIsCropping] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   
-  // Final photo URL state
   const [photoURL, setPhotoURL] = useState(userProfile.photoURL);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,7 +116,7 @@ export function EditProfileForm({ userProfile, onFinished }: EditProfileFormProp
           unit: '%',
           width: 90,
         },
-        1, // Aspect ratio 1:1
+        1,
         width,
         height
       ),
@@ -153,16 +150,20 @@ export function EditProfileForm({ userProfile, onFinished }: EditProfileFormProp
     setIsLoading(true);
 
     try {
-      // 1. Update Firebase Auth Profile
+      const isDataUri = photoURL?.startsWith('data:');
+      
       if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
+        const authUpdate: any = {
           displayName: data.displayName,
-          photoURL: photoURL,
-        });
+        };
+        
+        if (!isDataUri) {
+          authUpdate.photoURL = photoURL;
+        }
+        
+        await updateProfile(auth.currentUser, authUpdate);
       }
 
-
-      // 2. Update Firestore Document
       const userRef = doc(firestore, 'users', user.uid);
       await setDoc(userRef, {
         displayName: data.displayName,
@@ -243,7 +244,6 @@ export function EditProfileForm({ userProfile, onFinished }: EditProfileFormProp
         </form>
       </Form>
       
-      {/* Cropping Dialog */}
        <Dialog open={isCropping} onOpenChange={setIsCropping}>
         <DialogContent className="p-2 sm:p-6 sm:max-w-lg">
           <DialogHeader>
