@@ -122,6 +122,8 @@ export function LoginForm() {
             });
           }
           router.push('/dashboard');
+        } else if (mounted) {
+          setIsSocialLoading(false);
         }
       } catch (error: any) {
         if (mounted) {
@@ -130,20 +132,19 @@ export function LoginForm() {
           toast({
             variant: 'destructive',
             title: 'Erreur de connexion',
-            description: error.message,
+            description: "Impossible de finaliser l'authentification. Vérifiez votre connexion.",
           });
+          setIsSocialLoading(false);
         }
-      } finally {
-        if (mounted) setIsSocialLoading(false);
       }
     };
 
     checkRedirect();
     
-    // Sécurité : désactiver le chargement après 5 secondes quoi qu'il arrive
+    // Sécurité : désactiver le chargement après 7 secondes
     const timeout = setTimeout(() => {
       if (mounted) setIsSocialLoading(false);
-    }, 5000);
+    }, 7000);
 
     return () => {
       mounted = false;
@@ -159,10 +160,15 @@ export function LoginForm() {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       router.push('/dashboard');
     } catch (error: any) {
+      console.error("Email login error:", error);
+      let message = "Une erreur est survenue lors de la connexion.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        message = "Email ou mot de passe incorrect.";
+      }
       toast({
         variant: 'destructive',
         title: 'Échec de la connexion',
-        description: error.message,
+        description: message,
       });
       setIsLoading(false);
     }
@@ -174,13 +180,14 @@ export function LoginForm() {
     setAuthError(null);
     try {
       const provider = new GoogleAuthProvider();
-      // On utilise Redirect car c'est plus stable sur mobile Mali
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
+      console.error("Google login error:", error);
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: error.message,
+        title: 'Erreur Google',
+        description: "Échec de l'initialisation de la connexion Google.",
       });
       setIsSocialLoading(false);
     }
@@ -196,10 +203,11 @@ export function LoginForm() {
       provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
+      console.error("Apple login error:", error);
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: error.message,
+        title: 'Erreur Apple',
+        description: "Échec de l'initialisation de la connexion Apple.",
       });
       setIsSocialLoading(false);
     }
