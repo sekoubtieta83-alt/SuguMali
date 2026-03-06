@@ -2,7 +2,7 @@
 
 Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`studio-5667457400-e2c8f`) à une application mobile.
 
-## 1. Prérequis Firebase (Fichiers Gradle)
+## 1. Prérequis Firebase (Fichiers Gradle sur votre PC)
 
 ### 📂 Racine du projet : `android/build.gradle`
 C'est le fichier qui gère tout votre projet. Dans la section `plugins`, assurez-vous d'avoir cette ligne :
@@ -56,9 +56,9 @@ keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias and
 3.  Allez dans l'onglet **Général**.
 4.  Faites défiler jusqu'à **Vos applications** et sélectionnez l'icône Android.
 5.  Cliquez sur **Ajouter une empreinte numérique**.
-6.  Collez votre code **SHA-1** (celui qui commence par des paires de chiffres/lettres séparées par des deux-points).
+6.  Collez votre code **SHA-1** (obtenu à l'étape 2).
 7.  Cliquez sur **Enregistrer**.
 
 ## 4. Télécharger le fichier de configuration
-1. Cliquez sur le bouton bleu **google-services.json**.
-2. Placez ce fichier dans votre projet mobile, dans le dossier `android/app/`.
+1. Dans la même page Firebase, cliquez sur le bouton bleu **google-services.json**.
+2. **Action sur votre PC :** Placez ce fichier téléchargé dans votre projet mobile, exactement dans le dossier `android/app/`.
