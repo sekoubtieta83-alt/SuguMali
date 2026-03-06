@@ -227,7 +227,7 @@ export default function HomePage() {
             <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative">
               <div className="flex items-center h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-5">
                 <div className="text-muted-foreground pr-3">
-                  {isAiSearching ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <Search className="h-5 w-5" />}
+                  {isAiSearching ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <Sparkles className="h-5 w-5 text-accent/70" />}
                 </div>
                 <input 
                   type="text" 
@@ -247,7 +247,7 @@ export default function HomePage() {
                   {isAiSearching ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Sparkles className="h-5 w-5 fill-white" />
+                    <Search className="h-5 w-5 text-white" />
                   )}
                 </Button>
               </div>
