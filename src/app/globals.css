@@ -71,14 +71,37 @@
 }
 
 .container, 
-.main-content,
-.annonces-grid {
+.main-content {
     width: 100%;
     padding-left: 15px;
     padding-right: 15px;
     margin: 0 auto;
     display: flex;
     flex-wrap: wrap;
+}
+
+.annonces-grid {
+    width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr; /* Une colonne sur mobile */
+    gap: 15px;
+}
+
+/* Tablette et plus */
+@media screen and (min-width: 768px) {
+    .annonces-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Bureau */
+@media screen and (min-width: 1024px) {
+    .annonces-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .grid {
