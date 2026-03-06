@@ -13,7 +13,7 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
 ## 2. Générer les empreintes SHA (ATTENTION AU TERMINAL)
 
 ### ⚠️ SI VOUS UTILISEZ LE TERMINAL ICI (Firebase Studio / Linux)
-Tapez cette commande exacte (le symbole `~` remplace votre dossier utilisateur) :
+Tapez cette commande exacte (le symbole `~` remplace votre dossier utilisateur Linux) :
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
@@ -21,7 +21,7 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -sto
 ### 💻 SI VOUS ÊTES SUR VOTRE ORDINATEUR (Windows PowerShell)
 Si vous développez sur votre PC Windows local, utilisez cette commande :
 ```powershell
-keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
 ```
 
 ### 🍎 SI VOUS ÊTES SUR MAC OU LINUX LOCAL
@@ -47,5 +47,5 @@ dependencies:
 ```
 
 ## 4. Dépannage "File not found"
-Si vous avez l'erreur "File not found", c'est que le fichier `debug.keystore` n'a pas encore été créé par Flutter. 
-**Solution :** Lancez une fois votre application Flutter en mode debug sur un émulateur ou un téléphone, et Flutter créera le fichier automatiquement. Ensuite, relancez la commande `keytool`.
+Si vous avez l'erreur "File not found", c'est que le fichier `debug.keystore` n'a pas encore été créé par Flutter sur votre machine. 
+**Solution :** Lancez une fois votre application Flutter en mode debug sur un émulateur ou un téléphone branché à votre PC, et Flutter créera le fichier automatiquement. Ensuite, relancez la commande `keytool`.
