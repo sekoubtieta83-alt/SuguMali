@@ -11,13 +11,22 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
     -   Bundle ID : `com.sugumali.app`
 
 ## 2. Générer les empreintes SHA (Android)
-Ouvrez votre terminal et exécutez la commande suivante pour obtenir les empreintes de débogage :
+Ouvrez votre terminal et exécutez la commande suivante selon votre OS :
 
+### Windows
+```bash
+keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+```
+
+### macOS / Linux
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
 
-Copiez les valeurs **SHA-1** et **SHA-256** affichées et collez-les dans les paramètres de votre application Android sur la console Firebase.
+**Où les coller ?**
+1. Allez dans **Paramètres du projet** > **Général**.
+2. Dans **Vos applications**, sélectionnez l'app Android.
+3. Cliquez sur **Ajouter une empreinte** et collez le SHA-1 et le SHA-256.
 
 ## 3. Dépendances (pubspec.yaml)
 Ajoutez ces lignes pour activer l'authentification, la base de données et les notifications :
@@ -50,5 +59,5 @@ void main() async {
 
 ## 5. Conseils pour le déploiement au Mali
 - **Optimisation Data :** Utilisez `cached_network_image` pour économiser le forfait data.
-- **SMS Auth :** Firebase Auth gère très bien la connexion par numéro de téléphone.
-- **Localisation :** Utilisez `geolocator` pour aider les vendeurs.
+- **SMS Auth :** Firebase Auth gère très bien la connexion par numéro de téléphone (très utilisé au Mali).
+- **Localisation :** Utilisez `geolocator` pour aider les vendeurs à Bamako ou Sikasso.
