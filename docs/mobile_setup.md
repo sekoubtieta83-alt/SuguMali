@@ -6,9 +6,12 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
 1.  Allez dans la [Console Firebase](https://console.firebase.google.com/).
 2.  Ajoutez une application **Android** :
     -   Package name : `com.sugumali.app`
-3.  Dans votre fichier `android/build.gradle.kts` (racine), assurez-vous d'avoir :
+3.  Dans votre fichier **`android/build.gradle`** (à la racine du dossier android de votre projet mobile), assurez-vous d'avoir cette ligne dans la section `plugins` :
     ```kotlin
-    id("com.google.gms.google-services") version "4.4.4" apply false
+    plugins {
+        // ... autres plugins
+        id("com.google.gms.google-services") version "4.4.4" apply false
+    }
     ```
 
 ## 2. Générer les empreintes SHA (DÉPEND DE VOTRE TERMINAL)
