@@ -1,14 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Profils utilisateurs : Lecture publique (pour voir les infos du vendeur), écriture restreinte au propriétaire
+    // Profils utilisateurs
     match /users/{userId} {
+      // Lecture publique nécessaire pour que les acheteurs voient le nom et le badge du vendeur
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Un utilisateur ne peut créer, modifier ou supprimer que son propre profil
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Annonces : Lecture publique pour tous. Création et modification par les utilisateurs connectés.
-    // Seul le vendeur peut supprimer son annonce.
+    // Annonces : Lecture publique pour tous. 
+    // Création par n'importe quel utilisateur connecté.
+    // Modification et suppression réservées au vendeur de l'annonce.
     match /annonces/{annonceId} {
       allow read: if true; 
       allow create: if request.auth != null;
@@ -16,7 +21,7 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.vendeurId == request.auth.uid;
     }
 
-    // Avis : Lecture publique, création par les utilisateurs connectés (sauf sur leur propre profil, géré côté client)
+    // Avis : Lecture publique, création par les utilisateurs connectés
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if request.auth != null;
@@ -26,10 +31,10 @@ service cloud.firestore {
     // Signalements : Création uniquement par les utilisateurs connectés
     match /reports/{reportId} {
       allow create: if request.auth != null;
-      allow read: if false; // Accès réservé à l'administration via la console
+      allow read: if false; // Accès réservé à l'administration
     }
 
-    // Journaux d'audit et logs de recherche
+    // Logs et Audit
     match /auditLogs/{logId} {
       allow create: if request.auth != null;
       allow read: if false;
