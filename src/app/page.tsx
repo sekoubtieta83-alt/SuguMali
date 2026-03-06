@@ -60,7 +60,7 @@ function Header() {
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 min-w-fit group">
           <Logo className="h-7 w-7 sm:h-8 transition-transform group-hover:scale-110" />
-          <span className="text-xl sm:text-2xl font-black text-foreground tracking-tight hidden xs:inline">Sugu<span className="text-accent">Mali</span></span>
+          <span className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Sugu<span className="text-accent">Mali</span></span>
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -215,7 +215,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
       <Header />
       <main className="flex-1">
-        <section className="relative pt-32 sm:pt-40 pb-16 sm:pb-24 px-4 sm:px-6 text-center">
+        <section className="relative pt-32 sm:pt-40 pb-8 sm:pb-12 px-4 sm:px-6 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-tight text-foreground">
               Le <span className="text-accent">MALI</span> achète<br />et vend ici.
@@ -251,7 +251,7 @@ export default function HomePage() {
                   )}
                 </Button>
               </div>
-              <div className="mt-10 flex items-center justify-center gap-2 text-[11px] sm:text-xs">
+              <div className="mt-6 flex items-center justify-center gap-2 text-[11px] sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5 text-accent" />
                 <span className="text-muted-foreground opacity-60 font-medium">Recherche boostée par</span>
                 <span className="text-accent font-black tracking-wide">l'IA Mami</span>
@@ -260,7 +260,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-12 sm:pt-6 sm:pb-16">
           <div className="flex justify-between items-end mb-8 sm:mb-12">
             <div className="space-y-1 sm:space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground inline-block relative">
