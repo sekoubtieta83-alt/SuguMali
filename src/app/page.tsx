@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -73,8 +72,7 @@ function Header() {
               <Button asChild className="rounded-full font-bold px-4 sm:px-6 bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 transition-all active:scale-95 border-none h-9 sm:h-11 text-xs sm:text-sm">
                 <Link href="/dashboard/sell" className="flex items-center gap-2">
                   <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">Vendre</span>
-                  <span className="sm:hidden">Vendre</span>
+                  <span>Vendre</span>
                 </Link>
               </Button>
               <DropdownMenu>
@@ -215,7 +213,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
       <Header />
       <main className="flex-1">
-        <section className="relative pt-32 sm:pt-40 pb-8 sm:pb-12 px-4 sm:px-6 text-center">
+        <section className="relative pt-24 sm:pt-32 pb-6 sm:pb-8 px-4 sm:px-6 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-tight text-foreground">
               Le <span className="text-accent">MALI</span> achète<br />et vend ici.
@@ -224,8 +222,8 @@ export default function HomePage() {
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
             
-            <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative">
-              <div className="flex items-center h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-5">
+            <div className="mt-6 sm:mt-10 max-w-2xl mx-auto relative">
+              <div className="flex items-center h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-4">
                 <div className="text-muted-foreground pr-3">
                   {isAiSearching ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <Sparkles className="h-5 w-5 text-accent/70" />}
                 </div>
@@ -251,7 +249,7 @@ export default function HomePage() {
                   )}
                 </Button>
               </div>
-              <div className="mt-6 flex items-center justify-center gap-2 text-[11px] sm:text-xs">
+              <div className="mt-4 flex items-center justify-center gap-2 text-[11px] sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5 text-accent" />
                 <span className="text-muted-foreground opacity-60 font-medium">Recherche boostée par</span>
                 <span className="text-accent font-black tracking-wide">l'IA Mami</span>
@@ -260,7 +258,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-12 sm:pt-6 sm:pb-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-12 sm:pt-4 sm:pb-16">
           <div className="flex justify-between items-end mb-8 sm:mb-12">
             <div className="space-y-1 sm:space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground inline-block relative">
