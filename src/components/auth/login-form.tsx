@@ -83,7 +83,7 @@ export function LoginForm() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
@@ -95,9 +95,11 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (!auth || !firestore) return;
+    if (!auth || !firestore) {
+      setIsSocialLoading(false);
+      return;
+    }
     
-    setIsSocialLoading(true);
     getRedirectResult(auth).then(async (result) => {
       if (result) {
         const user = result.user;
@@ -105,11 +107,13 @@ export function LoginForm() {
         const docSnap = await getDoc(userRef);
 
         if (!docSnap.exists()) {
+          // Gère le cas où l'utilisateur Apple cache son email
+          // Apple n'envoie le nom complet que lors de la TOUTE PREMIÈRE authentification
           await setDoc(userRef, {
             uid: user.uid,
-            displayName: user.displayName,
+            displayName: user.displayName || 'Utilisateur SuguMali',
             email: user.email,
-            photoURL: user.photoURL,
+            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
             isVerified: false,
             isBanned: false,
             bio: '',
@@ -171,6 +175,9 @@ export function LoginForm() {
     setAuthError(null);
     try {
       const provider = new OAuthProvider('apple.com');
+      // Demande l'email et le nom complet si disponibles
+      provider.addScope('email');
+      provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({

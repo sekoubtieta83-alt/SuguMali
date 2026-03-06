@@ -84,10 +84,23 @@ export function SignupForm() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(true);
+
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+    },
+  });
 
   useEffect(() => {
-    if (!auth || !firestore) return;
+    if (!auth || !firestore) {
+      setIsSocialLoading(false);
+      return;
+    }
+    
     getRedirectResult(auth).then(async (result) => {
       if (result) {
         const user = result.user;
@@ -97,9 +110,9 @@ export function SignupForm() {
         if (!docSnap.exists()) {
           await setDoc(userRef, {
             uid: user.uid,
-            displayName: user.displayName,
+            displayName: user.displayName || 'Utilisateur SuguMali',
             email: user.email,
-            photoURL: user.photoURL,
+            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
             isVerified: false,
             isBanned: false,
             bio: '',
@@ -115,6 +128,8 @@ export function SignupForm() {
         title: 'Échec de la connexion',
         description: error.message,
       });
+    }).finally(() => {
+      setIsSocialLoading(false);
     });
   }, [auth, firestore, router, toast]);
 
@@ -125,7 +140,6 @@ export function SignupForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       
-      // Send email verification
       await sendEmailVerification(user);
       
       const photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
@@ -180,6 +194,8 @@ export function SignupForm() {
     setIsSocialLoading(true);
     try {
       const provider = new OAuthProvider('apple.com');
+      provider.addScope('email');
+      provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({
