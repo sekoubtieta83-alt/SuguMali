@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithRedirect, getRedirectResult, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 
@@ -17,7 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/Card';
 import { Input } from '@/components/ui/input';
 import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
@@ -62,28 +62,12 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function AppleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="1em"
-      height="1em"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
-      <path d="M17.05 20.28c-.98.95-2.05 1.72-3.21 1.72-1.13 0-1.51-.68-2.84-.68-1.33 0-1.78.65-2.84.68-1.08.03-2.11-.8-3.15-1.75-2.13-1.93-3.75-5.46-3.75-8.77 0-3.3 2.05-5.05 4.02-5.05 1.05 0 2.03.62 2.68.62.64 0 1.75-.75 3.01-.75 1.05 0 2.37.54 3.12 1.48-2.09 1.25-1.74 4.15.35 5.25-.85 2.12-2.02 4.35-3.39 5.25zm-2.89-16.11c-.57.69-1.51 1.19-2.39 1.13-.12-1 .31-2.02.89-2.7.59-.69 1.57-1.17 2.38-1.13.13 1.01-.31 2.01-.88 2.7z" />
-    </svg>
-  );
-}
-
 export function SignupForm() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSocialLoading, setIsSocialLoading] = useState(true);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -93,63 +77,6 @@ export function SignupForm() {
       password: '',
     },
   });
-
-  useEffect(() => {
-    let mounted = true;
-    
-    const checkRedirect = async () => {
-      if (!auth || !firestore) {
-        if (mounted) setIsSocialLoading(false);
-        return;
-      }
-      
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && mounted) {
-          const user = result.user;
-          const userRef = doc(firestore, 'users', user.uid);
-          const docSnap = await getDoc(userRef);
-
-          if (!docSnap.exists()) {
-            await setDoc(userRef, {
-              uid: user.uid,
-              displayName: user.displayName || 'Utilisateur SuguMali',
-              email: user.email,
-              photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
-              isVerified: false,
-              isBanned: false,
-              bio: '',
-              createdAt: serverTimestamp(),
-            });
-          }
-          router.push('/dashboard');
-        } else if (mounted) {
-          setIsSocialLoading(false);
-        }
-      } catch (error: any) {
-        if (mounted) {
-          console.error("CODE ERREUR AUTH REDIRECT:", error.code);
-          toast({
-            variant: 'destructive',
-            title: 'Échec de la connexion social',
-            description: `Erreur (${error.code}) : ${error.message}`,
-          });
-          setIsSocialLoading(false);
-        }
-      }
-    };
-
-    checkRedirect();
-    
-    const timeout = setTimeout(() => {
-      if (mounted) setIsSocialLoading(false);
-    }, 7000);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timeout);
-    };
-  }, [auth, firestore, router, toast]);
 
   const onSubmit = async (data: SignupFormValues) => {
     if (!auth || !firestore) return;
@@ -176,68 +103,58 @@ export function SignupForm() {
 
       toast({
         title: "Compte créé !",
-        description: "Un e-mail de vérification vous a été envoyé. Vérifiez votre boîte de réception.",
+        description: "Bienvenue sur SuguMali. Vérifiez votre boîte de réception.",
       });
 
       router.push('/dashboard');
     } catch (error: any) {
-      console.log("CODE ERREUR FIREBASE (SIGNUP):", error.code);
-      console.error("Signup error:", error);
-      
-      let message = error.message;
-      if (error.code === 'auth/email-already-in-use') {
-        message = "Cette adresse e-mail est déjà utilisée.";
-      } else if (error.code === 'auth/invalid-email') {
-        message = "L'adresse e-mail n'est pas valide.";
-      } else if (error.code === 'auth/weak-password') {
-        message = "Le mot de passe est trop faible.";
-      } else if (error.code === 'auth/operation-not-allowed') {
-        message = "La méthode d'inscription par e-mail n'est pas activée dans la console Firebase.";
-      }
-
       toast({
         variant: 'destructive',
         title: "Échec de l'inscription",
-        description: `Code: ${error.code}. ${message}`,
+        description: error.message,
       });
       setIsLoading(false);
     }
   };
   
   const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    setIsSocialLoading(true);
+    if (!auth || !firestore) return;
+    setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const userRef = doc(firestore, 'users', user.uid);
+      const docSnap = await getDoc(userRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(userRef, {
+          uid: user.uid,
+          displayName: user.displayName || 'Utilisateur SuguMali',
+          email: user.email,
+          photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
+          isVerified: false,
+          isBanned: false,
+          bio: '',
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      toast({
+        title: 'Connexion Google réussie',
+        description: 'Bienvenue sur SuguMali !',
+      });
+      router.push('/dashboard');
     } catch (error: any) {
-      console.error("Google signin init error:", error.code);
+      console.error("Google Signup Error:", error);
       toast({
         variant: 'destructive',
         title: 'Erreur Google',
-        description: `Impossible d'initier la connexion (${error.code}).`,
+        description: "Impossible de s'inscrire avec Google.",
       });
-      setIsSocialLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    if (!auth) return;
-    setIsSocialLoading(true);
-    try {
-      const provider = new OAuthProvider('apple.com');
-      provider.addScope('email');
-      provider.addScope('name');
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
-      console.error("Apple signin init error:", error.code);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur Apple',
-        description: `Impossible d'initier la connexion (${error.code}).`,
-      });
-      setIsSocialLoading(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -294,7 +211,7 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-[55px] rounded-xl text-base mt-2 shadow-lg shadow-accent/20" disabled={isLoading || isSocialLoading}>
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-[55px] rounded-xl text-base mt-2 shadow-lg shadow-accent/20" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               Créer un compte
             </Button>
@@ -306,14 +223,10 @@ export function SignupForm() {
             OU
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4">
-          <Button variant="outline" className="h-[55px] rounded-xl border-border font-semibold text-base bg-white text-black hover:bg-gray-50 flex items-center justify-center gap-3" onClick={handleGoogleSignIn} disabled={isSocialLoading || isLoading}>
-             {isSocialLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon className="h-6 w-6" />}
+        <div className="grid grid-cols-1">
+          <Button variant="outline" className="h-[55px] rounded-xl border-border font-semibold text-base bg-white text-black hover:bg-gray-50 flex items-center justify-center gap-3" onClick={handleGoogleSignIn} disabled={isLoading}>
+             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon className="h-6 w-6" />}
             Continuer avec Google
-          </Button>
-          <Button variant="outline" className="h-[55px] rounded-xl border-none font-semibold text-base bg-black text-white hover:bg-black/90 flex items-center justify-center gap-3" onClick={handleAppleSignIn} disabled={isSocialLoading || isLoading}>
-             {isSocialLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AppleIcon className="h-6 w-6 text-white" />}
-            Continuer avec Apple
           </Button>
         </div>
         <div className="text-center text-sm text-muted-foreground">
