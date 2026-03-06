@@ -94,41 +94,61 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (!auth || !firestore) {
-      setIsSocialLoading(false);
-      return;
-    }
-    
-    getRedirectResult(auth).then(async (result) => {
-      if (result) {
-        const user = result.user;
-        const userRef = doc(firestore, 'users', user.uid);
-        const docSnap = await getDoc(userRef);
+    let mounted = true;
 
-        if (!docSnap.exists()) {
-          await setDoc(userRef, {
-            uid: user.uid,
-            displayName: user.displayName || 'Utilisateur SuguMali',
-            email: user.email,
-            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
-            isVerified: false,
-            isBanned: false,
-            bio: '',
-            createdAt: serverTimestamp(),
+    const checkRedirect = async () => {
+      if (!auth || !firestore) {
+        if (mounted) setIsSocialLoading(false);
+        return;
+      }
+      
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && mounted) {
+          const user = result.user;
+          const userRef = doc(firestore, 'users', user.uid);
+          const docSnap = await getDoc(userRef);
+
+          if (!docSnap.exists()) {
+            await setDoc(userRef, {
+              uid: user.uid,
+              displayName: user.displayName || 'Utilisateur SuguMali',
+              email: user.email,
+              photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
+              isVerified: false,
+              isBanned: false,
+              bio: '',
+              createdAt: serverTimestamp(),
+            });
+          }
+          router.push('/dashboard');
+        }
+      } catch (error: any) {
+        if (mounted) {
+          console.error("Auth Redirect Error:", error);
+          setAuthError(error.message);
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de connexion',
+            description: error.message,
           });
         }
-        router.push('/dashboard');
+      } finally {
+        if (mounted) setIsSocialLoading(false);
       }
-    }).catch((error) => {
-      console.error("Auth Redirect Error:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error.message,
-      });
-    }).finally(() => {
-      setIsSocialLoading(false);
-    });
+    };
+
+    checkRedirect();
+    
+    // Sécurité : désactiver le chargement après 5 secondes quoi qu'il arrive
+    const timeout = setTimeout(() => {
+      if (mounted) setIsSocialLoading(false);
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+    };
   }, [auth, firestore, router, toast]);
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -144,7 +164,6 @@ export function LoginForm() {
         title: 'Échec de la connexion',
         description: error.message,
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -155,6 +174,7 @@ export function LoginForm() {
     setAuthError(null);
     try {
       const provider = new GoogleAuthProvider();
+      // On utilise Redirect car c'est plus stable sur mobile Mali
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({
@@ -197,10 +217,10 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 px-8 pb-10">
-        {authError && (
+        {(authError || (form.formState.errors.email || form.formState.errors.password)) && (
           <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-xs flex gap-2 items-start">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <p>{authError}</p>
+            <p>{authError || "Veuillez vérifier vos identifiants."}</p>
           </div>
         )}
         <Form {...form}>
