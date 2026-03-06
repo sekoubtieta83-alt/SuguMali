@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,47 +11,46 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 29 100% 50%; /* SuguMali Orange #FF7A00 */
+    --primary: 33 100% 50%; /* SuguMali Orange #FF8C00 */
     --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 29 100% 50%; /* SuguMali Orange #FF7A00 */
+    --accent: 33 100% 50%; /* SuguMali Orange #FF8C00 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 29 100% 50%;
+    --ring: 33 100% 50%;
     --radius: 1rem;
   }
 
   .dark {
-    --background: 222 47% 6%; /* #0B0E14 */
+    --background: 222 47% 6%;
     --foreground: 0 0% 98%;
     --card: 222 47% 8%;
     --card-foreground: 0 0% 98%;
     --popover: 222 47% 8%;
     --popover-foreground: 0 0% 98%;
-    --primary: 29 100% 50%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 33 100% 50%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 222 47% 12%;
     --secondary-foreground: 0 0% 98%;
     --muted: 222 47% 12%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 29 100% 50%;
+    --accent: 33 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 222 47% 15%;
     --input: 222 47% 15%;
-    --ring: 29 100% 50%;
+    --ring: 33 100% 50%;
   }
 }
 
 @layer base {
-  /* CORRECTION URGENTE */
   html, body {
     overflow-x: hidden !important;
     width: 100% !important;
@@ -65,135 +65,5 @@
     @apply border-border;
     max-width: 100%;
     box-sizing: border-box;
-  }
-
-  h1, h2, h3, p, .price {
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-  }
-
-  img, video, iframe, .card, .container, .annonce-card {
-    max-width: 100% !important;
-    height: auto !important;
-  }
-
-  h1 {
-    font-size: clamp(24px, 5vw, 48px);
-  }
-}
-
-.container, 
-.main-content {
-    width: 100%;
-    padding-left: 15px;
-    padding-right: 15px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-}
-
-.annonces-grid {
-    width: 100%;
-    padding-left: 15px;
-    padding-right: 15px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr; /* Une colonne sur mobile */
-    gap: 15px;
-}
-
-/* Tablette et plus */
-@media screen and (min-width: 768px) {
-    .annonces-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* Bureau */
-@media screen and (min-width: 1024px) {
-    .annonces-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.item {
-  flex: 1 1 300px;
-  min-width: 250px;
-}
-
-.card, 
-.annonce-card {
-    width: 100%;
-    max-width: 100%;
-    margin: 10px 0;
-    word-wrap: break-word;
-}
-
-.card-image img {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-}
-
-.search-container {
-    width: 100%;
-    padding: 10px;
-}
-
-.search-input {
-    width: 100%;
-    max-width: 100%;
-    font-size: 16px; /* Évite le zoom automatique sur iOS */
-    padding: 12px;
-}
-
-.header {
-    width: 100%;
-    overflow: hidden;
-}
-
-.header-content {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-}
-
-/* Menu mobile */
-@media screen and (max-width: 768px) {
-    .nav-menu {
-        width: 100%;
-        order: 3; /* Place le menu en dessous */
-        margin-top: 10px;
-    }
-    
-    .nav-menu a {
-        display: block;
-        padding: 10px;
-        text-align: center;
-    }
-}
-
-/* Pour téléphones */
-@media screen and (max-width: 768px) {
-  .container {
-    padding: 10px;
-  }
-  h1 {
-    font-size: 24px;
-  }
-}
-
-/* Pour très petits écrans */
-@media screen and (max-width: 480px) {
-  .menu {
-    flex-direction: column;
   }
 }
