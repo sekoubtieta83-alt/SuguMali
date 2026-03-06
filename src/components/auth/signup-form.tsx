@@ -17,7 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/Card';
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
