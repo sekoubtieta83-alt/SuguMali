@@ -50,19 +50,31 @@
 }
 
 @layer base {
+  /* CORRECTION URGENTE */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    @apply bg-background text-foreground;
+    font-size: 16px;
+  }
+
   * {
     @apply border-border;
     max-width: 100%;
     box-sizing: border-box;
   }
-  
-  html, body {
-    overflow-x: hidden;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    @apply bg-background text-foreground;
-    font-size: 16px;
+
+  h1, h2, h3, p, .price {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  img, video, iframe, .card, .container, .annonce-card {
+    max-width: 100% !important;
+    height: auto !important;
   }
 
   h1 {
@@ -113,11 +125,6 @@
 .item {
   flex: 1 1 300px;
   min-width: 250px;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
 }
 
 .card, 
