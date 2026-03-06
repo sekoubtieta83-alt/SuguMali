@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -61,13 +62,28 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function AppleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M17.05 20.28c-.98.95-2.05 1.72-3.21 1.72-1.13 0-1.51-.68-2.84-.68-1.33 0-1.78.65-2.84.68-1.08.03-2.11-.8-3.15-1.75-2.13-1.93-3.75-5.46-3.75-8.77 0-3.3 2.05-5.05 4.02-5.05 1.05 0 2.03.62 2.68.62.64 0 1.75-.75 3.01-.75 1.05 0 2.37.54 3.12 1.48-2.09 1.25-1.74 4.15.35 5.25-.85 2.12-2.02 4.35-3.39 5.25zm-2.89-16.11c-.57.69-1.51 1.19-2.39 1.13-.12-1 .31-2.02.89-2.7.59-.69 1.57-1.17 2.38-1.13.13 1.01-.31 2.01-.88 2.7z" />
+    </svg>
+  );
+}
+
 export function LoginForm() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
@@ -81,7 +97,7 @@ export function LoginForm() {
   useEffect(() => {
     if (!auth || !firestore) return;
     
-    setIsGoogleLoading(true);
+    setIsSocialLoading(true);
     getRedirectResult(auth).then(async (result) => {
       if (result) {
         const user = result.user;
@@ -104,23 +120,13 @@ export function LoginForm() {
       }
     }).catch((error) => {
       console.error("Auth Redirect Error:", error);
-      if (error.code === 'auth/unauthorized-domain') {
-        const domain = typeof window !== 'undefined' ? window.location.hostname : 'ce domaine';
-        setAuthError(`Erreur : Le domaine "${domain}" n'est pas autorisé dans votre console Firebase (Authentication > Paramètres).`);
-        toast({
-          variant: 'destructive',
-          title: 'Domaine non autorisé',
-          description: `Veuillez ajouter "${domain}" aux domaines autorisés dans votre console Firebase.`,
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: error.message,
-        });
-      }
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: error.message,
+      });
     }).finally(() => {
-      setIsGoogleLoading(false);
+      setIsSocialLoading(false);
     });
   }, [auth, firestore, router, toast]);
 
@@ -144,7 +150,7 @@ export function LoginForm() {
   
   const handleGoogleSignIn = async () => {
     if (!auth) return;
-    setIsGoogleLoading(true);
+    setIsSocialLoading(true);
     setAuthError(null);
     try {
       const provider = new GoogleAuthProvider();
@@ -155,7 +161,24 @@ export function LoginForm() {
         title: 'Erreur',
         description: error.message,
       });
-      setIsGoogleLoading(false);
+      setIsSocialLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (!auth) return;
+    setIsSocialLoading(true);
+    setAuthError(null);
+    try {
+      const provider = new OAuthProvider('apple.com');
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: error.message,
+      });
+      setIsSocialLoading(false);
     }
   };
 
@@ -167,7 +190,7 @@ export function LoginForm() {
             <CardTitle className="text-3xl font-black tracking-tighter text-foreground">SuguMali</CardTitle>
         </div>
         <CardDescription>
-          Entrez votre e-mail pour vous connecter à votre compte
+          Connectez-vous à votre compte SuguMali
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -197,9 +220,7 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center">
-                    <FormLabel>Mot de passe</FormLabel>
-                  </div>
+                  <FormLabel>Mot de passe</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
@@ -207,7 +228,7 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-12 rounded-2xl" disabled={isLoading || isGoogleLoading}>
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-12 rounded-2xl" disabled={isLoading || isSocialLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Se connecter
             </Button>
@@ -216,16 +237,22 @@ export function LoginForm() {
 
         <div className="relative my-2">
           <Separator />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 bg-card text-sm text-muted-foreground text-foreground">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 bg-card text-sm text-muted-foreground text-foreground uppercase">
             OU
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4">
-          <Button variant="outline" className="h-12 rounded-2xl" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
-            {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-5 w-5" />}
+        
+        <div className="grid grid-cols-1 gap-3">
+          <Button variant="outline" className="h-12 rounded-2xl border-border font-bold" onClick={handleGoogleSignIn} disabled={isSocialLoading || isLoading}>
+            {isSocialLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-5 w-5" />}
             Continuer avec Google
           </Button>
+          <Button variant="outline" className="h-12 rounded-2xl border-border font-bold" onClick={handleAppleSignIn} disabled={isSocialLoading || isLoading}>
+            {isSocialLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AppleIcon className="mr-2 h-5 w-5" />}
+            Continuer avec Apple
+          </Button>
         </div>
+        
         <div className="mt-4 text-center text-sm">
           Vous n'avez pas de compte ?{' '}
           <Link href="/signup" className="underline font-bold text-accent">
