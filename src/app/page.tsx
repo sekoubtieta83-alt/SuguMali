@@ -254,10 +254,11 @@ export default function HomePage() {
                   )}
                 </Button>
               </div>
-              <p className="mt-3 sm:mt-4 text-[10px] sm:text-xs text-muted-foreground/60 flex items-center justify-center gap-1">
-                <Sparkles className="h-3 w-3 text-accent" />
-                Recherche boostée par l'IA Mami
-              </p>
+              <div className="mt-6 sm:mt-8 flex items-center justify-center gap-1.5 text-[10px] sm:text-xs">
+                <Sparkles className="h-3.5 w-3.5 text-accent" />
+                <span className="text-muted-foreground/60 font-medium">Recherche boostée par</span>
+                <span className="text-accent font-black tracking-wide">l'IA Mami</span>
+              </div>
             </div>
           </div>
         </section>
