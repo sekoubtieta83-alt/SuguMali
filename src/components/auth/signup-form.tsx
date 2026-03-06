@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -159,7 +158,6 @@ export function SignupForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       
-      // Envoi de l'e-mail de vérification
       await sendEmailVerification(user);
       
       const photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
@@ -183,14 +181,21 @@ export function SignupForm() {
 
       router.push('/dashboard');
     } catch (error: any) {
+      console.log("CODE ERREUR FIREBASE:", error.code);
       console.error("Signup error:", error);
+      
       let message = error.message;
       if (error.code === 'auth/email-already-in-use') {
         message = "Cette adresse e-mail est déjà utilisée.";
+      } else if (error.code === 'auth/invalid-email') {
+        message = "L'adresse e-mail n'est pas valide.";
+      } else if (error.code === 'auth/weak-password') {
+        message = "Le mot de passe est trop faible.";
       }
+
       toast({
         variant: 'destructive',
-        title: "L'inscription a échoué",
+        title: "Erreur : " + error.code,
         description: message,
       });
       setIsLoading(false);
