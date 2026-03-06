@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -208,17 +207,17 @@ export function SignupForm() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-2xl">
-      <CardHeader className="space-y-1 text-center">
+    <Card className="w-full max-w-md shadow-2xl rounded-3xl border-none">
+      <CardHeader className="space-y-1 text-center pt-8">
          <div className="flex justify-center items-center gap-2">
-            <Logo className="h-8 w-8 text-primary" />
-            <CardTitle className="text-3xl font-bold tracking-tighter">SuguMali</CardTitle>
+            <Logo className="h-10 w-10 text-primary" />
+            <CardTitle className="text-3xl font-black tracking-tighter">SuguMali</CardTitle>
         </div>
-        <CardDescription>
+        <CardDescription className="text-base">
           Créez votre compte SuguMali gratuitement
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid gap-6 px-8 pb-10">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
              <FormField
@@ -226,9 +225,9 @@ export function SignupForm() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nom et prénom</FormLabel>
+                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Nom et prénom</FormLabel>
                   <FormControl>
-                    <Input placeholder="Jean Dupont" {...field} />
+                    <Input placeholder="Jean Dupont" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,9 +238,9 @@ export function SignupForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="m@example.com" {...field} />
+                    <Input placeholder="votre@email.com" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -252,39 +251,39 @@ export function SignupForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mot de passe</FormLabel>
+                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Mot de passe</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input type="password" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-12 rounded-2xl" disabled={isLoading || isSocialLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-[55px] rounded-xl text-base mt-2 shadow-lg shadow-accent/20" disabled={isLoading || isSocialLoading}>
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               Créer un compte
             </Button>
           </form>
         </Form>
         <div className="relative my-2">
           <Separator />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 bg-card text-sm text-muted-foreground uppercase">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 bg-card text-xs font-bold text-muted-foreground uppercase tracking-widest">
             OU
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3">
-          <Button variant="outline" className="h-12 rounded-2xl font-bold" onClick={handleGoogleSignIn} disabled={isSocialLoading || isLoading}>
-             {isSocialLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-5 w-5" />}
+        <div className="grid grid-cols-1 gap-4">
+          <Button variant="outline" className="h-[55px] rounded-xl border-border font-semibold text-base bg-white text-black hover:bg-gray-50 flex items-center justify-center gap-3" onClick={handleGoogleSignIn} disabled={isSocialLoading || isLoading}>
+             {isSocialLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon className="h-6 w-6" />}
             Continuer avec Google
           </Button>
-          <Button variant="outline" className="h-12 rounded-2xl font-bold" onClick={handleAppleSignIn} disabled={isSocialLoading || isLoading}>
-             {isSocialLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AppleIcon className="mr-2 h-5 w-5" />}
+          <Button variant="outline" className="h-[55px] rounded-xl border-none font-semibold text-base bg-black text-white hover:bg-black/90 flex items-center justify-center gap-3" onClick={handleAppleSignIn} disabled={isSocialLoading || isLoading}>
+             {isSocialLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AppleIcon className="h-6 w-6 text-white" />}
             Continuer avec Apple
           </Button>
         </div>
-        <div className="mt-4 text-center text-sm">
+        <div className="text-center text-sm text-muted-foreground">
           Vous avez déjà un compte ?{' '}
-          <Link href="/login" className="underline font-bold text-accent">
+          <Link href="/login" className="font-bold text-accent hover:underline">
             Se connecter
           </Link>
         </div>
