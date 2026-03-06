@@ -10,21 +10,21 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
 3.  Ajoutez une application **iOS** :
     -   Bundle ID : `com.sugumali.app`
 
-## 2. Générer les empreintes SHA (Android)
+## 2. Générer les empreintes SHA (ATTENTION AU TERMINAL)
 
-**Attention :** Si vous utilisez le terminal de **Firebase Studio** (qui est un environnement Linux/Bash), utilisez la commande Linux ci-dessous. La commande Windows ne fonctionnera pas dans ce terminal.
-
-### Pour le Terminal Firebase Studio (Linux / Bash)
+### ⚠️ SI VOUS UTILISEZ LE TERMINAL ICI (Firebase Studio / Linux)
+Tapez cette commande exacte (le symbole `~` remplace votre dossier utilisateur) :
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
 
-### Pour votre ordinateur personnel (Windows PowerShell)
-```bash
+### 💻 SI VOUS ÊTES SUR VOTRE ORDINATEUR (Windows PowerShell)
+Si vous développez sur votre PC Windows local, utilisez cette commande :
+```powershell
 keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
 ```
 
-### Pour votre ordinateur personnel (macOS / Linux)
+### 🍎 SI VOUS ÊTES SUR MAC OU LINUX LOCAL
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
@@ -35,8 +35,6 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -sto
 3. Cliquez sur **Ajouter une empreinte** et collez le SHA-1 et le SHA-256.
 
 ## 3. Dépendances (pubspec.yaml)
-Ajoutez ces lignes pour activer l'authentification, la base de données et les notifications :
-
 ```yaml
 dependencies:
   flutter:
@@ -46,24 +44,8 @@ dependencies:
   cloud_firestore: ^5.0.2
   firebase_messaging: ^15.0.3
   google_sign_in: ^6.2.1
-  cached_network_image: ^3.3.1
 ```
 
-## 4. Code d'Initialisation (main.dart)
-```dart
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'firebase_options.dart'; 
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const SuguMaliMobile());
-}
-```
-
-## 5. Conseils pour le déploiement au Mali
-- **Optimisation Data :** Utilisez `cached_network_image` pour économiser le forfait data.
-- **SMS Auth :** Firebase Auth gère très bien la connexion par numéro de téléphone (très utilisé au Mali).
-- **Localisation :** Utilisez `geolocator` pour aider les vendeurs à Bamako ou Sikasso.
+## 4. Dépannage "File not found"
+Si vous avez l'erreur "File not found", c'est que le fichier `debug.keystore` n'a pas encore été créé par Flutter. 
+**Solution :** Lancez une fois votre application Flutter en mode debug sur un émulateur ou un téléphone, et Flutter créera le fichier automatiquement. Ensuite, relancez la commande `keytool`.
