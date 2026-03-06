@@ -85,15 +85,6 @@ export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState(true);
 
-  const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      fullName: '',
-      email: '',
-      password: '',
-    },
-  });
-
   useEffect(() => {
     let mounted = true;
     
@@ -128,11 +119,11 @@ export function SignupForm() {
         }
       } catch (error: any) {
         if (mounted) {
-          console.error("Redirect Auth Error:", error);
+          console.error("CODE ERREUR AUTH REDIRECT:", error.code);
           toast({
             variant: 'destructive',
-            title: 'Échec de la connexion',
-            description: "Une erreur est survenue lors de l'authentification réseau.",
+            title: 'Échec de la connexion social',
+            description: `Erreur (${error.code}) : ${error.message}`,
           });
           setIsSocialLoading(false);
         }
@@ -181,7 +172,7 @@ export function SignupForm() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      console.log("CODE ERREUR FIREBASE:", error.code);
+      console.log("CODE ERREUR FIREBASE (SIGNUP):", error.code);
       console.error("Signup error:", error);
       
       let message = error.message;
@@ -191,12 +182,14 @@ export function SignupForm() {
         message = "L'adresse e-mail n'est pas valide.";
       } else if (error.code === 'auth/weak-password') {
         message = "Le mot de passe est trop faible.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = "La méthode d'inscription par e-mail n'est pas activée dans la console Firebase.";
       }
 
       toast({
         variant: 'destructive',
-        title: "Erreur : " + error.code,
-        description: message,
+        title: "Échec de l'inscription",
+        description: `Code: ${error.code}. ${message}`,
       });
       setIsLoading(false);
     }
@@ -210,11 +203,11 @@ export function SignupForm() {
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Google login error:", error);
+      console.error("Google signin init error:", error.code);
       toast({
         variant: 'destructive',
         title: 'Erreur Google',
-        description: "Impossible d'ouvrir la fenêtre Google.",
+        description: `Impossible d'initier la connexion (${error.code}).`,
       });
       setIsSocialLoading(false);
     }
@@ -229,11 +222,11 @@ export function SignupForm() {
       provider.addScope('name');
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Apple login error:", error);
+      console.error("Apple signin init error:", error.code);
       toast({
         variant: 'destructive',
         title: 'Erreur Apple',
-        description: "Impossible d'ouvrir la fenêtre Apple.",
+        description: `Impossible d'initier la connexion (${error.code}).`,
       });
       setIsSocialLoading(false);
     }
