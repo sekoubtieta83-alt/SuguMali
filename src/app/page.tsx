@@ -225,7 +225,7 @@ export default function HomePage() {
             </p>
             
             <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative group">
-              <div className="flex items-center p-1.5 sm:p-2 rounded-[30px] bg-[#1A1D23] border border-[#333] backdrop-blur-xl transition-all duration-300 focus-within:ring-2 focus-within:ring-accent h-[55px] shadow-xl sm:shadow-2xl my-5">
+              <div className="flex items-center p-1.5 sm:p-2 rounded-[30px] bg-white dark:bg-[#1A1D23] border border-border dark:border-[#333] backdrop-blur-xl transition-all duration-300 focus-within:ring-2 focus-within:ring-accent h-[55px] shadow-xl sm:shadow-2xl my-5">
                 <div className="pl-4 sm:pl-6 text-muted-foreground">
                   {isAiSearching ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-accent" /> : <Search className="h-5 w-5 sm:h-6 sm:w-6" />}
                 </div>
@@ -236,7 +236,7 @@ export default function HomePage() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }} 
                   placeholder="Que cherchez-vous ?" 
                   disabled={isAiSearching}
-                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 sm:py-4 px-3 sm:px-4 text-base outline-none placeholder-[#A0A0A0] text-white disabled:opacity-50" 
+                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 sm:py-4 px-3 sm:px-4 text-base outline-none placeholder-muted-foreground text-foreground disabled:opacity-50" 
                 />
                 <Button 
                   type="button"
