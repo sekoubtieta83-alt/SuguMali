@@ -6,12 +6,20 @@ Ce guide vous accompagne dans la connexion de votre backend Firebase existant (`
 1.  Allez dans la [Console Firebase](https://console.firebase.google.com/).
 2.  Ajoutez une application **Android** :
     -   Package name : `com.sugumali.app`
-    -   Téléchargez `google-services.json` et placez-le dans `android/app/`.
+    -   **Important :** Vous devez ajouter vos empreintes numériques SHA-1 et SHA-256.
 3.  Ajoutez une application **iOS** :
     -   Bundle ID : `com.sugumali.app`
-    -   Téléchargez `GoogleService-Info.plist` et placez-le dans `ios/Runner/`.
 
-## 2. Dépendances (pubspec.yaml)
+## 2. Générer les empreintes SHA (Android)
+Ouvrez votre terminal et exécutez la commande suivante pour obtenir les empreintes de débogage :
+
+```bash
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+Copiez les valeurs **SHA-1** et **SHA-256** affichées et collez-les dans les paramètres de votre application Android sur la console Firebase.
+
+## 3. Dépendances (pubspec.yaml)
 Ajoutez ces lignes pour activer l'authentification, la base de données et les notifications :
 
 ```yaml
@@ -22,85 +30,25 @@ dependencies:
   firebase_auth: ^5.1.1
   cloud_firestore: ^5.0.2
   firebase_messaging: ^15.0.3
-  cached_network_image: ^3.3.1 # Recommandé pour SuguMali
+  google_sign_in: ^6.2.1
+  cached_network_image: ^3.3.1
 ```
 
-## 3. Code d'Initialisation (main.dart)
-Voici le code minimal pour démarrer et tester la connexion à Firestore :
-
+## 4. Code d'Initialisation (main.dart)
 ```dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'firebase_options.dart'; // Généré par flutterfire configure
+import 'firebase_options.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialisation Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // Configuration de la persistance (Mode Hors-ligne)
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
-
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const SuguMaliMobile());
-}
-
-class SuguMaliMobile extends StatelessWidget {
-  const SuguMaliMobile({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SuguMali',
-      theme: ThemeData(
-        primarySwatch: Colors.orange,
-        useMaterial3: true,
-      ),
-      home: const TestFirestorePage(),
-    );
-  }
-}
-
-class TestFirestorePage extends StatelessWidget {
-  const TestFirestorePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('SuguMali Backend Test')),
-      body: Center(
-        child: StreamBuilder(
-          stream: FirebaseFirestore.instance.collection('annonces').snapshots(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if (snapshot.hasError) return Text('Erreur: ${snapshot.error}');
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
-            }
-            
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.cloud_done, color: Colors.green, size: 60),
-                const SizedBox(height: 20),
-                Text('${snapshot.data?.docs.length} annonces récupérées !'),
-                const Text('Le mode hors-ligne est actif.'),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
 }
 ```
 
-## 4. Conseils pour le déploiement au Mali
-- **Optimisation Data :** Utilisez `cached_network_image` pour éviter de recharger les photos des produits, ce qui économise le forfait data de vos utilisateurs.
-- **SMS Auth :** Firebase Auth gère très bien la connexion par numéro de téléphone, très populaire au Mali.
-- **Localisation :** Utilisez le package `geolocator` pour aider les vendeurs à remplir automatiquement leur ville.
+## 5. Conseils pour le déploiement au Mali
+- **Optimisation Data :** Utilisez `cached_network_image` pour économiser le forfait data.
+- **SMS Auth :** Firebase Auth gère très bien la connexion par numéro de téléphone.
+- **Localisation :** Utilisez `geolocator` pour aider les vendeurs.
