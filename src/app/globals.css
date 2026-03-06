@@ -146,6 +146,34 @@ img {
     padding: 12px;
 }
 
+.header {
+    width: 100%;
+    overflow: hidden;
+}
+
+.header-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+}
+
+/* Menu mobile */
+@media screen and (max-width: 768px) {
+    .nav-menu {
+        width: 100%;
+        order: 3; /* Place le menu en dessous */
+        margin-top: 10px;
+    }
+    
+    .nav-menu a {
+        display: block;
+        padding: 10px;
+        text-align: center;
+    }
+}
+
 /* Pour téléphones */
 @media screen and (max-width: 768px) {
   .container {
