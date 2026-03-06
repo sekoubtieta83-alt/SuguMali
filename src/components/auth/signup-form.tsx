@@ -85,6 +85,15 @@ export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState(true);
 
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+    },
+  });
+
   useEffect(() => {
     let mounted = true;
     
