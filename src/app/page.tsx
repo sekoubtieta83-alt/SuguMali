@@ -213,7 +213,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
       <Header />
       <main className="flex-1">
-        <section className="relative pt-24 sm:pt-40 pb-6 sm:pb-10 px-6 sm:px-10 text-center">
+        <section className="relative pt-32 sm:pt-48 pb-10 sm:pb-16 px-6 sm:px-10 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70">
               Rejoignez la plus grande communauté de commerce local au Mali.
@@ -255,7 +255,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-4 pb-12 sm:pt-6 sm:pb-20">
+        <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-8 pb-12 sm:pt-12 sm:pb-20">
           <div className="flex justify-between items-end mb-6 sm:mb-8">
             <div className="space-y-1 sm:space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground inline-block relative">
