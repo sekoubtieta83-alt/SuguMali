@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -158,6 +159,7 @@ export function SignupForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       
+      // Envoi de l'e-mail de vérification
       await sendEmailVerification(user);
       
       const photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
@@ -253,7 +255,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Nom et prénom</FormLabel>
                   <FormControl>
-                    <Input placeholder="Jean Dupont" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
+                    <Input placeholder="Jean Dupont" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -266,7 +268,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="votre@email.com" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
+                    <Input placeholder="votre@email.com" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -279,7 +281,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Mot de passe</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} className="h-12 rounded-xl bg-muted/30 border-none px-4" />
+                    <Input type="password" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
