@@ -225,8 +225,8 @@ export default function HomePage() {
             </p>
             
             <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative group">
-              <div className="flex items-center p-1.5 sm:p-2 rounded-full bg-secondary/50 border border-white/5 backdrop-blur-xl transition-all duration-300 focus-within:ring-2 focus-within:ring-accent focus-within:bg-secondary shadow-xl sm:shadow-2xl">
-                <div className="pl-3 sm:pl-6 text-muted-foreground">
+              <div className="flex items-center p-1.5 sm:p-2 rounded-[30px] bg-[#1A1D23] border border-[#333] backdrop-blur-xl transition-all duration-300 focus-within:ring-2 focus-within:ring-accent h-[55px] shadow-xl sm:shadow-2xl my-5">
+                <div className="pl-4 sm:pl-6 text-muted-foreground">
                   {isAiSearching ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-accent" /> : <Search className="h-5 w-5 sm:h-6 sm:w-6" />}
                 </div>
                 <input 
@@ -236,13 +236,13 @@ export default function HomePage() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }} 
                   placeholder="Que cherchez-vous ?" 
                   disabled={isAiSearching}
-                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 sm:py-4 px-3 sm:px-6 text-base sm:text-xl outline-none placeholder:text-muted-foreground/50 text-foreground disabled:opacity-50" 
+                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 sm:py-4 px-3 sm:px-4 text-base outline-none placeholder-[#A0A0A0] text-white disabled:opacity-50" 
                 />
                 <Button 
                   type="button"
                   onClick={handleSearch} 
                   disabled={isAiSearching}
-                  className="rounded-full font-bold px-4 sm:px-10 h-10 sm:h-14 bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 transition-all active:scale-95 border-none flex items-center gap-1 sm:gap-2 shrink-0 text-sm sm:text-base"
+                  className="rounded-[25px] font-bold px-6 h-[40px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 transition-all active:scale-95 border-none flex items-center gap-1 sm:gap-2 shrink-0 text-sm ml-2 mr-1"
                 >
                   {isAiSearching ? (
                     <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
