@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
+  const [isNotificationSupported, setIsNotificationSupported] = useState<boolean>(true);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -85,6 +86,13 @@ export default function ProfilePage() {
   const [isSubmittingId, setIsSubmittingId] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check for notification support on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setIsNotificationSupported('Notification' in window && 'serviceWorker' in navigator);
+    }
+  }, []);
 
   useEffect(() => {
     if (user && firestore) {
@@ -130,7 +138,6 @@ export default function ProfilePage() {
     if (!firestore || !user) return;
 
     const annoncesRef = collection(firestore, 'annonces');
-    // On retire l'orderBy pour éviter l'erreur d'index composite
     const q = query(annoncesRef, where('vendeurId', '==', user.uid));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -160,7 +167,6 @@ export default function ProfilePage() {
         } as Post;
       });
 
-      // Tri côté client par date décroissante
       const sorted = [...postsFromFirestore].sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
@@ -218,6 +224,15 @@ export default function ProfilePage() {
 
   const handleToggleNotifications = async () => {
     if (!app || !user || !firestore) return;
+    if (!isNotificationSupported) {
+        toast({
+            variant: "destructive",
+            title: "Non supporté",
+            description: "Votre navigateur ne supporte pas les notifications push."
+        });
+        return;
+    }
+    
     setIsNotificationLoading(true);
     const userRef = doc(firestore, 'users', user.uid);
     if (notificationsEnabled) {
@@ -348,7 +363,7 @@ export default function ProfilePage() {
       <div className="flex justify-end p-3 sm:p-4 border-b gap-2 sm:gap-3">
         {userProfile.isBanned && <div className="bg-destructive/10 text-destructive px-3 py-1 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold flex items-center">Compte suspendu</div>}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-xl"><Edit className="h-4 w-4 mr-1.sm:mr-2" /> Modifier</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-xl"><Edit className="h-4 w-4 mr-1 sm:mr-2" /> Modifier</Button></DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader><DialogTitle>Modifier le profil</DialogTitle></DialogHeader>
                 <EditProfileForm userProfile={userProfile} onFinished={() => setIsEditDialogOpen(false)} />
@@ -428,11 +443,36 @@ export default function ProfilePage() {
                     </div>
                 )}
             </div>
+            
             <div className="p-4 sm:p-6 bg-muted rounded-2xl sm:rounded-3xl border border-border/50">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4"><Bell className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /><h2 className="text-lg sm:text-xl font-bold">Alertes</h2></div>
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-background rounded-xl sm:rounded-2xl border border-border/50">
-                    <div><h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3><p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p></div>
-                    <Button onClick={handleToggleNotifications} disabled={isNotificationLoading} variant="outline" size="sm" className="h-8 rounded-lg">{isNotificationLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : notificationsEnabled ? <BellOff className="h-3 w-3" /> : <Bell className="h-3 w-3" />}</Button>
+                    <div className="flex-1 mr-4">
+                        <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
+                        <p className="text-[10px] text-muted-foreground">
+                            {isNotificationSupported 
+                                ? "Alertes prix et messages." 
+                                : "Indisponible sur ce navigateur."}
+                        </p>
+                    </div>
+                    <Button 
+                        onClick={handleToggleNotifications} 
+                        disabled={isNotificationLoading || !isNotificationSupported} 
+                        variant="outline" 
+                        size="sm" 
+                        className={cn(
+                            "h-8 rounded-lg",
+                            !isNotificationSupported && "opacity-50 grayscale cursor-not-allowed"
+                        )}
+                    >
+                        {isNotificationLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : notificationsEnabled ? (
+                            <BellOff className="h-3 w-3" />
+                        ) : (
+                            <Bell className="h-3 w-3" />
+                        )}
+                    </Button>
                 </div>
             </div>
         </div>
