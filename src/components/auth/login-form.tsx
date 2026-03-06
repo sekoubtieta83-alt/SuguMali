@@ -119,7 +119,7 @@ export function LoginForm() {
           <CardTitle className="text-4xl font-black tracking-tighter text-foreground">Sugu<span className="text-[#FF8C00]">Mali</span></CardTitle>
         </div>
         <CardDescription className="text-base font-medium opacity-70">
-          Le Mali achète et vend ici 🇲🇱
+          Rejoignez la communauté SuguMali 🇲🇱
         </CardDescription>
       </CardHeader>
       

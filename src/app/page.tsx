@@ -213,11 +213,8 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
       <Header />
       <main className="flex-1">
-        <section className="relative pt-24 sm:pt-36 pb-6 sm:pb-10 px-6 sm:px-10 text-center">
+        <section className="relative pt-24 sm:pt-40 pb-6 sm:pb-10 px-6 sm:px-10 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight text-foreground">
-              Le <span className="text-accent">MALI</span> achète et vend<br />ici.
-            </h1>
             <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70">
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
