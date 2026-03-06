@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -7,7 +6,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/Card';
 import { Input } from '@/components/ui/input';
 import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
@@ -90,15 +89,24 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     if (!auth) return;
+    setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
+      toast({
+        title: 'Connexion Google réussie',
+        description: 'Bienvenue sur SuguMali !',
+      });
+      router.push('/dashboard');
     } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
       toast({
         variant: 'destructive',
         title: 'Erreur Google',
-        description: error.message,
+        description: "Impossible de se connecter avec Google.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -187,6 +195,7 @@ export function LoginForm() {
           variant="outline" 
           className="h-14 rounded-2xl border-border/50 font-bold text-base hover:bg-muted/50 flex items-center justify-center gap-3 transition-all" 
           onClick={handleGoogleSignIn}
+          disabled={isLoading}
           type="button"
         >
           <svg className="h-6 w-6" viewBox="0 0 24 24">
@@ -195,7 +204,7 @@ export function LoginForm() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Google
+          Continuer avec Google
         </Button>
         
         <div className="text-center text-sm font-medium text-muted-foreground">
