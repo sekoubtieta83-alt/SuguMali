@@ -52,14 +52,33 @@
 @layer base {
   * {
     @apply border-border;
+    max-width: 100%;
+    box-sizing: border-box;
   }
-  body {
+  
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     @apply bg-background text-foreground;
-    font-size: 16px; /* base */
+    font-size: 16px;
   }
+
   h1 {
-    font-size: clamp(24px, 5vw, 48px); /* min, préféré, max */
+    font-size: clamp(24px, 5vw, 48px);
   }
+}
+
+.container, 
+.main-content,
+.annonces-grid {
+    width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 .grid {
@@ -68,13 +87,8 @@
   gap: 20px;
 }
 
-.container {
-  display: flex;
-  flex-wrap: wrap;
-}
-
 .item {
-  flex: 1 1 300px; /* flexible avec base de 300px */
+  flex: 1 1 300px;
   min-width: 250px;
 }
 
@@ -87,6 +101,9 @@ img {
 @media screen and (max-width: 768px) {
   .container {
     padding: 10px;
+  }
+  h1 {
+    font-size: 24px;
   }
 }
 
