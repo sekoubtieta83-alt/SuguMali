@@ -224,8 +224,8 @@ export default function HomePage() {
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
             
-            <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative group">
-              <div className="flex items-center h-[50px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E0E0E0] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-5">
+            <div className="mt-8 sm:mt-12 max-w-2xl mx-auto relative">
+              <div className="flex items-center h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-5">
                 <div className="text-muted-foreground pr-3">
                   {isAiSearching ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <Search className="h-5 w-5" />}
                 </div>
@@ -236,27 +236,24 @@ export default function HomePage() {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }} 
                   placeholder="Que cherchez-vous ?" 
                   disabled={isAiSearching}
-                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[15px] outline-none placeholder-gray-400 dark:placeholder-white/60 text-foreground dark:text-white disabled:opacity-50" 
+                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[16px] outline-none placeholder-[#A0A0A0] text-[#333333] dark:text-white disabled:opacity-50" 
                 />
                 <Button 
                   type="button"
                   onClick={handleSearch} 
                   disabled={isAiSearching}
-                  className="h-[38px] rounded-full font-bold px-[15px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 transition-all active:scale-95 border-none flex items-center justify-center gap-2 shrink-0 text-sm ml-2"
+                  className="h-11 w-11 rounded-full p-0 bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 transition-all active:scale-95 border-none flex items-center justify-center shrink-0 ml-2"
                 >
                   {isAiSearching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 fill-white" />
-                      <span>Rechercher</span>
-                    </>
+                    <Sparkles className="h-5 w-5 fill-white" />
                   )}
                 </Button>
               </div>
-              <div className="mt-8 sm:mt-10 flex items-center justify-center gap-2 text-[10px] sm:text-xs">
+              <div className="mt-10 flex items-center justify-center gap-2 text-[11px] sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5 text-accent" />
-                <span className="text-muted-foreground/60 font-medium">Recherche boostée par</span>
+                <span className="text-muted-foreground opacity-60 font-medium">Recherche boostée par</span>
                 <span className="text-accent font-black tracking-wide">l'IA Mami</span>
               </div>
             </div>
