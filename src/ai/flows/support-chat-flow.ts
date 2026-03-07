@@ -22,11 +22,12 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
  * Inclut une gestion d'erreur détaillée pour les logs Vercel.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  console.log("[MAMI] Appel du flux de support avec", input.messages.length, "messages.");
+  const hasKey = !!process.env.GOOGLE_GENAI_API_KEY;
+  console.log("[MAMI] Appel reçu. Messages:", input.messages.length, "| Clé API configurée:", hasKey);
   
-  if (!process.env.GOOGLE_GENAI_API_KEY) {
-    console.error("[MAMI] ERREUR CRITIQUE : La variable GOOGLE_GENAI_API_KEY est manquante.");
-    return "Désolée, mon système n'est pas configuré correctement (Clé API manquante). 🇲🇱";
+  if (!hasKey) {
+    console.error("[MAMI] ERREUR : La variable d'environnement GOOGLE_GENAI_API_KEY est introuvable au moment de l'exécution.");
+    return "Désolée, je ne suis pas encore tout à fait prête (Clé API non détectée). 🇲🇱";
   }
 
   try {
@@ -47,23 +48,29 @@ Conseille toujours la certification (Badge Orange) pour gagner la confiance.`,
     });
 
     if (!response || !response.text) {
-      console.warn("[MAMI] La réponse du modèle est vide.");
-      return "Je n'ai pas pu formuler de réponse. Peux-tu réessayer ? 🇲🇱";
+      console.warn("[MAMI] Le modèle a renvoyé une réponse vide.");
+      return "Je n'ai pas pu formuler de réponse cette fois. Peux-tu réessayer ? 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
-    // Log détaillé pour Vercel Logs
-    console.error("[MAMI] Erreur lors de la génération de réponse :", {
+    // Log extrêmement détaillé pour le débogage Vercel
+    console.error("[MAMI] Erreur de génération détectée :", {
+      name: error.name,
       message: error.message,
       stack: error.stack,
-      details: error.details || "Aucun détail supplémentaire",
+      status: error.status || "N/A",
+      details: error.details || "Aucun détail JSON"
     });
 
-    if (error.message?.includes('safety')) {
-      return "Désolée, je ne peux pas répondre à cette question pour des raisons de sécurité. 🇲🇱";
+    if (error.message?.toLowerCase().includes('safety')) {
+      return "Désolée, je ne peux pas traiter cette demande pour des raisons de sécurité. 🇲🇱";
     }
 
-    return "Désolée, j'ai un petit souci technique passager. Peux-tu reformuler ta question ? 🇲🇱";
+    if (error.message?.toLowerCase().includes('quota')) {
+      return "Désolée, je suis un peu surchargée en ce moment. Réessayez dans une minute ! 🇲🇱";
+    }
+
+    return `Désolée, j'ai rencontré un problème technique (${error.name}). Peux-tu reformuler ? 🇲🇱`;
   }
 }
