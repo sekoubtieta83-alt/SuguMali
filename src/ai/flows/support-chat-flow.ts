@@ -84,13 +84,17 @@ const supportChatFlow = ai.defineFlow(
       return "Bonjour ! Je suis Mami, l'assistant IA de SuguMali. Comment puis-je vous aider aujourd'hui ?";
     }
 
-    const result = await prompt(input);
-    const output = result.text;
-    
-    if (!output) {
-      return "Désolé, je n'ai pas pu générer de réponse. Veuillez réessayer.";
-    }
+    try {
+      const { text } = await prompt(input);
+      
+      if (!text) {
+        return "Désolé, je n'ai pas pu générer de réponse. Pouvez-vous reformuler votre question ?";
+      }
 
-    return output;
+      return text;
+    } catch (error) {
+      console.error("Genkit Flow Error:", error);
+      throw new Error("Erreur lors de la génération de la réponse IA.");
+    }
   }
 );
