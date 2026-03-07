@@ -1,7 +1,7 @@
-
 'use server';
 /**
- * @fileOverview A customer support chatbot flow for SuguMali.
+ * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
+ * Gère la communication avec Gemini 1.5 Flash via Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -18,59 +18,64 @@ const SupportChatInputSchema = z.object({
 export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
- * Action serveur pour appeler l'assistant Mami.
- * Inclut une gestion d'erreur détaillée pour les logs Vercel.
+ * Appelle l'IA Mami pour générer une réponse.
+ * Limite l'historique à 10 messages pour plus de stabilité.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
   const hasKey = !!process.env.GOOGLE_GENAI_API_KEY;
-  console.log("[MAMI] Appel reçu. Messages:", input.messages.length, "| Clé API configurée:", hasKey);
   
+  // On ne garde que les 10 derniers messages pour éviter de saturer le modèle
+  const recentMessages = input.messages.slice(-10);
+  
+  console.log("[MAMI] Requête de chat. Historique réduit à:", recentMessages.length, "messages.");
+
   if (!hasKey) {
-    console.error("[MAMI] ERREUR : La variable d'environnement GOOGLE_GENAI_API_KEY est introuvable au moment de l'exécution.");
-    return "Désolée, je ne suis pas encore tout à fait prête (Clé API non détectée). 🇲🇱";
+    return "Désolée, je ne suis pas connectée au serveur (Clé API manquante). 🇲🇱";
   }
 
   try {
     const response = await ai.generate({
-      system: `Tu es Mami, l'assistante IA de SuguMali 🇲🇱.
-Ton but est d'aider les utilisateurs à acheter et vendre.
-Sois chaleureuse, utilise des emojis et réponds en Français.
-Context : SuguMali est la marketplace n°1 au Mali. Les transactions sont directes via WhatsApp.
-Conseille toujours la certification (Badge Orange) pour gagner la confiance.`,
-      messages: input.messages.map(m => ({
+      system: "Tu es Mami, l'assistante de SuguMali. Aide les gens à acheter et vendre au Mali avec chaleur et courtoisie. Utilise des emojis.",
+      messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
       })),
       config: {
         temperature: 0.7,
         maxOutputTokens: 500,
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_ONLY_HIGH',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_ONLY_HIGH',
+          },
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_ONLY_HIGH',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_ONLY_HIGH',
+          },
+        ],
       }
     });
 
     if (!response || !response.text) {
-      console.warn("[MAMI] Le modèle a renvoyé une réponse vide.");
-      return "Je n'ai pas pu formuler de réponse cette fois. Peux-tu réessayer ? 🇲🇱";
+      return "Je n'ai pas pu générer de réponse. Peux-tu reformuler ? 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
-    // Log extrêmement détaillé pour le débogage Vercel
-    console.error("[MAMI] Erreur de génération détectée :", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      status: error.status || "N/A",
-      details: error.details || "Aucun détail JSON"
-    });
-
-    if (error.message?.toLowerCase().includes('safety')) {
-      return "Désolée, je ne peux pas traiter cette demande pour des raisons de sécurité. 🇲🇱";
+    console.error("[MAMI] Erreur lors de la génération:", error.message);
+    
+    if (error.message?.includes('safety')) {
+      return "Désolée, ce sujet est délicat et je ne peux pas en discuter. 🇲🇱";
     }
 
-    if (error.message?.toLowerCase().includes('quota')) {
-      return "Désolée, je suis un peu surchargée en ce moment. Réessayez dans une minute ! 🇲🇱";
-    }
-
-    return `Désolée, j'ai rencontré un problème technique (${error.name}). Peux-tu reformuler ? 🇲🇱`;
+    return "Petit souci technique ! Réessaie dans un instant. 🇲🇱";
   }
 }
