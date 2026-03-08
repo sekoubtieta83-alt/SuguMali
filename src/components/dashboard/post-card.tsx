@@ -2,7 +2,7 @@ import Image from 'next/image';
 import type { Post } from '@/lib/data';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, MapPin, Rocket } from 'lucide-react';
+import { ImageIcon, MapPin, Rocket, Play } from 'lucide-react';
 
 interface PostCardProps {
   post: Post;
@@ -14,6 +14,7 @@ export function PostCard({ post }: PostCardProps) {
     : null;
 
   const title = post.isProduct && post.product?.name ? post.product.name : post.content;
+  const firstMedia = post.media && post.media.length > 0 ? post.media[0] : null;
 
   return (
     <Link href={`/annonces/${post.id}`} className="group block bg-card rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-border/50 overflow-hidden flex flex-col">
@@ -24,17 +25,29 @@ export function PostCard({ post }: PostCardProps) {
                 <span>Sponsorisé</span>
             </div>
         )}
-        {post.media && post.media.length > 0 ? (
-          post.media[0].type === 'image' ? (
+        {firstMedia ? (
+          firstMedia.type === 'image' ? (
             <Image 
-              src={post.media[0].url} 
+              src={firstMedia.url} 
               alt={title}
               fill 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
               data-ai-hint="product image"
             />
           ) : (
-             <video src={post.media[0].url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" muted loop playsInline autoPlay />
+            <div className="relative w-full h-full">
+               <video 
+                src={firstMedia.url} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                muted 
+                loop 
+                playsInline 
+                autoPlay 
+              />
+              <div className="absolute bottom-2 right-2 bg-black/50 p-1 rounded-full">
+                <Play className="h-3 w-3 text-white fill-current" />
+              </div>
+            </div>
           )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">

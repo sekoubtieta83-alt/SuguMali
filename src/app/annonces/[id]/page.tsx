@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,53 +11,26 @@ import {
   X,
   Rocket,
   Trash2,
-  Ban,
-  BadgeCheck,
-  Star,
-  MoreVertical,
   Flag,
   Loader2,
-  CheckCircle2,
-  ShieldAlert,
-  Send,
-  HelpCircle,
   Heart,
   Maximize2,
+  BadgeCheck,
+  MoreVertical,
+  ShieldAlert,
+  Play
 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import Image from 'next/image';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from '@/components/ui/dialog';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
-import { type Review, ReviewCard } from '@/components/dashboard/review-card';
-import { ReviewStars } from '@/components/dashboard/review-stars';
-import { AddReviewForm } from '@/components/dashboard/add-review-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
-import { logActivity } from '@/lib/audit';
+import { ReviewStars } from '@/components/dashboard/review-stars';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 
 type Seller = {
@@ -67,6 +39,14 @@ type Seller = {
     email: string;
     photoURL: string;
     isVerified: boolean;
+};
+
+type Review = {
+    id: string;
+    rating: number;
+    comment: string;
+    createdAt: any;
+    sellerId: string;
 };
 
 export default function AnnoncePage() {
@@ -90,7 +70,7 @@ export default function AnnoncePage() {
   
   // Lightbox state
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  const [selectedMedia, setSelectedMedia] = useState<{url: string, type: 'image' | 'video'} | null>(null);
 
   // Increment views
   useEffect(() => {
@@ -121,7 +101,7 @@ export default function AnnoncePage() {
             id: docSnap.id,
             userId: data.vendeurId,
             content: data.description || '',
-            media: data.image ? [{ url: data.image, type: 'image' }] : [],
+            media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
             likes: 0,
             comments: 0,
@@ -172,11 +152,6 @@ export default function AnnoncePage() {
     const q = query(reviewsRef, where('sellerId', '==', seller.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
-        fetchedReviews.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt?.seconds ?? 0) * 1000;
-            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt?.seconds ?? 0) * 1000;
-            return dateB - dateA;
-        });
         setReviews(fetchedReviews);
     });
     return () => unsubscribe();
@@ -211,22 +186,6 @@ export default function AnnoncePage() {
       .finally(() => setIsRequestingReview(false));
   };
 
-  const handleReportSubmit = async () => {
-    if (!user || !firestore || !id || !post) return;
-    setIsSubmittingReport(true);
-    const reportData = {
-      reporterId: user.uid,
-      annonceId: id as string,
-      reason: reportReason,
-      comment: reportComment,
-      createdAt: serverTimestamp(),
-    };
-    addDoc(collection(firestore, 'reports'), reportData).then(() => {
-        toast({ title: 'Annonce signalée' });
-        setIsReportDialogOpen(false);
-    }).finally(() => setIsSubmittingReport(false));
-  };
-
   const handlePromote = () => {
     if (!post || !id || !user || !firestore) return;
     const docRef = doc(firestore, 'annonces', id as string);
@@ -246,8 +205,8 @@ export default function AnnoncePage() {
         });
   };
 
-  const openLightbox = (url: string) => {
-    setSelectedImageUrl(url);
+  const openLightbox = (url: string, type: 'image' | 'video') => {
+    setSelectedMedia({ url, type });
     setIsLightboxOpen(true);
   };
 
@@ -300,8 +259,17 @@ export default function AnnoncePage() {
           <Carousel className="w-full">
             <CarouselContent>
               {post.media.map((media, index) => (
-                <CarouselItem key={index} className="relative h-80 bg-muted cursor-zoom-in group" onClick={() => openLightbox(media.url)}>
-                    <Image src={media.url} alt="" fill className="object-cover" />
+                <CarouselItem key={index} className="relative h-80 bg-muted cursor-zoom-in group" onClick={() => openLightbox(media.url, media.type)}>
+                    {media.type === 'image' ? (
+                        <Image src={media.url} alt="" fill className="object-cover" />
+                    ) : (
+                        <div className="relative w-full h-full">
+                            <video src={media.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Play className="h-12 w-12 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        </div>
+                    )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                         <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" />
                     </div>
@@ -340,7 +308,7 @@ export default function AnnoncePage() {
       </div>
 
       <div className="p-4 bg-background border-t flex gap-3 fixed bottom-0 left-0 right-0">
-        <a href={whatsappLink} target="_blank" className="flex-1 bg-[#25D366] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"><MessageCircle /> WhatsApp</a>
+        <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#25D366] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"><MessageCircle /> WhatsApp</a>
         <a href={telLink} className="bg-primary text-primary-foreground p-4 rounded-2xl"><Phone /></a>
       </div>
 
@@ -354,11 +322,18 @@ export default function AnnoncePage() {
                 <X className="h-6 w-6" />
             </button>
             <div className="relative w-full h-full flex items-center justify-center">
-                {selectedImageUrl && (
+                {selectedMedia?.type === 'image' ? (
                     <img 
-                        src={selectedImageUrl} 
+                        src={selectedMedia.url} 
                         alt="Zoom image" 
                         className="max-w-full max-h-full object-contain"
+                    />
+                ) : (
+                    <video 
+                        src={selectedMedia?.url} 
+                        className="max-w-full max-h-full" 
+                        controls 
+                        autoPlay 
                     />
                 )}
             </div>

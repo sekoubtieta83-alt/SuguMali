@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles } from 'lucide-react';
+import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles, Video } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { countryCodes } from '@/lib/country-codes';
@@ -15,8 +14,9 @@ import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-// Fonction utilitaire pour redimensionner l'image avant l'envoi
-const resizeImage = (base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+const MAX_VIDEO_DURATION = 30; // 30 seconds
+
+const resizeImage = (base64Str: string, maxWidth = 1080, maxHeight = 1080): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -86,18 +86,39 @@ export default function SellPage() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+
     Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        let resultUrl = e.target?.result as string;
-        if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = function() {
+          window.URL.revokeObjectURL(video.src);
+          if (video.duration > MAX_VIDEO_DURATION) {
+            toast({
+              variant: "destructive",
+              title: "Vidéo trop longue",
+              description: `La durée maximale autorisée est de ${MAX_VIDEO_DURATION} secondes.`
+            });
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const resultUrl = e.target?.result as string;
+            setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'video' }]);
+          };
+          reader.readAsDataURL(file);
+        };
+        video.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          let resultUrl = e.target?.result as string;
           resultUrl = await resizeImage(resultUrl);
           setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'image' }]);
-        } else {
-          setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'video' }]);
-        }
-      };
-      reader.readAsDataURL(file);
+        };
+        reader.readAsDataURL(file);
+      }
     });
   };
 
@@ -112,7 +133,7 @@ export default function SellPage() {
     }
 
     if (mediaPreviews.length === 0) {
-      toast({ variant: "destructive", title: "Photo requise", description: "Veuillez ajouter au moins une photo de votre article." });
+      toast({ variant: "destructive", title: "Media requis", description: "Veuillez ajouter au moins une photo ou vidéo." });
       return;
     }
 
@@ -124,7 +145,9 @@ export default function SellPage() {
       const annonceData = {
         titre: title || "Sans titre",
         prix: price ? `${price} FCFA` : "0 FCFA",
-        image: mediaPreviews[0]?.url || "",
+        // Stocker tous les medias
+        media: mediaPreviews,
+        image: mediaPreviews[0]?.url || "", // Garder pour compatibilité
         vendeurId: user.uid,
         status: 'approved',
         description: description,
@@ -174,7 +197,6 @@ export default function SellPage() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
       <div className="bg-background border-b p-3 sm:p-4 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto flex items-center gap-4 sm:gap-6">
           <button type="button" onClick={() => router.back()} className="p-2 hover:bg-muted rounded-full transition-colors">
@@ -185,16 +207,22 @@ export default function SellPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-10">
-        {/* Media Section */}
         <section className="space-y-3 sm:space-y-4">
-          <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest">PHOTOS & VIDÉOS</Label>
+          <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            PHOTOS & VIDÉOS <span className="normal-case font-normal">(Vidéos: max 30s)</span>
+          </Label>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {mediaPreviews.map((m, i) => (
               <div key={i} className="relative aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden border border-border group shadow-sm bg-muted">
                 {m.type === 'image' ? (
                   <img src={m.url} className="w-full h-full object-cover" alt="Preview" />
                 ) : (
-                  <video src={m.url} className="w-full h-full object-cover" muted loop autoPlay />
+                  <div className="relative w-full h-full">
+                    <video src={m.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                    <div className="absolute top-1 left-1 bg-black/50 p-1 rounded-full">
+                        <Video size={10} className="text-white" />
+                    </div>
+                  </div>
                 )}
                 <button 
                   type="button" 
@@ -220,7 +248,6 @@ export default function SellPage() {
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,video/*" className="hidden" />
         </section>
 
-        {/* Form Fields Section */}
         <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-[3rem] border border-border/50 shadow-sm space-y-6 sm:space-y-8">
           <div className="space-y-2 sm:space-y-3">
             <Label className="text-sm font-bold ml-1 sm:ml-2">Titre de l'annonce</Label>
@@ -328,7 +355,6 @@ export default function SellPage() {
           </div>
         </div>
 
-        {/* Submit Button */}
         <button 
           type="submit" 
           disabled={isLoading} 
