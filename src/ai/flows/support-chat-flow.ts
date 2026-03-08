@@ -1,8 +1,8 @@
 'use server';
 
 /**
- * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
- * Gère la communication intelligente avec les utilisateurs maliens via Genkit 1.x.
+ * @fileOverview Flux de chat pour l'assistante Mami.
+ * Gère la communication intelligente avec les utilisateurs via Genkit 1.x.
  */
 
 import { ai } from '@/ai/mami-instance';
@@ -18,8 +18,7 @@ const SupportChatInputSchema = z.object({
 });
 
 /**
- * Fonction principale appelée par le widget de chat.
- * Utilise directement ai.generate pour plus de stabilité dans l'environnement studio.
+ * Fonction principale de l'assistante Mami.
  */
 export async function supportChat(input: z.infer<typeof SupportChatInputSchema>): Promise<string> {
   try {
@@ -32,9 +31,13 @@ export async function supportChat(input: z.infer<typeof SupportChatInputSchema>)
       })),
     });
 
-    return response.text || "I ni sogoma ! Désolée, je rencontre une petite difficulté technique. Réessayez dans un instant. 🇲🇱";
+    if (!response.text) {
+      throw new Error("Aucune réponse générée par le modèle.");
+    }
+
+    return response.text;
   } catch (error) {
     console.error("Erreur Mami Support Chat:", error);
-    return "Désolée, je n'ai pas pu traiter votre demande pour le moment. Je suis toujours là pour vous aider, n'hésitez pas à me reparler bientôt !";
+    return "I ni sogoma ! Désolée, je rencontre une petite difficulté technique. Réessayez dans un instant. Je suis toujours là pour vous aider ! 🇲🇱";
   }
 }
