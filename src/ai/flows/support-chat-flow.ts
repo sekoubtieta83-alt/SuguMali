@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
@@ -22,14 +23,15 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
  * Limite l'historique à 10 messages pour plus de stabilité.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  const hasKey = !!process.env.GOOGLE_GENAI_API_KEY;
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   
   // On ne garde que les 10 derniers messages pour éviter de saturer le modèle
   const recentMessages = input.messages.slice(-10);
   
-  console.log("[MAMI] Requête de chat. Historique réduit à:", recentMessages.length, "messages.");
+  console.log("[MAMI] Requête de chat reçue. Messages:", recentMessages.length);
 
-  if (!hasKey) {
+  if (!apiKey) {
+    console.error("[MAMI] Erreur: Clé API manquante dans l'environnement.");
     return "Désolée, je ne suis pas connectée au serveur (Clé API manquante). 🇲🇱";
   }
 
@@ -65,17 +67,18 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     });
 
     if (!response || !response.text) {
+      console.warn("[MAMI] Aucune réponse générée par le modèle.");
       return "Je n'ai pas pu générer de réponse. Peux-tu reformuler ? 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
-    console.error("[MAMI] Erreur lors de la génération:", error.message);
+    console.error("[MAMI] Erreur critique lors de la génération:", error.message);
     
     if (error.message?.includes('safety')) {
       return "Désolée, ce sujet est délicat et je ne peux pas en discuter. 🇲🇱";
     }
 
-    return "Petit souci technique ! Réessaie dans un instant. 🇲🇱";
+    return "Petit souci technique avec ma connexion ! Réessaie dans un instant. 🇲🇱";
   }
 }
