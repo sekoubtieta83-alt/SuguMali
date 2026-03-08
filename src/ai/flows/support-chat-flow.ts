@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Flux de chat pour l'assistante Mami.
+ * Flux de chat pour l'assistante Mami.
  * Gère la communication intelligente avec les utilisateurs via Genkit 1.x.
  */
 
