@@ -1,10 +1,10 @@
 
-import { genkit } from 'genkit';
+import { genkit } from '@genkit-ai/ai';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Initialisation de Genkit pour SuguMali.
- * Version stabilisée pour éviter les erreurs de routage.
+ * Utilisation de l'importation @genkit-ai/ai pour éviter les conflits de nom de fichier.
  */
 const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY;
 
