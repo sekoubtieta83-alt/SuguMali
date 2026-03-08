@@ -221,7 +221,9 @@ export default function AnnoncePage() {
   const isOwner = user && user.uid === post.userId;
   const averageRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
 
-  const whatsappLink = post.whatsappNumber ? `https://wa.me/${post.whatsappNumber.replace(/\D/g, '')}` : '#';
+  // WhatsApp automatic message
+  const whatsappMessage = encodeURIComponent(`Bonjour, je vous contacte depuis SuguMali à propos de votre annonce : ${post.product?.name}`);
+  const whatsappLink = post.whatsappNumber ? `https://wa.me/${post.whatsappNumber.replace(/\D/g, '')}?text=${whatsappMessage}` : '#';
   const telLink = post.whatsappNumber ? `tel:${post.whatsappNumber.replace(/\D/g, '')}` : '#';
 
   return (
