@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -7,10 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { categories } from '@/lib/categories';
 import { cn } from '@/lib/utils';
-import { Search, X, Sparkles, Loader2 } from 'lucide-react';
-import { Dispatch, SetStateAction, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { type SearchParserOutput, parseSearchQuery } from '@/ai/flows/search-parser-flow';
+import { Search, X } from 'lucide-react';
+import { Dispatch, SetStateAction } from 'react';
 
 export type Filters = {
   searchQuery: string;
@@ -27,44 +26,8 @@ interface FilterSidebarProps {
 }
 
 export function FilterSidebar({ filters, setFilters, className }: FilterSidebarProps) {
-  const [isAiSearching, setIsAiSearching] = useState(false);
-  const { toast } = useToast();
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters(prev => ({ ...prev, searchQuery: e.target.value }));
-  };
-
-  const handleAiSearch = async () => {
-    if (!filters.searchQuery) return;
-    setIsAiSearching(true);
-    try {
-      const parsedFilters = await parseSearchQuery(filters.searchQuery);
-
-      setFilters(prev => ({
-        ...prev,
-        // Update only the fields returned by the AI
-        searchQuery: parsedFilters.searchQuery ?? prev.searchQuery,
-        category: parsedFilters.category ?? prev.category,
-        minPrice: parsedFilters.minPrice ?? prev.minPrice,
-        maxPrice: parsedFilters.maxPrice ?? prev.maxPrice,
-        conditions: parsedFilters.conditions ?? prev.conditions,
-      }));
-
-      toast({
-        title: "Filtres IA appliqués",
-        description: "Votre recherche a été affinée par l'IA.",
-      });
-
-    } catch (error) {
-      console.error("AI Search failed", error);
-      toast({
-        variant: 'destructive',
-        title: 'La recherche IA a échoué',
-        description: "Impossible d'interpréter la recherche. Essayez une requête plus simple."
-      });
-    } finally {
-      setIsAiSearching(false);
-    }
   };
 
   const handleCategorySelect = (category: string) => {
@@ -107,35 +70,17 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Search Input */}
         <div className="space-y-2">
-          <Label htmlFor="search">Recherche Intelligente</Label>
+          <Label htmlFor="search">Rechercher</Label>
           <div className="relative flex items-center gap-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input 
               id="search"
-              placeholder="ex: téléphone pas cher à Bamako"
+              placeholder="ex: téléphone..."
               className="pl-10"
               value={filters.searchQuery}
               onChange={handleSearchChange}
-              onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault(); // Prevent form submission if any
-                    handleAiSearch();
-                  }
-              }}
             />
-             <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleAiSearch} 
-                disabled={isAiSearching || !filters.searchQuery}
-                className="shrink-0"
-                aria-label="Lancer la recherche intelligente"
-                title="Lancer la recherche intelligente"
-            >
-                {isAiSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-accent" />}
-             </Button>
           </div>
-           <p className="text-xs text-muted-foreground">Utilisez le langage naturel et l'IA affinera les filtres.</p>
         </div>
 
         {/* Categories */}

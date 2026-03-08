@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles, AlertCircle } from 'lucide-react';
+import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { countryCodes } from '@/lib/country-codes';
@@ -9,7 +10,6 @@ import { useFirestore, useAuth } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { categories } from '@/lib/categories';
-import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -119,14 +119,6 @@ export default function SellPage() {
     setIsLoading(true);
 
     try {
-      let moderation = { isApproved: true, reason: "" };
-      try {
-        const res = await moderateAnnonce({ title, description });
-        moderation = { isApproved: res.isApproved, reason: res.reason || "" };
-      } catch (e) {
-        console.error("AI Moderation error", e);
-      }
-
       const cleanWhatsapp = `${countryCode}${whatsappNumber.replace(/\D/g, '')}`;
 
       const annonceData = {
@@ -134,8 +126,7 @@ export default function SellPage() {
         prix: price ? `${price} FCFA` : "0 FCFA",
         image: mediaPreviews[0]?.url || "",
         vendeurId: user.uid,
-        status: moderation.isApproved ? 'approved' : 'rejected',
-        moderationReason: moderation.reason,
+        status: 'approved',
         description: description,
         localisation: location,
         whatsapp: cleanWhatsapp,
@@ -147,7 +138,7 @@ export default function SellPage() {
 
       const annoncesCollection = collection(db, "annonces");
       
-      addDoc(annoncesCollection, annonceData)
+      await addDoc(annoncesCollection, annonceData)
         .catch(async (serverError: any) => {
           if (serverError.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
@@ -164,14 +155,12 @@ export default function SellPage() {
         userId: user.uid,
         userName: user.displayName || 'Utilisateur',
         targetName: title,
-        details: moderation.isApproved ? 'Approuvé par IA' : `Rejeté par IA: ${moderation.reason}`
+        details: 'Annonce publiée'
       });
 
       toast({ 
         title: "Annonce envoyée !", 
-        description: moderation.isApproved 
-          ? "Votre annonce sera visible dans quelques instants." 
-          : "Votre annonce est en cours de vérification manuelle."
+        description: "Votre annonce est désormais visible."
       });
       
       router.push('/dashboard');

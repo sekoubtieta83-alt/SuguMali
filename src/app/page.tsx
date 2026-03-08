@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Loader2 } from 'lucide-react';
+import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Loader2 } from 'lucide-react';
 import Footer from '@/components/footer';
 import ThemeToggle from '@/components/theme-toggle';
 import { useAuth, useUser, useFirestore } from '@/firebase';
@@ -15,7 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post, posts as mockPosts } from '@/lib/data';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { parseSearchQuery } from '@/ai/flows/search-parser-flow';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -119,7 +119,6 @@ export default function HomePage() {
   const router = useRouter();
   const firestore = useFirestore();
   const [searchValue, setSearchValue] = useState("");
-  const [isAiSearching, setIsAiSearching] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -177,36 +176,12 @@ export default function HomePage() {
     return () => unsubscribe();
   }, [firestore]);
 
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (!searchValue.trim()) {
         router.push('/dashboard');
         return;
     }
-    
-    setIsAiSearching(true);
-    try {
-      const parsed = await parseSearchQuery(searchValue.trim());
-      
-      const params = new URLSearchParams();
-      if (parsed.searchQuery) params.set('search', parsed.searchQuery);
-      if (parsed.category) params.set('category', parsed.category);
-      if (parsed.minPrice) params.set('minPrice', parsed.minPrice);
-      if (parsed.maxPrice) params.set('maxPrice', parsed.maxPrice);
-      if (parsed.conditions && parsed.conditions.length > 0) {
-        params.set('conditions', parsed.conditions.join(','));
-      }
-      
-      if (!parsed.searchQuery && searchValue.trim()) {
-        params.set('search', searchValue.trim());
-      }
-
-      router.push(`/dashboard?${params.toString()}`);
-    } catch (error) {
-      console.error("AI Search failed", error);
-      router.push(`/dashboard?search=${encodeURIComponent(searchValue.trim())}`);
-    } finally {
-      setIsAiSearching(false);
-    }
+    router.push(`/dashboard?search=${encodeURIComponent(searchValue.trim())}`);
   };
 
   return (
@@ -222,7 +197,7 @@ export default function HomePage() {
             <div className="mt-6 sm:mt-10 max-w-2xl mx-auto relative">
               <div className="flex items-center h-[50px] sm:h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50 my-2">
                 <div className="text-muted-foreground pr-3">
-                  {isAiSearching ? <Loader2 className="h-5 w-5 animate-spin text-accent" /> : <Sparkles className="h-5 w-5 text-accent/70" />}
+                  <Search className="h-5 w-5 text-muted-foreground/50" />
                 </div>
                 <input 
                   type="text" 
@@ -230,26 +205,15 @@ export default function HomePage() {
                   onChange={(e) => setSearchValue(e.target.value)} 
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }} 
                   placeholder="Que cherchez-vous ?" 
-                  disabled={isAiSearching}
-                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[15px] sm:text-[16px] outline-none placeholder-[#A0A0A0] text-[#333333] dark:text-white disabled:opacity-50" 
+                  className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[15px] sm:text-[16px] outline-none placeholder-[#A0A0A0] text-[#333333] dark:text-white" 
                 />
                 <Button 
                   type="button"
                   onClick={handleSearch} 
-                  disabled={isAiSearching}
                   className="h-10 w-10 sm:h-11 sm:w-11 rounded-full p-0 bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none flex items-center justify-center shrink-0 ml-2"
                 >
-                  {isAiSearching ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Search className="h-5 w-5 text-white" />
-                  )}
+                  <Search className="h-5 w-5 text-white" />
                 </Button>
-              </div>
-              <div className="mt-3 flex items-center justify-center gap-2 text-[10px] sm:text-[11px]">
-                <Sparkles className="h-3 w-3 text-accent" />
-                <span className="text-muted-foreground opacity-60 font-medium">Recherche boostée par</span>
-                <span className="text-accent font-black tracking-wide">l'IA Mami</span>
               </div>
             </div>
           </div>
