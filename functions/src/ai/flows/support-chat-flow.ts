@@ -1,10 +1,4 @@
-'use server';
-
-/**
- * Wrapper côté frontend (Server Action) pour appeler la logique Mami.
- */
-
-import { ai } from '@/ai/mami-instance';
+import { ai } from '../mami-instance';
 import { z } from 'zod';
 
 const MessageSchema = z.object({
@@ -16,6 +10,9 @@ const SupportChatInputSchema = z.object({
   messages: z.array(MessageSchema),
 });
 
+/**
+ * Fonction principale de l'assistante Mami pour les Cloud Functions.
+ */
 export async function supportChat(input: z.infer<typeof SupportChatInputSchema>): Promise<string> {
   try {
     const response = await ai.generate({
@@ -27,9 +24,13 @@ export async function supportChat(input: z.infer<typeof SupportChatInputSchema>)
       })),
     });
 
-    return response.text || "Désolée, je ne peux pas répondre pour le moment.";
+    if (!response.text) {
+      throw new Error("Aucune réponse générée par le modèle.");
+    }
+
+    return response.text;
   } catch (error) {
-    console.error("Erreur Mami (Next.js):", error);
-    return "Je rencontre une petite difficulté technique.";
+    console.error("Erreur Mami Support Chat (Backend):", error);
+    return "Je suis désolée, je rencontre une petite difficulté technique. Veuillez réessayer plus tard.";
   }
 }

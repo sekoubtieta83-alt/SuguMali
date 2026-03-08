@@ -33,16 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supportChat = exports.healthCheck = void 0;
-const admin = __importStar(require("firebase-admin"));
+exports.supportChatFlow = exports.healthCheck = void 0;
 const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
-/**
- * Fonction de santé de base pour valider le déploiement de SuguMali.
- */
+// Fonction de santé de base pour valider le déploiement de SuguMali
 exports.healthCheck = functions.https.onRequest((request, response) => {
     response.send("SuguMali Functions are online!");
 });
-var support_chat_flows_1 = require("./ai/flows/support-chat-flows");
-Object.defineProperty(exports, "supportChat", { enumerable: true, get: function () { return support_chat_flows_1.supportChat; } });
+// Correction du chemin - remonter d'un niveau
+var support_chat_flows_1 = require("../../src/ai/flows/support-chat-flows");
+Object.defineProperty(exports, "supportChatFlow", { enumerable: true, get: function () { return support_chat_flows_1.supportChatFlow; } });
+// ou
+// export { supportChat } from '../../ai/flows/support-chat-flows'; selon le nom exact
 //# sourceMappingURL=index.js.map
