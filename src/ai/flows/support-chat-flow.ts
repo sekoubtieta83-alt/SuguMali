@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * Flux de chat pour l'assistante Mami sur SuguMali.
@@ -19,16 +20,11 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
  * Appelle l'IA Mami pour générer une réponse.
- * Utilise l'identifiant de modèle stable googleai/gemini-1.5-flash.
+ * Utilise l'identifiant de modèle stable standard googleai/gemini-1.5-flash.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const recentMessages = input.messages.slice(-10);
   
-  if (!apiKey) {
-    return "ERREUR : Clé API manquante dans l'environnement. 🇲🇱";
-  }
-
   try {
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
@@ -56,6 +52,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     return response.text;
   } catch (error: any) {
     console.error("[MAMI] Erreur de génération IA:", error);
+    // On affiche l'erreur réelle pour le débogage, comme demandé.
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }

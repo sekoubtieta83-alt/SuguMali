@@ -1,9 +1,10 @@
+
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Initialisation robuste de Genkit pour SuguMali.
- * On force l'utilisation de l'API v1 stable pour éviter les erreurs 404 v1beta.
+ * On utilise le plugin @genkit-ai/google-genai qui est le successeur stable de @genkit-firebase/googleai.
  */
 const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
