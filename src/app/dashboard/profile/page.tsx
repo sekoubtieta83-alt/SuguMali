@@ -73,7 +73,7 @@ export default function ProfilePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
-  const [isNotificationSupported, setIsNotificationSupported] = useState<boolean>(true);
+  const [isNotificationSupported, setIsNotificationSupported] = useState<boolean>(false);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -409,7 +409,7 @@ export default function ProfilePage() {
                         <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
                         <p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p>
                     </div>
-                    {isNotificationSupported && (
+                    {isNotificationSupported ? (
                       <Button 
                           onClick={handleToggleNotifications} 
                           disabled={isNotificationLoading} 
@@ -425,6 +425,8 @@ export default function ProfilePage() {
                               <Bell className="h-3 w-3" />
                           )}
                       </Button>
+                    ) : (
+                      <div className="text-[10px] italic text-muted-foreground">Non supporté</div>
                     )}
                 </div>
             </div>
