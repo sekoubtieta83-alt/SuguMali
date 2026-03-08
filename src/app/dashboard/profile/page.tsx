@@ -1,15 +1,16 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { type Post } from "@/lib/data";
-import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Calendar, CheckCircle2, Smartphone } from "lucide-react";
+import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2 } from "lucide-react";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, orderBy, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch } from "firebase/firestore";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { 
   AlertDialog,
@@ -28,12 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import { type Review } from "@/components/dashboard/review-card";
 import { ReviewStars } from "@/components/dashboard/review-stars";
 import { addYears, isAfter } from "date-fns";
-import { fr } from "date-fns/locale";
-import { format } from "date-fns";
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
 
 export type UserProfile = {
     uid: string;
@@ -100,23 +98,7 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
-          if (!data.createdAt) {
-              updateDoc(userRef, { createdAt: serverTimestamp() }).catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                  path: userRef.path,
-                  operation: 'update',
-                  requestResourceData: { createdAt: 'serverTimestamp()' },
-                });
-                errorEmitter.emit('permission-error', permissionError);
-              });
-          }
         }
-      }, async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: `users/${user.uid}`,
-          operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
       });
       return () => unsubscribe();
     }
@@ -152,15 +134,7 @@ export default function ProfilePage() {
           }
         } as Post;
       });
-      const sorted = [...postsFromFirestore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setUserPosts(sorted);
-      setPostsLoading(false);
-    }, async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'annonces',
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
+      setUserPosts(postsFromFirestore);
       setPostsLoading(false);
     });
     return () => unsubscribe();
@@ -183,20 +157,8 @@ export default function ProfilePage() {
     const q = query(reviewsRef, where('sellerId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
-        fetchedReviews.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt?.seconds ?? 0) * 1000;
-            const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt?.seconds ?? 0) * 1000;
-            return dateB - dateA;
-        });
         setReviews(fetchedReviews);
         setReviewsLoading(false);
-    }, async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'reviews',
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      setReviewsLoading(false);
     });
     return () => unsubscribe();
   }, [firestore, user]);
@@ -210,14 +172,6 @@ export default function ProfilePage() {
           .then(() => {
             setNotificationsEnabled(false);
             toast({ title: "Notifications désactivées" });
-          })
-          .catch(async (serverError: any) => {
-            const permissionError = new FirestorePermissionError({
-              path: userRef.path,
-              operation: 'update',
-              requestResourceData: { fcmTokens: [] },
-            });
-            errorEmitter.emit('permission-error', permissionError);
           })
           .finally(() => setIsNotificationLoading(false));
     } else {
@@ -243,7 +197,6 @@ export default function ProfilePage() {
     });
     batch.commit()
         .then(() => toast({ title: "Nettoyage réussi" }))
-        .catch(() => toast({ variant: 'destructive', title: 'Erreur' }))
         .finally(() => setIsDeletingAll(false));
   };
 
@@ -256,14 +209,6 @@ export default function ProfilePage() {
           .then(() => {
             toast({ title: "Paiement réussi !" });
             setVerificationStep('upload');
-          })
-          .catch(async (serverError: any) => {
-            const permissionError = new FirestorePermissionError({
-              path: userRef.path,
-              operation: 'update',
-              requestResourceData: { isVerificationPaid: true },
-            });
-            errorEmitter.emit('permission-error', permissionError);
           })
           .finally(() => setIsPaying(false));
     }, 2000);
@@ -287,14 +232,6 @@ export default function ProfilePage() {
         toast({ title: "Demande envoyée" });
         setIsVerifyDialogOpen(false);
         setVerificationStep('payment');
-      })
-      .catch(async (serverError: any) => {
-        const permissionError = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'update',
-          requestResourceData: { verificationStatus: 'pending' },
-        });
-        errorEmitter.emit('permission-error', permissionError);
       })
       .finally(() => setIsSubmittingId(false));
   };

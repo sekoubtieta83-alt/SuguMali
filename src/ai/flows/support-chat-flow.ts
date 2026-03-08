@@ -1,7 +1,8 @@
+
 'use server';
 /**
  * Flux de chat pour l'assistante Mami sur SuguMali.
- * Gère la communication avec Gemini 1.5 Flash via Genkit 1.x.
+ * Gère la communication avec Gemini via Genkit 1.x.
  */
 
 import { ai } from '@/ai/genkit';
@@ -17,15 +18,10 @@ const SupportChatInputSchema = z.object({
 });
 export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
-/**
- * Appelle l'IA Mami pour générer une réponse.
- * Utilise l'identifiant de modèle standard compatible avec le plugin Google AI.
- */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  const recentMessages = input.messages.slice(-10); // Historique optimisé
+  const recentMessages = input.messages.slice(-10);
   
   try {
-    // Utilisation de la syntaxe simplifiée pour Genkit 1.x
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs maliens avec bienveillance et professionnalisme. Sois concise.",
@@ -35,7 +31,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
       })),
       config: {
         temperature: 0.7,
-        maxOutputTokens: 500,
+        maxOutputTokens: 600,
       }
     });
 
@@ -46,7 +42,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     return response.text;
   } catch (error: any) {
     console.error("[MAMI ERROR]", error);
-    // Affichage de l'erreur réelle pour le diagnostic
+    // On retourne l'erreur réelle pour diagnostic comme demandé
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }

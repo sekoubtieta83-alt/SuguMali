@@ -1,3 +1,4 @@
+
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
@@ -11,7 +12,7 @@ export const ai = genkit({
   plugins: [
     googleAI({
       apiKey: apiKey,
-      apiVersion: 'v1', // Force l'utilisation de l'API stable pour éviter les 404
+      apiVersion: 'v1',
     }),
   ],
 });
