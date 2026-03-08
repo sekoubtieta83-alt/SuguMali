@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { NotificationHandler } from '@/components/notifications/notification-handler';
+import { SupportChatWidget } from '@/components/support-chat-widget';
 
 export const metadata: Metadata = {
   title: 'SuguMali - Le MALI achète et vend ici',
@@ -35,6 +36,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <NotificationHandler />
           {children}
+          <SupportChatWidget />
           <Toaster />
         </FirebaseClientProvider>
       </body>
