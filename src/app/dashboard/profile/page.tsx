@@ -29,8 +29,6 @@ import { useToast } from "@/hooks/use-toast";
 import { type Review } from "@/components/dashboard/review-card";
 import { ReviewStars } from "@/components/dashboard/review-stars";
 import { addYears, isAfter } from "date-fns";
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export type UserProfile = {
@@ -74,7 +72,6 @@ export default function ProfilePage() {
   const [isNotificationSupported, setIsNotificationSupported] = useState<boolean>(false);
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewsLoading, setReviewsLoading] = useState(true);
   
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [verificationStep, setVerificationStep] = useState<'payment' | 'upload'>('payment');
@@ -149,16 +146,12 @@ export default function ProfilePage() {
   }, [userProfile]);
 
   useEffect(() => {
-    if (!firestore || !user) {
-        setReviewsLoading(false);
-        return;
-    }
+    if (!firestore || !user) return;
     const reviewsRef = collection(firestore, 'reviews');
     const q = query(reviewsRef, where('sellerId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
         setReviews(fetchedReviews);
-        setReviewsLoading(false);
     });
     return () => unsubscribe();
   }, [firestore, user]);
@@ -239,8 +232,8 @@ export default function ProfilePage() {
   const isVerified = checkIsVerified(userProfile);
   const filteredUserPosts = userPosts.filter(post => {
     const title = post.product?.name || post.content;
-    const query = searchQuery.toLowerCase();
-    return title.toLowerCase().includes(query) || post.content.toLowerCase().includes(query);
+    const queryText = searchQuery.toLowerCase();
+    return title.toLowerCase().includes(queryText) || post.content.toLowerCase().includes(queryText);
   });
 
   const averageRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
