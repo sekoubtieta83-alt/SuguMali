@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
+ * Flux de chat pour l'assistante Mami sur SuguMali.
  * Gère la communication avec Gemini 1.5 Flash via Genkit 1.x.
  */
 
@@ -32,7 +32,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
   }
 
   try {
-    // Utilisation de l'identifiant de modèle standard pour @genkit-ai/google-genai
+    // Utilisation de l'identifiant de modèle complet pour éviter les erreurs 404 de routage
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant.",
