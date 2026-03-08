@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "user": {
@@ -43,6 +44,16 @@
       },
       "required": ["titre", "prix", "image", "vendeurId"]
     },
+    "favorite": {
+      "title": "Favorite",
+      "description": "A mapping of a user's favorite ad.",
+      "type": "object",
+      "properties": {
+        "annonceId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["annonceId", "createdAt"]
+    },
     "auditLog": {
       "title": "Audit Log",
       "description": "A record of an administrative or system action.",
@@ -66,6 +77,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/user" },
       "description": "Stores public user profile information."
+    },
+    "/users/{userId}/favorites/{annonceId}": {
+      "schema": { "$ref": "#/entities/favorite" },
+      "description": "Stores ads favorited by a user."
     },
     "/annonces/{annonceId}": {
       "schema": { "$ref": "#/entities/annonce" },
