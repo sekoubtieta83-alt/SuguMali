@@ -2,8 +2,8 @@ import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * Initialisation de Genkit avec le plugin Google AI.
- * Nous testons plusieurs variables d'environnement courantes pour maximiser la compatibilité avec Vercel et Firebase.
+ * Initialisation robuste de Genkit pour SuguMali.
+ * On teste plusieurs variables d'environnement pour assurer la compatibilité avec Vercel.
  */
 const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -17,6 +17,4 @@ export const ai = genkit({
       apiKey: apiKey,
     }),
   ],
-  // Utilisation de l'identifiant de modèle standard pour Genkit 1.x
-  model: 'googleai/gemini-1.5-flash',
 });

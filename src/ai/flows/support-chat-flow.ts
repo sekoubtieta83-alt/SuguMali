@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
- * Gère la communication avec Gemini 1.5 Flash via Genkit.
+ * Gère la communication avec Gemini 1.5 Flash via Genkit 1.x.
  */
 
 import { ai } from '@/ai/genkit';
@@ -19,7 +19,7 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
  * Appelle l'IA Mami pour générer une réponse.
- * Affiche l'erreur réelle pour le débogage.
+ * Affiche l'erreur réelle pour le débogage technique (404, 401, etc.).
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -28,14 +28,14 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
   console.log("[MAMI] Requête de chat reçue. Messages:", recentMessages.length);
 
   if (!apiKey) {
-    return "ERREUR : Clé API manquante (Vérifiez vos variables d'environnement Vercel). 🇲🇱";
+    return "ERREUR : Clé API manquante dans l'environnement. 🇲🇱";
   }
 
   try {
+    // Utilisation de l'identifiant de modèle standard pour @genkit-ai/google-genai
     const response = await ai.generate({
-      // Utilisation du modèle flash stable
       model: 'googleai/gemini-1.5-flash',
-      system: "Tu es Mami, l'assistante de SuguMali au Mali. Aide les gens à acheter et vendre avec chaleur. Utilise des emojis.",
+      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant.",
       messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
@@ -53,14 +53,15 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     });
 
     if (!response || !response.text) {
-      return "ERREUR : Le modèle n'a renvoyé aucun texte. 🇲🇱";
+      return "Désolée, je n'ai pas pu formuler de réponse. Réessaie dans un instant. 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
-    console.error("[MAMI] Erreur critique détaillée:", error);
+    console.error("[MAMI] Erreur de génération IA:", error);
     
-    // Affichage de l'erreur réelle pour le débogage utilisateur
-    return `ERREUR IA (${error.name}) : ${error.message} 🇲🇱`;
+    // Affichage de l'erreur brute pour le diagnostic (ex: 404, 401)
+    const errorMsg = error.message || "Erreur inconnue";
+    return `ERREUR TECHNIQUE MAMI : ${errorMsg}. Vérifie la configuration du modèle et de la clé API. 🇲🇱`;
   }
 }
