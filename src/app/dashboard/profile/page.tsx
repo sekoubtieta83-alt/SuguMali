@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -410,21 +409,23 @@ export default function ProfilePage() {
                         <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
                         <p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p>
                     </div>
-                    <Button 
-                        onClick={handleToggleNotifications} 
-                        disabled={isNotificationLoading || !isNotificationSupported} 
-                        variant="outline" 
-                        size="sm" 
-                        className={cn("h-8 rounded-lg", !isNotificationSupported && "opacity-50 cursor-not-allowed")}
-                    >
-                        {isNotificationLoading ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : notificationsEnabled ? (
-                            <BellOff className="h-3 w-3" />
-                        ) : (
-                            <Bell className="h-3 w-3" />
-                        )}
-                    </Button>
+                    {isNotificationSupported && (
+                      <Button 
+                          onClick={handleToggleNotifications} 
+                          disabled={isNotificationLoading} 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 rounded-lg"
+                      >
+                          {isNotificationLoading ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : notificationsEnabled ? (
+                              <BellOff className="h-3 w-3" />
+                          ) : (
+                              <Bell className="h-3 w-3" />
+                          )}
+                      </Button>
+                    )}
                 </div>
             </div>
         </div>

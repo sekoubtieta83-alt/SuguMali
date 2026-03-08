@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * Flux de chat pour l'assistante Mami sur SuguMali.
@@ -20,15 +19,15 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
  * Appelle l'IA Mami pour générer une réponse.
- * Utilise l'identifiant de modèle stable standard googleai/gemini-1.5-flash.
+ * Utilise l'identifiant de modèle le plus stable et récent : googleai/gemini-1.5-flash-latest.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
   const recentMessages = input.messages.slice(-10);
   
   try {
     const response = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant.",
+      model: 'googleai/gemini-1.5-flash-latest',
+      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant. Sois concise et efficace.",
       messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
@@ -52,7 +51,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     return response.text;
   } catch (error: any) {
     console.error("[MAMI] Erreur de génération IA:", error);
-    // On affiche l'erreur réelle pour le débogage, comme demandé.
+    // On affiche l'erreur réelle pour le diagnostic comme demandé.
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }
