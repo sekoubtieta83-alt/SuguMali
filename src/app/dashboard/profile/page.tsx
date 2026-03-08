@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,6 +33,7 @@ import { format } from "date-fns";
 import { FirestorePermissionError } from '@/firebase/errors';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 
 export type UserProfile = {
     uid: string;
@@ -87,7 +87,6 @@ export default function ProfilePage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check for notification support on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
         setIsNotificationSupported('Notification' in window && 'serviceWorker' in navigator);
@@ -111,21 +110,10 @@ export default function ProfilePage() {
                 errorEmitter.emit('permission-error', permissionError);
               });
           }
-        } else {
-          setUserProfile({
-            uid: user.uid,
-            displayName: user.displayName || 'Utilisateur',
-            email: user.email || '',
-            photoURL: user.photoURL || '',
-            isVerified: false,
-            verificationStatus: 'none',
-            isBanned: false,
-            bio: ''
-          });
         }
       }, async (serverError) => {
         const permissionError = new FirestorePermissionError({
-          path: userRef.path,
+          path: `users/${user.uid}`,
           operation: 'get',
         });
         errorEmitter.emit('permission-error', permissionError);
@@ -136,10 +124,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!firestore || !user) return;
-
     const annoncesRef = collection(firestore, 'annonces');
     const q = query(annoncesRef, where('vendeurId', '==', user.uid));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const postsFromFirestore = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -166,24 +152,17 @@ export default function ProfilePage() {
           }
         } as Post;
       });
-
-      const sorted = [...postsFromFirestore].sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA;
-      });
-
+      const sorted = [...postsFromFirestore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setUserPosts(sorted);
       setPostsLoading(false);
     }, async (serverError) => {
       const permissionError = new FirestorePermissionError({
-        path: annoncesRef.path,
+        path: 'annonces',
         operation: 'list',
       });
       errorEmitter.emit('permission-error', permissionError);
       setPostsLoading(false);
     });
-
     return () => unsubscribe();
   }, [firestore, user]);
 
@@ -213,7 +192,7 @@ export default function ProfilePage() {
         setReviewsLoading(false);
     }, async (serverError) => {
       const permissionError = new FirestorePermissionError({
-        path: reviewsRef.path,
+        path: 'reviews',
         operation: 'list',
       });
       errorEmitter.emit('permission-error', permissionError);
@@ -223,31 +202,24 @@ export default function ProfilePage() {
   }, [firestore, user]);
 
   const handleToggleNotifications = async () => {
-    if (!app || !user || !firestore) return;
-    if (!isNotificationSupported) {
-        toast({
-            variant: "destructive",
-            title: "Non supporté",
-            description: "Votre navigateur ne supporte pas les notifications push."
-        });
-        return;
-    }
-    
+    if (!app || !user || !firestore || !isNotificationSupported) return;
     setIsNotificationLoading(true);
     const userRef = doc(firestore, 'users', user.uid);
     if (notificationsEnabled) {
-        try {
-            await updateDoc(userRef, { fcmTokens: [] });
+        updateDoc(userRef, { fcmTokens: [] })
+          .then(() => {
             setNotificationsEnabled(false);
             toast({ title: "Notifications désactivées" });
-        } catch (serverError: any) { 
-          const permissionError = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'update',
-            requestResourceData: { fcmTokens: [] },
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        }
+          })
+          .catch(async (serverError: any) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'update',
+              requestResourceData: { fcmTokens: [] },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          })
+          .finally(() => setIsNotificationLoading(false));
     } else {
         try {
             await requestNotificationPermission(app, user, firestore);
@@ -255,48 +227,45 @@ export default function ProfilePage() {
             toast({ title: "Notifications activées !" });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Erreur', description: error.message });
+        } finally {
+            setIsNotificationLoading(false);
         }
     }
-    setIsNotificationLoading(false);
   };
 
   const handleDeleteAllAnnonces = async () => {
     if (!firestore || !user || userPosts.length === 0) return;
     setIsDeletingAll(true);
-    
-    try {
-        const batch = writeBatch(firestore);
-        userPosts.forEach(post => {
-            const docRef = doc(firestore, 'annonces', post.id);
-            batch.delete(docRef);
-        });
-        
-        await batch.commit();
-        toast({ title: "Nettoyage réussi", description: "Toutes vos annonces ont été supprimées." });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Erreur', description: "Impossible de supprimer toutes les annonces." });
-    } finally {
-        setIsDeletingAll(false);
-    }
+    const batch = writeBatch(firestore);
+    userPosts.forEach(post => {
+        const docRef = doc(firestore, 'annonces', post.id);
+        batch.delete(docRef);
+    });
+    batch.commit()
+        .then(() => toast({ title: "Nettoyage réussi" }))
+        .catch(() => toast({ variant: 'destructive', title: 'Erreur' }))
+        .finally(() => setIsDeletingAll(false));
   };
 
   const handleProcessPayment = async () => {
     if (!user || !firestore) return;
     setIsPaying(true);
     const userRef = doc(firestore, 'users', user.uid);
-    setTimeout(async () => {
-        try {
-            await updateDoc(userRef, { isVerificationPaid: true });
-            toast({ title: "Paiement réussi !", description: "Veuillez maintenant nous transmettre votre pièce d'identité." });
+    setTimeout(() => {
+        updateDoc(userRef, { isVerificationPaid: true })
+          .then(() => {
+            toast({ title: "Paiement réussi !" });
             setVerificationStep('upload');
-        } catch (serverError: any) { 
-          const permissionError = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'update',
-            requestResourceData: { isVerificationPaid: true },
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        } finally { setIsPaying(false); }
+          })
+          .catch(async (serverError: any) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'update',
+              requestResourceData: { isVerificationPaid: true },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          })
+          .finally(() => setIsPaying(false));
     }, 2000);
   };
 
@@ -313,20 +282,21 @@ export default function ProfilePage() {
     if (!user || !firestore || !idPhoto) return;
     setIsSubmittingId(true);
     const userRef = doc(firestore, 'users', user.uid);
-    try {
-        await updateDoc(userRef, { verificationStatus: 'pending', idDocumentUrl: idPhoto });
-        toast({ title: "Demande envoyée", description: "Notre équipe va vérifier vos documents." });
+    updateDoc(userRef, { verificationStatus: 'pending', idDocumentUrl: idPhoto })
+      .then(() => {
+        toast({ title: "Demande envoyée" });
         setIsVerifyDialogOpen(false);
-        setIdPhoto(null);
         setVerificationStep('payment');
-    } catch (serverError: any) { 
-      const permissionError = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { verificationStatus: 'pending', idDocumentUrl: '...' },
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    } finally { setIsSubmittingId(false); }
+      })
+      .catch(async (serverError: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: { verificationStatus: 'pending' },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setIsSubmittingId(false));
   };
 
   const isVerified = checkIsVerified(userProfile);
@@ -341,12 +311,6 @@ export default function ProfilePage() {
   if (userLoading || !userProfile) {
     return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8" /></div>;
   }
-
-  const getExpiryDate = () => {
-    if (!userProfile?.verifiedAt) return null;
-    const date = userProfile.verifiedAt.toDate ? userProfile.verifiedAt.toDate() : new Date(userProfile.verifiedAt);
-    return addYears(date, 1);
-  };
 
   return (
     <div className="flex flex-1 flex-col pb-20">
@@ -395,15 +359,9 @@ export default function ProfilePage() {
                     <h2 className="text-lg sm:text-xl font-bold">Certification</h2>
                 </div>
                 {isVerified ? (
-                    <div className="space-y-3">
-                        <div className="bg-green-500/10 text-green-600 p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3">
-                            <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5 fill-accent text-white" />
-                            <p className="text-xs sm:text-sm font-bold">Profil certifié SuguMali.</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground px-1">
-                            <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                            <span>Expire le : {format(getExpiryDate()!, 'd MMMM yyyy', { locale: fr })}</span>
-                        </div>
+                    <div className="bg-green-500/10 text-green-600 p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3">
+                        <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5 fill-accent text-white" />
+                        <p className="text-xs sm:text-sm font-bold">Profil certifié SuguMali.</p>
                     </div>
                 ) : userProfile.verificationStatus === 'pending' ? (
                     <div className="bg-accent/10 text-accent p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3">
@@ -449,21 +407,14 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-background rounded-xl sm:rounded-2xl border border-border/50">
                     <div className="flex-1 mr-4">
                         <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
-                        <p className="text-[10px] text-muted-foreground">
-                            {isNotificationSupported 
-                                ? "Alertes prix et messages." 
-                                : "Indisponible sur ce navigateur."}
-                        </p>
+                        <p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p>
                     </div>
                     <Button 
                         onClick={handleToggleNotifications} 
                         disabled={isNotificationLoading || !isNotificationSupported} 
                         variant="outline" 
                         size="sm" 
-                        className={cn(
-                            "h-8 rounded-lg",
-                            !isNotificationSupported && "opacity-50 grayscale cursor-not-allowed"
-                        )}
+                        className={cn("h-8 rounded-lg", !isNotificationSupported && "opacity-50 cursor-not-allowed")}
                     >
                         {isNotificationLoading ? (
                             <Loader2 className="h-3 w-3 animate-spin" />

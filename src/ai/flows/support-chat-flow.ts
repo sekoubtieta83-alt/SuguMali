@@ -19,20 +19,17 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
  * Appelle l'IA Mami pour générer une réponse.
- * Affiche l'erreur réelle pour le débogage technique (404, 401, etc.).
+ * Utilise l'identifiant de modèle stable googleai/gemini-1.5-flash.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const recentMessages = input.messages.slice(-10);
   
-  console.log("[MAMI] Requête de chat reçue. Messages:", recentMessages.length);
-
   if (!apiKey) {
     return "ERREUR : Clé API manquante dans l'environnement. 🇲🇱";
   }
 
   try {
-    // Utilisation de l'identifiant de modèle complet pour éviter les erreurs 404 de routage
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant.",
@@ -59,9 +56,6 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     return response.text;
   } catch (error: any) {
     console.error("[MAMI] Erreur de génération IA:", error);
-    
-    // Affichage de l'erreur brute pour le diagnostic (ex: 404, 401)
-    const errorMsg = error.message || "Erreur inconnue";
-    return `ERREUR TECHNIQUE MAMI : ${errorMsg}. Vérifie la configuration du modèle et de la clé API. 🇲🇱`;
+    return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }
