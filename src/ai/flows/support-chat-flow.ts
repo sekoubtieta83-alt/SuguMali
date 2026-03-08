@@ -2,11 +2,11 @@
 'use server';
 
 /**
- * @fileOverview Flux de chat pour l'assistante Mami.
- * Utilise Genkit 1.x avec les derniers standards de sécurité et de performance.
+ * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
+ * Gère la communication intelligente avec les utilisateurs maliens.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/ai/mami-instance';
 import { z } from 'zod';
 
 const MessageSchema = z.object({
@@ -39,10 +39,10 @@ const supportChatFlow = ai.defineFlow(
         })),
       });
 
-      return response.text || "Désolée, je rencontre une petite difficulté pour vous répondre. 🇲🇱";
+      return response.text || "I ni sogoma ! Désolée, je rencontre une petite difficulté technique. Réessayez dans un instant. 🇲🇱";
     } catch (error) {
-      console.error("Erreur Mami AI:", error);
-      return "Désolée, je n'ai pas pu traiter votre demande pour le moment. Réessayez dans un instant.";
+      console.error("Erreur Mami Support Chat:", error);
+      return "Désolée, je n'ai pas pu traiter votre demande pour le moment. Je suis toujours là pour vous aider, n'hésitez pas à me reparler bientôt !";
     }
   }
 );
