@@ -1,14 +1,13 @@
 
 'use server';
+
 /**
- * @fileOverview Flux de chat pour l'assistante Mami sur SuguMali.
- * 
- * - supportChat - Fonction gérant la communication avec l'IA.
- * - SupportChatInput - Schéma d'entrée des messages.
+ * @fileOverview Flux de chat pour l'assistante Mami.
+ * Utilise Genkit 1.x avec les derniers standards de sécurité et de performance.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const MessageSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -18,9 +17,8 @@ const MessageSchema = z.object({
 const SupportChatInputSchema = z.object({
   messages: z.array(MessageSchema),
 });
-export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
-export async function supportChat(input: SupportChatInput): Promise<string> {
+export async function supportChat(input: z.infer<typeof SupportChatInputSchema>): Promise<string> {
   return supportChatFlow(input);
 }
 
@@ -34,22 +32,17 @@ const supportChatFlow = ai.defineFlow(
     try {
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
-        system: "Tu es Mami, l'assistante intelligente et chaleureuse de SuguMali au Mali 🇲🇱. Ton rôle est d'aider les utilisateurs maliens à naviguer sur la plateforme, les conseiller pour leurs achats et ventes, et répondre à leurs questions avec bienveillance. Sois concise et professionnelle.",
+        system: "Tu es Mami, l'assistante intelligente et chaleureuse de SuguMali au Mali 🇲🇱. Ton rôle est d'aider les utilisateurs maliens à naviguer sur la plateforme, les conseiller pour leurs achats et ventes, et répondre à leurs questions avec bienveillance. Sois concise, professionnelle et utilise parfois des expressions locales maliennes si approprié.",
         messages: input.messages.map(m => ({
           role: m.role,
           content: [{ text: m.content }]
         })),
-        config: {
-          temperature: 0.7,
-          maxOutputTokens: 600,
-        }
       });
 
-      return response.text || "Désolée, je rencontre une petite difficulté technique pour générer ma réponse. 🇲🇱";
-    } catch (error: any) {
-      console.error("[MAMI ERROR]", error);
-      // On retourne l'erreur réelle pour diagnostic si besoin
-      return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
+      return response.text || "Désolée, je rencontre une petite difficulté pour vous répondre. 🇲🇱";
+    } catch (error) {
+      console.error("Erreur Mami AI:", error);
+      return "Désolée, je n'ai pas pu traiter votre demande pour le moment. Réessayez dans un instant.";
     }
   }
 );
