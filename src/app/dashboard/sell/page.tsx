@@ -15,8 +15,10 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const MAX_VIDEO_DURATION = 30; // 30 seconds
+const MAX_IMAGE_RES = 3840; // 4K Quality
+const MAX_VIDEO_RES = 1920; // 1080p Quality
 
-const resizeImage = (base64Str: string, maxWidth = 1080, maxHeight = 1080): Promise<string> => {
+const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MAX_IMAGE_RES): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;
@@ -25,13 +27,11 @@ const resizeImage = (base64Str: string, maxWidth = 1080, maxHeight = 1080): Prom
       let width = img.width;
       let height = img.height;
 
-      if (width > height) {
-        if (width > maxWidth) {
+      if (width > maxWidth || height > maxHeight) {
+        if (width > height) {
           height *= maxWidth / width;
           width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
+        } else {
           width *= maxHeight / height;
           height = maxHeight;
         }
@@ -40,7 +40,8 @@ const resizeImage = (base64Str: string, maxWidth = 1080, maxHeight = 1080): Prom
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.8)); 
+      // Compression JPEG à 0.7 pour rester sous la limite de 1Mo de Firestore tout en gardant une qualité 4K perçue
+      resolve(canvas.toDataURL('image/jpeg', 0.7)); 
     };
     img.onerror = () => resolve(base64Str);
   });
@@ -93,11 +94,23 @@ export default function SellPage() {
         video.preload = 'metadata';
         video.onloadedmetadata = function() {
           window.URL.revokeObjectURL(video.src);
+          
+          // Vérification durée (30s)
           if (video.duration > MAX_VIDEO_DURATION) {
             toast({
               variant: "destructive",
               title: "Vidéo trop longue",
               description: `La durée maximale autorisée est de ${MAX_VIDEO_DURATION} secondes.`
+            });
+            return;
+          }
+
+          // Vérification résolution (1080p)
+          if (video.videoWidth > MAX_VIDEO_RES || video.videoHeight > MAX_VIDEO_RES) {
+            toast({
+              variant: "destructive",
+              title: "Qualité trop élevée",
+              description: `Les vidéos sont limitées à la qualité 1080p (${MAX_VIDEO_RES}px).`
             });
             return;
           }
@@ -114,6 +127,7 @@ export default function SellPage() {
         const reader = new FileReader();
         reader.onload = async (e) => {
           let resultUrl = e.target?.result as string;
+          // Redimensionnement en 4K automatique
           resultUrl = await resizeImage(resultUrl);
           setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'image' }]);
         };
@@ -145,9 +159,8 @@ export default function SellPage() {
       const annonceData = {
         titre: title || "Sans titre",
         prix: price ? `${price} FCFA` : "0 FCFA",
-        // Stocker tous les medias
         media: mediaPreviews,
-        image: mediaPreviews[0]?.url || "", // Garder pour compatibilité
+        image: mediaPreviews[0]?.url || "",
         vendeurId: user.uid,
         status: 'approved',
         description: description,
@@ -161,7 +174,23 @@ export default function SellPage() {
 
       const annoncesCollection = collection(db, "annonces");
       
-      await addDoc(annoncesCollection, annonceData)
+      addDoc(annoncesCollection, annonceData)
+        .then(() => {
+          logActivity(db, {
+            action: 'AUTO_MODERATION',
+            userId: user.uid,
+            userName: user.displayName || 'Utilisateur',
+            targetName: title,
+            details: 'Annonce publiée'
+          });
+
+          toast({ 
+            title: "Annonce publiée !", 
+            description: "Votre annonce est désormais visible en haute qualité."
+          });
+          
+          router.push('/dashboard');
+        })
         .catch(async (serverError: any) => {
           if (serverError.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
@@ -172,21 +201,6 @@ export default function SellPage() {
             errorEmitter.emit('permission-error', permissionError);
           }
         });
-      
-      logActivity(db, {
-        action: 'AUTO_MODERATION',
-        userId: user.uid,
-        userName: user.displayName || 'Utilisateur',
-        targetName: title,
-        details: 'Annonce publiée'
-      });
-
-      toast({ 
-        title: "Annonce envoyée !", 
-        description: "Votre annonce est désormais visible."
-      });
-      
-      router.push('/dashboard');
     } catch (error: any) {
       console.error("Submit error:", error);
       toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de la publication." });
@@ -209,7 +223,7 @@ export default function SellPage() {
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-10">
         <section className="space-y-3 sm:space-y-4">
           <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            PHOTOS & VIDÉOS <span className="normal-case font-normal">(Vidéos: max 30s)</span>
+            PHOTOS (4K) & VIDÉOS (1080p) <span className="normal-case font-normal">(Max 30s)</span>
           </Label>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {mediaPreviews.map((m, i) => (
@@ -361,7 +375,7 @@ export default function SellPage() {
           className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg"
         >
           {isLoading ? (
-            <><Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" /> Envoi...</>
+            <><Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" /> Publication...</>
           ) : (
             <><Sparkles className="h-5 w-5 sm:h-6 sm:w-6" /> Publier l'annonce</>
           )}
