@@ -3,9 +3,9 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Instance centrale Genkit pour SuguMali.
- * Gère la récupération robuste de la clé d'API Gemini.
+ * Utilise la clé d'API spécifiée pour garantir le service.
  */
-const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY;
+const apiKey = 'AIzaSyBbiHohK-AtBiXT9JkLkybC1WKRe2UMmCA';
 
 export const ai = genkit({
   plugins: [

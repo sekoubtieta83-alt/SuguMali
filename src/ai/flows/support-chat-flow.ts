@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Flux de chat pour l'assistante Mami.
+ * Flux de chat pour l'assistante Mami.
  * Gère la communication intelligente avec les utilisateurs via Genkit 1.x.
  */
 
@@ -19,7 +19,7 @@ const SupportChatInputSchema = z.object({
 
 /**
  * Fonction principale de l'assistante Mami.
- * Utilise Genkit pour générer une réponse basée sur l'historique.
+ * Utilise Genkit pour générer une réponse basée sur l'historique de conversation.
  */
 export async function supportChat(input: z.infer<typeof SupportChatInputSchema>): Promise<string> {
   try {
@@ -39,7 +39,6 @@ export async function supportChat(input: z.infer<typeof SupportChatInputSchema>)
     return response.text;
   } catch (error) {
     console.error("Erreur Mami Support Chat:", error);
-    // On renvoie un message plus informatif en cas d'erreur de clé d'API ou de quota
     return "Je suis désolée, j'ai une petite difficulté à me connecter à mes outils de réflexion. Pourriez-vous vérifier que ma connexion (clé API) est bien configurée ? Je reviens très vite pour vous aider !";
   }
 }
