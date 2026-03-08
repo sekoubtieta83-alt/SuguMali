@@ -226,7 +226,6 @@ export default function ProfilePage() {
             setNotificationsEnabled(true);
             toast({ title: "Notifications activées !" });
         } catch (error: any) {
-            // Pas d'alerte ici, on log simplement
             console.log("Erreur notification :", error.message);
         } finally {
             setIsNotificationLoading(false);
@@ -410,7 +409,7 @@ export default function ProfilePage() {
                         <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
                         <p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p>
                     </div>
-                    {isNotificationSupported ? (
+                    {isNotificationSupported && (
                       <Button 
                           onClick={handleToggleNotifications} 
                           disabled={isNotificationLoading} 
@@ -426,8 +425,6 @@ export default function ProfilePage() {
                               <Bell className="h-3 w-3" />
                           )}
                       </Button>
-                    ) : (
-                      <div className="text-[10px] italic text-muted-foreground">Indisponible</div>
                     )}
                 </div>
             </div>

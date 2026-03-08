@@ -5,7 +5,6 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { FirebaseApp } from 'firebase/app';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { toast } from '@/hooks/use-toast';
 
 // IMPORTANT: You need to generate this key in your Firebase project settings
 // under Cloud Messaging > Web configuration > Web Push certificates.
@@ -17,12 +16,6 @@ export const requestNotificationPermission = async (
   firestore: Firestore
 ): Promise<string> => {
   if (VAPID_KEY.startsWith('YOUR_VAPID_KEY')) {
-     toast({
-        variant: 'destructive',
-        title: 'Configuration requise',
-        description: "La clé VAPID pour les notifications push n'a pas été définie.",
-        duration: 5000,
-      });
     throw new Error('VAPID key not configured.');
   }
 

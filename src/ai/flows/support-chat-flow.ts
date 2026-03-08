@@ -22,12 +22,13 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
  * Utilise l'identifiant de modèle standard compatible avec le plugin Google AI.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  const recentMessages = input.messages.slice(-6); // On limite l'historique pour la stabilité
+  const recentMessages = input.messages.slice(-10); // Historique optimisé
   
   try {
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs avec bienveillance. Sois concise.",
+      // Utilisation de la propriété 'system' conformément à Genkit 1.x
+      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs avec bienveillance. Sois concise et professionnelle.",
       messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
@@ -45,13 +46,13 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     });
 
     if (!response || !response.text) {
-      return "Désolée, je rencontre une petite difficulté technique. Peux-tu reformuler ? 🇲🇱";
+      return "Désolée, je rencontre une petite difficulté pour générer ma réponse. Peux-tu reformuler ? 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
     console.error("[MAMI ERROR]", error);
-    // On affiche l'erreur réelle pour le diagnostic comme demandé par l'utilisateur
+    // Affichage de l'erreur réelle pour le diagnostic comme demandé
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }
