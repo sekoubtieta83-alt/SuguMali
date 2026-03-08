@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, FormEvent } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, X, User, MessageCircle } from 'lucide-react';
+import { Loader2, Send, X, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -58,7 +58,11 @@ export function SupportChatWidget() {
     setIsLoading(true);
 
     try {
-        const chatHistory = [...messages, newUserMessage].map(({ role, content }) => ({ role, content }));
+        const chatHistory = [...messages, newUserMessage].map(({ role, content }) => ({ 
+            role, 
+            content 
+        }));
+        
         const responseContent = await supportChat({ messages: chatHistory });
 
         const newModelMessage: Message = {
@@ -117,7 +121,7 @@ export function SupportChatWidget() {
                                 ? "bg-accent text-white rounded-br-none"
                                 : "bg-muted text-foreground rounded-bl-none"
                          )}>
-                             <p className="leading-relaxed">{message.content}</p>
+                             <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
                          </div>
                     </div>
                 ))}
