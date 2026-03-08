@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -27,7 +26,7 @@ export function SupportChatWidget() {
     {
       id: 'init',
       role: 'model',
-      content: "I ni sogoma ! Je suis Mami, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ? 🇲🇱",
+      content: "Bonjour ! Je suis Mami, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?",
     },
   ]);
   const [input, setInput] = useState('');

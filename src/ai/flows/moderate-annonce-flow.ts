@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to automatically moderate ads for SuguMali.
@@ -50,7 +49,7 @@ const prompt = ai.definePrompt({
   name: 'moderateAnnoncePrompt',
   input: { schema: ModerateAnnonceInputSchema },
   output: { schema: ModerateAnnonceOutputSchema },
-  prompt: `Vous êtes Mami, la modératrice de SuguMali au Mali 🇲🇱.
+  prompt: `Vous êtes Mami, la modératrice de SuguMali.
 Analysez l'annonce :
 Titre : {{{title}}}
 Description : {{{description}}}

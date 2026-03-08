@@ -24,7 +24,7 @@ export async function supportChat(input: z.infer<typeof SupportChatInputSchema>)
   try {
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      system: "Tu es Mami, l'assistante intelligente et chaleureuse de SuguMali au Mali 🇲🇱. Ton rôle est d'aider les utilisateurs maliens à naviguer sur la plateforme, les conseiller pour leurs achats et ventes, et répondre à leurs questions avec bienveillance. Sois concise, professionnelle et utilise parfois des expressions locales maliennes si approprié.",
+      system: "Tu es Mami, l'assistante intelligente et chaleureuse de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme, les conseiller pour leurs achats et ventes, et répondre à leurs questions avec bienveillance. Sois concise et professionnelle.",
       messages: input.messages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
@@ -38,6 +38,6 @@ export async function supportChat(input: z.infer<typeof SupportChatInputSchema>)
     return response.text;
   } catch (error) {
     console.error("Erreur Mami Support Chat:", error);
-    return "I ni sogoma ! Désolée, je rencontre une petite difficulté technique. Réessayez dans un instant. Je suis toujours là pour vous aider ! 🇲🇱";
+    return "Bonjour ! Désolée, je rencontre une petite difficulté technique. Réessayez dans un instant. Je suis toujours là pour vous aider !";
   }
 }
