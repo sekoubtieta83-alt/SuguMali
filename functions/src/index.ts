@@ -1,12 +1,14 @@
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 
-// Fonction de santé de base pour valider le déploiement
+// Fonction de santé avec réponse JSON correcte
 export const healthCheck = functions.https.onRequest((request, response) => {
-  response.send("SuguMali Functions are online!");
+  response.json({
+    status: 'online',
+    message: 'SuguMali Functions are online!',
+    timestamp: new Date().toISOString()
+  });
 });
-
-// Exportation de la logique IA depuis le dossier local des fonctions
-export { supportChat } from './ai/flows/support-chat-flows';

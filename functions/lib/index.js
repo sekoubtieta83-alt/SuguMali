@@ -33,16 +33,46 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supportChat = exports.healthCheck = void 0;
-const admin = __importStar(require("firebase-admin"));
+exports.mamiChatDynamic = exports.mamiChat = exports.healthCheck = void 0;
 const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
-/**
- * Fonction de santé de base pour valider le déploiement de SuguMali.
- */
+// Fonction de santé avec réponse JSON correcte
 exports.healthCheck = functions.https.onRequest((request, response) => {
-    response.send("SuguMali Functions are online!");
+    response.json({
+        status: 'online',
+        message: 'SuguMali Functions are online!',
+        timestamp: new Date().toISOString()
+    });
 });
-var support_chat_flows_1 = require("./ai/flows/support-chat-flows");
-Object.defineProperty(exports, "supportChat", { enumerable: true, get: function () { return support_chat_flows_1.supportChat; } });
+// Option 1: Importer directement depuis le dossier local (recommandé)
+const support_chat_flows_1 = require("./ai/flows/support-chat-flows");
+exports.mamiChat = functions.https.onCall(async (data, context) => {
+    try {
+        const { message } = data;
+        const result = await (0, support_chat_flows_1.supportChatFlow)(message);
+        return {
+            success: true,
+            response: result.response || "Mami vous écoute..."
+        };
+    }
+    catch (error) {
+        console.error('Erreur Mami:', error);
+        return {
+            success: false,
+            error: "Désolée, je rencontre une difficulté technique."
+        };
+    }
+});
+// Option 2: Alternative avec import dynamique pour éviter les erreurs de type
+exports.mamiChatDynamic = functions.https.onCall(async (data, context) => {
+    try {
+        // Import dynamique pour éviter les erreurs de type
+        const { supportChatFlow } = await Promise.resolve().then(() => __importStar(require('./ai/flows/support-chat-flows')));
+        return await supportChatFlow(data.message);
+    }
+    catch (error) {
+        return { error: "Erreur technique" };
+    }
+});
 //# sourceMappingURL=index.js.map
