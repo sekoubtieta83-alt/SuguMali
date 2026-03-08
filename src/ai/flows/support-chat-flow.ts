@@ -25,10 +25,10 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
   const recentMessages = input.messages.slice(-10); // Historique optimisé
   
   try {
+    // Utilisation de la syntaxe simplifiée pour Genkit 1.x
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      // Utilisation de la propriété 'system' conformément à Genkit 1.x
-      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs avec bienveillance. Sois concise et professionnelle.",
+      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs maliens avec bienveillance et professionnalisme. Sois concise.",
       messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
@@ -36,12 +36,6 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
       config: {
         temperature: 0.7,
         maxOutputTokens: 500,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        ],
       }
     });
 
@@ -52,7 +46,7 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     return response.text;
   } catch (error: any) {
     console.error("[MAMI ERROR]", error);
-    // Affichage de l'erreur réelle pour le diagnostic comme demandé
+    // Affichage de l'erreur réelle pour le diagnostic
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }
