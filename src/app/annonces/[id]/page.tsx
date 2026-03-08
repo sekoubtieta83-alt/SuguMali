@@ -23,6 +23,7 @@ import {
   Send,
   HelpCircle,
   Heart,
+  Maximize2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -86,6 +87,10 @@ export default function AnnoncePage() {
   const [reportComment, setReportComment] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
+  
+  // Lightbox state
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState('');
 
   // Increment views
   useEffect(() => {
@@ -241,6 +246,11 @@ export default function AnnoncePage() {
         });
   };
 
+  const openLightbox = (url: string) => {
+    setSelectedImageUrl(url);
+    setIsLightboxOpen(true);
+  };
+
   if (loading) {
     return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-accent" /></div>;
   }
@@ -290,8 +300,11 @@ export default function AnnoncePage() {
           <Carousel className="w-full">
             <CarouselContent>
               {post.media.map((media, index) => (
-                <CarouselItem key={index} className="relative h-80 bg-muted">
+                <CarouselItem key={index} className="relative h-80 bg-muted cursor-zoom-in group" onClick={() => openLightbox(media.url)}>
                     <Image src={media.url} alt="" fill className="object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" />
+                    </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -330,6 +343,27 @@ export default function AnnoncePage() {
         <a href={whatsappLink} target="_blank" className="flex-1 bg-[#25D366] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"><MessageCircle /> WhatsApp</a>
         <a href={telLink} className="bg-primary text-primary-foreground p-4 rounded-2xl"><Phone /></a>
       </div>
+
+      {/* Lightbox Dialog */}
+      <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 border-none bg-black/90 flex items-center justify-center overflow-hidden" hideCloseButton>
+            <button 
+                onClick={() => setIsLightboxOpen(false)} 
+                className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+            >
+                <X className="h-6 w-6" />
+            </button>
+            <div className="relative w-full h-full flex items-center justify-center">
+                {selectedImageUrl && (
+                    <img 
+                        src={selectedImageUrl} 
+                        alt="Zoom image" 
+                        className="max-w-full max-h-full object-contain"
+                    />
+                )}
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
