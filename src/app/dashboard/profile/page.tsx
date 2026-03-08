@@ -226,7 +226,8 @@ export default function ProfilePage() {
             setNotificationsEnabled(true);
             toast({ title: "Notifications activées !" });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Erreur', description: error.message });
+            // Pas d'alerte ici, on log simplement
+            console.log("Erreur notification :", error.message);
         } finally {
             setIsNotificationLoading(false);
         }
@@ -426,7 +427,7 @@ export default function ProfilePage() {
                           )}
                       </Button>
                     ) : (
-                      <div className="text-[10px] italic text-muted-foreground">Non supporté</div>
+                      <div className="text-[10px] italic text-muted-foreground">Indisponible</div>
                     )}
                 </div>
             </div>

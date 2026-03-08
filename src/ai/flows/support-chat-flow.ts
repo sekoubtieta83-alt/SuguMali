@@ -19,25 +19,25 @@ export type SupportChatInput = z.infer<typeof SupportChatInputSchema>;
 
 /**
  * Appelle l'IA Mami pour générer une réponse.
- * Utilise l'identifiant de modèle le plus stable et récent : googleai/gemini-1.5-flash-latest.
+ * Utilise l'identifiant de modèle standard compatible avec le plugin Google AI.
  */
 export async function supportChat(input: SupportChatInput): Promise<string> {
-  const recentMessages = input.messages.slice(-10);
+  const recentMessages = input.messages.slice(-6); // On limite l'historique pour la stabilité
   
   try {
     const response = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
-      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs à acheter et vendre en utilisant des emojis et un ton accueillant. Sois concise et efficace.",
+      model: 'googleai/gemini-1.5-flash',
+      system: "Tu es Mami, l'assistante chaleureuse de SuguMali au Mali 🇲🇱. Tu aides les utilisateurs avec bienveillance. Sois concise.",
       messages: recentMessages.map(m => ({
         role: m.role,
         content: [{ text: m.content }]
       })),
       config: {
         temperature: 0.7,
-        maxOutputTokens: 800,
+        maxOutputTokens: 500,
         safetySettings: [
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
@@ -45,13 +45,13 @@ export async function supportChat(input: SupportChatInput): Promise<string> {
     });
 
     if (!response || !response.text) {
-      return "Désolée, je n'ai pas pu formuler de réponse. Réessaie dans un instant. 🇲🇱";
+      return "Désolée, je rencontre une petite difficulté technique. Peux-tu reformuler ? 🇲🇱";
     }
 
     return response.text;
   } catch (error: any) {
-    console.error("[MAMI] Erreur de génération IA:", error);
-    // On affiche l'erreur réelle pour le diagnostic comme demandé.
+    console.error("[MAMI ERROR]", error);
+    // On affiche l'erreur réelle pour le diagnostic comme demandé par l'utilisateur
     return `ERREUR TECHNIQUE MAMI : ${error.message || "Erreur de connexion"}. 🇲🇱`;
   }
 }
