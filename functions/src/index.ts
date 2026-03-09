@@ -2,23 +2,16 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 
-admin.initializeApp();
-
-/**
- * Fonction de santé du backend SuguMali.
- */
-export const healthCheck = onCall((request) => {
-  return {
-    status: 'online',
-    message: 'SuguMali Functions are online!',
-    timestamp: new Date().toISOString()
-  };
-});
+// Initialisation de Firebase Admin
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
 /**
  * Endpoint de chat pour Mami utilisant Firebase Functions v2.
+ * Gère les appels depuis le front-end avec Genkit.
  */
-export const mamiChat = onCall(async (request) => {
+export const mamiChat = onCall({ cors: true }, async (request) => {
   try {
     const { messages } = request.data;
     
@@ -26,19 +19,26 @@ export const mamiChat = onCall(async (request) => {
       throw new HttpsError('invalid-argument', 'Le format des messages est incorrect.');
     }
 
-    console.log(`Mami reçoit ${messages.length} messages.`);
+    console.log(`Requête mamiChat reçue : ${messages.length} messages.`);
 
+    // Appel au flux Genkit
     const response = await mamiChatFlow({ messages });
     
-    if (!response) {
-      throw new Error("L'IA n'a pas retourné de réponse.");
-    }
-
     return { response };
   } catch (error: any) {
-    console.error('Erreur Mami Chat (Backend):', error);
+    console.error('Erreur critique Mami Chat (Backend):', error);
     
-    // On propage une erreur explicite pour le client
-    throw new HttpsError('internal', error.message || 'Désolée, je rencontre une difficulté technique.');
+    // On renvoie une erreur structurée pour éviter le crash "internal"
+    throw new HttpsError('internal', error.message || 'Une erreur est survenue lors du traitement.');
   }
+});
+
+/**
+ * Fonction de santé du backend.
+ */
+export const healthCheck = onCall((request) => {
+  return {
+    status: 'online',
+    timestamp: new Date().toISOString()
+  };
 });

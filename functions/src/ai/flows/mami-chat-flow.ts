@@ -20,21 +20,25 @@ export const mamiChatFlow = ai.defineFlow(
   },
   async (input) => {
     try {
+      // Configuration de la génération avec le modèle Flash
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
-        system: `Tu es Mami, l'assistante virtuelle de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme, les conseiller pour vendre plus vite (belles photos, prix juste) ou acheter en toute sécurité. 
+        system: `Tu es Mami, l'assistante virtuelle de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme et les conseiller pour vendre plus vite ou acheter en toute sécurité. 
         
         Instructions clés :
         - Sois concise, amicale et professionnelle.
         - Réponds toujours en français.
         - Encourage l'utilisation de WhatsApp pour finaliser les ventes.
-        - Si un utilisateur a un problème, suggère-lui de contacter le support SuguMali.
         - Ton ton est celui d'une assistante bienveillante et dynamique.`,
         messages: input.messages.map(m => ({
           role: m.role,
           content: [{ text: m.content }]
         })),
       });
+
+      if (!response.text) {
+        throw new Error("L'IA n'a pas pu générer de texte.");
+      }
 
       return response.text;
     } catch (error) {
