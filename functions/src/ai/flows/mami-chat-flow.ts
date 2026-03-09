@@ -7,8 +7,7 @@ const MessageSchema = z.object({
 });
 
 /**
- * Flux de conversation avec Mami.
- * Optimisé pour Genkit 1.x et Gemini 1.5 Flash.
+ * Flux de conversation avec Mami optimisé pour SuguMali.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -20,30 +19,25 @@ export const mamiChatFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      // Configuration de la génération avec le modèle Flash
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
-        system: `Tu es Mami, l'assistante virtuelle de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme et les conseiller pour vendre plus vite ou acheter en toute sécurité. 
+        system: `Tu es Mami, l'assistante virtuelle de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme. 
         
-        Instructions clés :
-        - Sois concise, amicale et professionnelle.
-        - Réponds toujours en français.
-        - Encourage l'utilisation de WhatsApp pour finaliser les ventes.
-        - Ton ton est celui d'une assistante bienveillante et dynamique.`,
+        Conseils pour les utilisateurs :
+        - Vendeurs : suggère-leur de prendre de belles photos et de bien décrire l'état de l'article.
+        - Acheteurs : conseille-leur de toujours passer par WhatsApp pour finaliser les détails et de se donner rendez-vous dans des lieux publics pour la remise en main propre.
+        
+        Ton ton est amical, serviable et direct. Réponds toujours en français.`,
         messages: input.messages.map(m => ({
           role: m.role,
           content: [{ text: m.content }]
         })),
       });
 
-      if (!response.text) {
-        throw new Error("L'IA n'a pas pu générer de texte.");
-      }
-
       return response.text;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur Genkit mamiChatFlow:', error);
-      throw error;
+      throw new Error(`Erreur AI: ${error.message}`);
     }
   }
 );

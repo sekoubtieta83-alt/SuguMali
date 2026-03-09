@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, X, Send, Loader2, Sparkles, User, UserRound } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useFirebaseApp } from '@/firebase';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ type Message = {
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', content: "Bonjour ! Je suis Mami, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?" }
+    { role: 'model', content: "Bonjour ! Je suis Mami. Comment puis-je vous aider à vendre ou acheter aujourd'hui ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,20 +34,25 @@ export function SupportChatWidget() {
     if (!input.trim() || isLoading || !app) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
     setInput('');
     setIsLoading(true);
 
     try {
       const functions = getFunctions(app);
       const mamiChat = httpsCallable(functions, 'mamiChat');
-      const result = await mamiChat({ messages: [...messages, userMessage] });
       
+      const result = await mamiChat({ messages: currentMessages });
       const data = result.data as { response: string };
-      setMessages(prev => [...prev, { role: 'model', content: data.response }]);
-    } catch (error) {
+      
+      setMessages(prev => [...prev, { role: 'model', content: data.response || "Je n'ai pas pu générer de réponse." }]);
+    } catch (error: any) {
       console.error('Erreur Mami Widget:', error);
-      setMessages(prev => [...prev, { role: 'model', content: "Désolée, je rencontre une petite difficulté technique. Veuillez réessayer plus tard." }]);
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        content: "Désolée, je rencontre une difficulté de connexion. Veuillez réessayer dans quelques instants." 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +69,7 @@ export function SupportChatWidget() {
               </div>
               <div>
                 <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
-                <p className="text-[10px] opacity-80 font-medium">En ligne pour vous aider</p>
+                <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
@@ -106,6 +111,7 @@ export function SupportChatWidget() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={isLoading}
                 />
                 <Button 
                   size="icon" 
