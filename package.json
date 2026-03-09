@@ -36,7 +36,7 @@
     "events": "^3.3.0",
     "firebase": "10.12.2",
     "lucide-react": "latest",
-    "next": "latest",
+    "next": "canary",
     "react": "^19.0.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "^19.0.0",

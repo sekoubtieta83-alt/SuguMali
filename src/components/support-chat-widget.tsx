@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -28,7 +29,7 @@ export function SupportChatWidget() {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading || !app) return;
@@ -46,12 +47,16 @@ export function SupportChatWidget() {
       const result = await mamiChat({ messages: currentMessages });
       const data = result.data as { response: string };
       
-      setMessages(prev => [...prev, { role: 'model', content: data.response || "Je n'ai pas pu générer de réponse." }]);
+      if (data && data.response) {
+        setMessages(prev => [...prev, { role: 'model', content: data.response }]);
+      } else {
+        throw new Error("Réponse vide du serveur");
+      }
     } catch (error: any) {
       console.error('Erreur Mami Widget:', error);
       setMessages(prev => [...prev, { 
         role: 'model', 
-        content: "Désolée, je rencontre une difficulté de connexion. Veuillez réessayer dans quelques instants." 
+        content: "Désolée, je rencontre une petite difficulté technique. Veuillez réessayer dans quelques instants." 
       }]);
     } finally {
       setIsLoading(false);

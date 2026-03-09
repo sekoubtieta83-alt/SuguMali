@@ -1,3 +1,4 @@
+
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
@@ -27,7 +28,8 @@ export const mamiChat = onCall({
     return { response };
   } catch (error: any) {
     console.error('Erreur critique Mami Chat (Backend):', error);
-    throw new HttpsError('internal', error.message || 'Désolée, je rencontre une difficulté technique.');
+    // On renvoie une erreur descriptive plutôt qu'un code internal générique si possible
+    throw new HttpsError('internal', error.message || 'Désolée, je rencontre une difficulté technique temporaire.');
   }
 });
 
