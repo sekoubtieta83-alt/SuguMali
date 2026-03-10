@@ -35,6 +35,7 @@ export const mamiChat = onCall({
     return { success: true, response };
   } catch (error: any) {
     console.error('mamiChat error:', error);
+    // On renvoie un message gracieux mais on logge l'erreur réelle
     return { 
       success: false,
       response: "Mami fait une petite pause technique. Je reviens tout de suite !",
