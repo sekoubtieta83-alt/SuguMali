@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -47,7 +48,8 @@ class MamiAssistant {
   async chat(messages: MamiMessage[]) {
     try {
       const app = getApp();
-      const functions = getFunctions(app);
+      // On spécifie explicitement la région pour correspondre au backend et éviter l'erreur internal
+      const functions = getFunctions(app, 'us-central1');
       const mamiChat = httpsCallable(functions, 'mamiChat');
       
       const result = await mamiChat({ 

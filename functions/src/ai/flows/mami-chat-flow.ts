@@ -9,7 +9,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Utilise une construction de prompt en JS pur pour éviter les erreurs de parsing.
+ * Utilise une construction de prompt en JS pur pour éviter les erreurs de parsing internal.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -26,7 +26,7 @@ export const mamiChatFlow = ai.defineFlow(
         return "Bonjour ! Je suis Mami. Comment puis-je vous aider sur SuguMali aujourd'hui ?";
       }
 
-      // Construction du contexte en JS pur
+      // Construction du contexte en JS pur (évite les erreurs de templates Genkit)
       const modeContext = input.mode === 'vendre' 
         ? "L'utilisateur est en MODE VENTE. Aide-le à fixer ses prix, rédiger son annonce et donne-lui des conseils pour vendre vite au Mali (en FCFA)." 
         : "L'utilisateur est en MODE ACHAT. Aide-le à trouver des produits. Si tu suggères des produits, utilise UNIQUEMENT le format JSON spécifié.";
@@ -45,7 +45,7 @@ export const mamiChatFlow = ai.defineFlow(
       [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
       const response = await ai.generate({
-        model: googleAIPlugin.model('gemini-2.0-flash'),
+        model: googleAIPlugin.model('gemini-1.5-flash'), // Utilisation d'un modèle ultra-stable pour éviter les erreurs 'internal'
         system: systemInstruction,
         messages: input.messages.map(m => ({
           role: m.role,
@@ -63,7 +63,7 @@ export const mamiChatFlow = ai.defineFlow(
       return response.text;
     } catch (error: any) {
       console.error('Erreur Genkit mamiChatFlow:', error);
-      return "Désolée, je rencontre une petite difficulté technique pour accéder à mes connaissances. Veuillez réessayer dans un instant !";
+      return "Désolée, je rencontre une petite difficulté technique pour accéder à mes connaissances. Mami revient très vite !";
     }
   }
 );
