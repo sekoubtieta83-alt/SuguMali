@@ -48,7 +48,7 @@ class MamiAssistant {
   async chat(messages: MamiMessage[]) {
     try {
       const app = getApp();
-      // On spécifie explicitement la région pour correspondre au backend et éviter l'erreur internal
+      // On spécifie explicitement la région pour correspondre au backend
       const functions = getFunctions(app, 'us-central1');
       const mamiChat = httpsCallable(functions, 'mamiChat');
       
@@ -57,7 +57,7 @@ class MamiAssistant {
         mode: this.mode 
       });
       
-      const data = result.data as { response: string };
+      const data = result.data as { response: string; success: boolean };
       const rawText = data.response;
 
       return {

@@ -1,5 +1,5 @@
 
-import { onCall, HttpsError } from 'firebase/functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 
@@ -9,29 +9,33 @@ if (admin.apps.length === 0) {
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * Configuration robuste avec CORS et région spécifiée.
+ * Utilisation de v2/https avec déclaration explicite des secrets pour éviter l'erreur 'internal'.
  */
 export const mamiChat = onCall({ 
   cors: true,
   maxInstances: 10,
   timeoutSeconds: 60,
-  region: 'us-central1'
+  region: 'us-central1',
+  secrets: ['GOOGLE_GENAI_API_KEY'] // ← Obligatoire pour accéder à la clé API Gemini
 }, async (request) => {
-  const { messages, mode } = request.data;
-  
-  if (!messages || !Array.isArray(messages)) {
-    throw new HttpsError('invalid-argument', 'Le format des messages est invalide.');
-  }
-
   try {
-    // Appel au flux stabilisé
+    const { messages, mode } = request.data;
+    
+    if (!messages || !Array.isArray(messages)) {
+      throw new HttpsError('invalid-argument', 'Le format des messages est invalide.');
+    }
+
+    // Appel au flux Genkit
     const response = await mamiChatFlow({ messages, mode });
-    return { response };
+    
+    return { success: true, response };
   } catch (error: any) {
     console.error('Erreur critique mamiChat Function:', error);
     // On renvoie un message gracieux pour éviter le crash 'internal' côté client
     return { 
-      response: "Mami fait une petite pause technique. Je reviens tout de suite !" 
+      success: false,
+      response: "Mami fait une petite pause technique. Je reviens tout de suite !",
+      error: error.message
     };
   }
 });
