@@ -3,20 +3,21 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 
+// Initialisation sécurisée de l'admin
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * Utilisation de v2/https avec déclaration explicite des secrets pour éviter l'erreur 'internal'.
+ * L'ajout de 'secrets' est OBLIGATOIRE pour accéder aux clés API dans Cloud Functions v2.
  */
 export const mamiChat = onCall({ 
   cors: true,
   maxInstances: 10,
   timeoutSeconds: 60,
   region: 'us-central1',
-  secrets: ['GOOGLE_GENAI_API_KEY'] // ← Obligatoire pour accéder à la clé API Gemini
+  secrets: ['GOOGLE_GENAI_API_KEY'] 
 }, async (request) => {
   try {
     const { messages, mode } = request.data;
@@ -30,8 +31,8 @@ export const mamiChat = onCall({
     
     return { success: true, response };
   } catch (error: any) {
-    console.error('Erreur critique mamiChat Function:', error);
-    // On renvoie un message gracieux pour éviter le crash 'internal' côté client
+    console.error('mamiChat error:', error);
+    // On renvoie un message propre au client au lieu de laisser Firebase lever une erreur brute
     return { 
       success: false,
       response: "Mami fait une petite pause technique. Je reviens tout de suite !",
