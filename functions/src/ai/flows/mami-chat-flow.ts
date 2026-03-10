@@ -9,7 +9,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Utilise une construction de prompt en JS pur pour éviter les erreurs de parsing internal.
+ * Évite les erreurs 'internal' en utilisant une construction de prompt en JS pur.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -26,27 +26,27 @@ export const mamiChatFlow = ai.defineFlow(
         return "Bonjour ! Je suis Mami. Comment puis-je vous aider sur SuguMali aujourd'hui ?";
       }
 
-      // Construction du contexte en JS pur (évite les erreurs de templates Genkit)
-      const modeContext = input.mode === 'vendre' 
-        ? "L'utilisateur est en MODE VENTE. Aide-le à fixer ses prix, rédiger son annonce et donne-lui des conseils pour vendre vite au Mali (en FCFA)." 
-        : "L'utilisateur est en MODE ACHAT. Aide-le à trouver des produits. Si tu suggères des produits, utilise UNIQUEMENT le format JSON spécifié.";
+      // Construction dynamique du contexte système en JS pur
+      const modeInstruction = input.mode === 'vendre' 
+        ? "L'utilisateur veut VENDRE. Conseille-le sur les prix en FCFA, la rédaction de son annonce et la sécurité." 
+        : "L'utilisateur veut ACHETER. Aide-le à trouver des articles. Propose des prix en FCFA.";
       
-      const systemInstruction = `Tu es Mami, l'assistante officielle de SuguMali, experte en petites annonces en Afrique de l'Ouest.
+      const systemPrompt = `Tu es Mami, l'assistante officielle de SuguMali 🇲🇱.
+      Directives :
+      - Ton amical et direct.
+      - Toujours en français.
+      - Prix en FCFA uniquement.
+      - Max 150 mots.
       
-      Tes directives :
-      - Ton ton est chaleureux, direct et respectueux.
-      - Utilise le FCFA pour tous les prix.
-      - Réponds toujours en français. Max 150 mots par réponse.
+      ${modeInstruction}
       
-      CONTEXTE ACTUEL : ${modeContext}
-      
-      FORMAT PRODUITS (Obligatoire pour les suggestions en mode achat) :
-      Si tu proposes des articles, insère exactement ce bloc JSON à la fin de ta réponse :
+      FORMAT PRODUITS (Obligatoire pour les suggestions d'articles) :
+      Si tu suggères des produits, insère ce bloc JSON exact à la fin de ta réponse :
       [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
       const response = await ai.generate({
-        model: googleAIPlugin.model('gemini-1.5-flash'), // Utilisation d'un modèle ultra-stable pour éviter les erreurs 'internal'
-        system: systemInstruction,
+        model: googleAIPlugin.model('gemini-1.5-flash'),
+        system: systemPrompt,
         messages: input.messages.map(m => ({
           role: m.role,
           content: [{ text: m.content }]
@@ -57,13 +57,13 @@ export const mamiChatFlow = ai.defineFlow(
       });
 
       if (!response || !response.text) {
-        throw new Error("Le modèle Gemini n'a pas renvoyé de texte.");
+        throw new Error("Gemini n'a pas renvoyé de réponse.");
       }
 
       return response.text;
     } catch (error: any) {
-      console.error('Erreur Genkit mamiChatFlow:', error);
-      return "Désolée, je rencontre une petite difficulté technique pour accéder à mes connaissances. Mami revient très vite !";
+      console.error('Erreur Mami Flow:', error);
+      return "Désolée, je rencontre une petite difficulté technique. Mami revient très vite !";
     }
   }
 );
