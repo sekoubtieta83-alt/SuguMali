@@ -35,38 +35,52 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.healthCheck = exports.mamiChat = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
 const mami_chat_flow_1 = require("./ai/flows/mami-chat-flow");
+// Définition du secret pour la clé API
+const GOOGLE_GENAI_API_KEY = (0, params_1.defineSecret)('GOOGLE_GENAI_API_KEY');
+// Initialisation de l'admin Firebase
 if (admin.apps.length === 0) {
     admin.initializeApp();
 }
 /**
  * Endpoint de chat pour Mami (Backend).
+ * L'utilisation de 'secrets' est OBLIGATOIRE pour éviter l'erreur "internal".
  */
 exports.mamiChat = (0, https_1.onCall)({
     cors: true,
     maxInstances: 10,
-    timeoutSeconds: 60
+    timeoutSeconds: 60,
+    region: 'us-central1',
+    secrets: [GOOGLE_GENAI_API_KEY]
 }, async (request) => {
     try {
-        const { messages } = request.data;
+        const { messages, mode } = request.data;
         if (!messages || !Array.isArray(messages)) {
-            throw new https_1.HttpsError('invalid-argument', 'Le format des messages est incorrect.');
+            throw new https_1.HttpsError('invalid-argument', 'Le format des messages est invalide.');
         }
         // Appel au flux Genkit
-        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages });
-        return { response };
+        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode });
+        return { success: true, response };
     }
     catch (error) {
-        console.error('Erreur critique Mami Chat (Backend):', error);
-        // On renvoie une erreur descriptive plutôt qu'un code internal générique si possible
-        throw new https_1.HttpsError('internal', error.message || 'Désolée, je rencontre une difficulté technique temporaire.');
+        console.error('mamiChat error:', error);
+        // On renvoie un message gracieux au lieu de faire planter le front
+        return {
+            success: false,
+            response: "Mami fait une petite pause technique. Je reviens tout de suite !",
+            error: error.message
+        };
     }
 });
+/**
+ * Vérification de l'état du service.
+ */
 exports.healthCheck = (0, https_1.onCall)((request) => {
     return {
         status: 'online',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        engine: 'gemini-1.5-flash'
     };
 });
-//# sourceMappingURL=index.js.map

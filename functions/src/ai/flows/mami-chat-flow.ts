@@ -8,7 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Construction du prompt en JS pur pour éviter les erreurs de parsing Handlebars.
+ * Gère le nettoyage de l'historique pour Gemini (alternance des rôles).
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -23,6 +23,27 @@ export const mamiChatFlow = ai.defineFlow(
     try {
       if (!input.messages || input.messages.length === 0) {
         return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider sur SuguMali ?";
+      }
+
+      // Nettoyage de l'historique : le premier message doit être 'user'
+      let cleanedMessages = [...input.messages];
+      while (cleanedMessages.length > 0 && cleanedMessages[0].role !== 'user') {
+        cleanedMessages.shift();
+      }
+
+      // Alternance stricte des rôles pour éviter les erreurs de l'API Gemini
+      const validMessages = cleanedMessages.reduce((acc: any[], msg) => {
+        const last = acc[acc.length - 1];
+        if (last && last.role === msg.role) {
+          // Si deux messages consécutifs ont le même rôle, on fusionne ou on ignore
+          return acc;
+        }
+        acc.push(msg);
+        return acc;
+      }, []);
+
+      if (validMessages.length === 0) {
+        return "Bonjour ! Je suis Mami 🌸. Je suis prête à vous aider.";
       }
 
       const modeContext = input.mode === 'vendre'
@@ -45,7 +66,7 @@ Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exac
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
         system: systemInstruction,
-        messages: input.messages.map(m => ({
+        messages: validMessages.map(m => ({
           role: m.role,
           content: [{ text: m.content }],
         })),

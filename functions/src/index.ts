@@ -13,7 +13,7 @@ if (admin.apps.length === 0) {
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * L'utilisation de 'secrets' est OBLIGATOIRE pour éviter l'erreur "internal".
+ * Sécurisé par Secrets Firebase pour éviter l'erreur "internal".
  */
 export const mamiChat = onCall({ 
   cors: true,
@@ -32,9 +32,10 @@ export const mamiChat = onCall({
     // Appel au flux Genkit
     const response = await mamiChatFlow({ messages, mode });
     
+    // On garde la clé 'response' pour la compatibilité avec le client src/lib/mami.ts
     return { success: true, response };
   } catch (error: any) {
-    console.error('mamiChat error:', error);
+    console.error('mamiChat error:', error.message || error);
     // On renvoie un message gracieux au lieu de faire planter le front
     return { 
       success: false,
