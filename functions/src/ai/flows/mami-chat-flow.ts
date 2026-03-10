@@ -9,7 +9,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Évite les erreurs 'internal' en utilisant une construction de prompt en JS pur.
+ * Utilise la construction de prompt en JS pur pour éviter les erreurs 'internal'.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -26,44 +26,44 @@ export const mamiChatFlow = ai.defineFlow(
         return "Bonjour ! Je suis Mami. Comment puis-je vous aider sur SuguMali aujourd'hui ?";
       }
 
-      // Construction dynamique du contexte système en JS pur
-      const modeInstruction = input.mode === 'vendre' 
-        ? "L'utilisateur veut VENDRE. Conseille-le sur les prix en FCFA, la rédaction de son annonce et la sécurité." 
-        : "L'utilisateur veut ACHETER. Aide-le à trouver des articles. Propose des prix en FCFA.";
+      // ✅ FIX : Construction dynamique du prompt en JS pur (Pas de Handlebars ici)
+      const modeContext = input.mode === 'vendre' 
+        ? "L'utilisateur souhaite VENDRE. Conseillez-le sur les prix en FCFA, la rédaction de l'annonce et la sécurité." 
+        : "L'utilisateur souhaite ACHETER. Aidez-le à trouver des articles et proposez des prix en FCFA.";
       
-      const systemPrompt = `Tu es Mami, l'assistante officielle de SuguMali 🇲🇱.
+      const systemInstruction = `Tu es Mami, l'assistante officielle de SuguMali 🇲🇱.
       Directives :
-      - Ton amical et direct.
-      - Toujours en français.
-      - Prix en FCFA uniquement.
-      - Max 150 mots.
+      - Ton amical, professionnel et direct.
+      - Langue : Français uniquement.
+      - Monnaie : FCFA uniquement.
+      - Longueur : Maximum 150 mots.
       
-      ${modeInstruction}
+      Contexte actuel : ${modeContext}
       
-      FORMAT PRODUITS (Obligatoire pour les suggestions d'articles) :
-      Si tu suggères des produits, insère ce bloc JSON exact à la fin de ta réponse :
-      [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
+      IMPORTANT (Format Produits) :
+      Si vous suggérez des articles, terminez TOUJOURS votre réponse par ce bloc JSON exact :
+      [PRODUCTS: {"items": [{"emoji": "📱", "name": "Exemple Produit", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
       const response = await ai.generate({
         model: googleAIPlugin.model('gemini-1.5-flash'),
-        system: systemPrompt,
+        system: systemInstruction,
         messages: input.messages.map(m => ({
           role: m.role,
           content: [{ text: m.content }]
         })),
         config: {
-          temperature: 0.7,
+          temperature: 0.8,
         }
       });
 
       if (!response || !response.text) {
-        throw new Error("Gemini n'a pas renvoyé de réponse.");
+        throw new Error("Gemini n'a pas renvoyé de réponse valide.");
       }
 
       return response.text;
     } catch (error: any) {
-      console.error('Erreur Mami Flow:', error);
-      return "Désolée, je rencontre une petite difficulté technique. Mami revient très vite !";
+      console.error('Erreur Mami Chat Flow:', error);
+      return "Désolée, je rencontre une petite difficulté technique. Je reviens vers vous très vite !";
     }
   }
 );
