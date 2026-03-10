@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase/functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 

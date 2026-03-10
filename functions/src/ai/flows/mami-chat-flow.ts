@@ -25,21 +25,31 @@ export const mamiChatFlow = ai.defineFlow(
         return "Bonjour ! Je suis Mami. Comment puis-je vous aider sur SuguMali ?";
       }
 
-      const modePrefix = input.mode === 'vendre' ? '[MODE VENTE] ' : '[MODE ACHAT] ';
+      const modeContext = input.mode === 'vendre' 
+        ? "L'utilisateur est en MODE VENTE. Aide-le à fixer ses prix, rédiger son annonce et donne-lui des conseils pour vendre vite au Mali." 
+        : "L'utilisateur est en MODE ACHAT. Aide-le à trouver des produits. Si tu suggères des produits, utilise UNIQUEMENT le format JSON spécifié.";
       
       const response = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // Utilisation de Gemini 2.0
-        system: `Tu es Mami, assistante petites annonces chaleureuse en Afrique de l'Ouest (FCFA).
+        model: 'googleai/gemini-2.0-flash',
+        system: `Tu es Mami, l'assistante officielle de SuguMali, experte en petites annonces en Afrique de l'Ouest.
         
-        - MODE ACHAT : suggère 2-4 produits fictifs ou réels selon le budget avec ce format JSON EXACT dans ta réponse (ne pas oublier les crochets) :
+        Tes directives :
+        - Ton ton est chaleureux, direct et respectueux (utilise le FCFA pour les prix).
+        - Réponds toujours en français. Max 150 mots par réponse.
+        
+        ${modeContext}
+        
+        - FORMAT PRODUITS (Obligatoire pour les suggestions en mode achat) :
+          Insère exactement ce bloc dans ta réponse si tu proposes des articles :
           [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]
         
-        - MODE VENTE : conseille sur les prix, la rédaction d'annonce percutante, et les mots-clés pour vendre vite au Mali.
-        
-        Ton ton est amical, direct et respectueux. Réponds toujours en français. Max 150 mots hors bloc de produits.`,
-        messages: input.messages.map((m, index) => ({
+        Historique de conversation :
+        {{#each messages}}
+        {{role}}: {{{content}}}
+        {{/each}}`,
+        messages: input.messages.map(m => ({
           role: m.role,
-          content: [{ text: (index === input.messages.length - 1 && m.role === 'user') ? modePrefix + m.content : m.content }]
+          content: [{ text: m.content }]
         })),
       });
 
