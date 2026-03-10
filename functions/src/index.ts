@@ -9,7 +9,7 @@ if (admin.apps.length === 0) {
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * L'utilisation de 'secrets' est cruciale pour éviter l'erreur "internal" liée aux clés d'API.
+ * L'utilisation de 'secrets' est OBLIGATOIRE pour éviter l'erreur "internal" liée aux clés d'API.
  */
 export const mamiChat = onCall({ 
   cors: true,
