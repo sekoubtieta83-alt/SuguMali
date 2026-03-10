@@ -33,46 +33,40 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mamiChatDynamic = exports.mamiChat = exports.healthCheck = void 0;
-const functions = __importStar(require("firebase-functions"));
+exports.healthCheck = exports.mamiChat = void 0;
+const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
-admin.initializeApp();
-// Fonction de santé avec réponse JSON correcte
-exports.healthCheck = functions.https.onRequest((request, response) => {
-    response.json({
+const mami_chat_flow_1 = require("./ai/flows/mami-chat-flow");
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
+/**
+ * Endpoint de chat pour Mami (Backend).
+ */
+exports.mamiChat = (0, https_1.onCall)({
+    cors: true,
+    maxInstances: 10,
+    timeoutSeconds: 60
+}, async (request) => {
+    try {
+        const { messages } = request.data;
+        if (!messages || !Array.isArray(messages)) {
+            throw new https_1.HttpsError('invalid-argument', 'Le format des messages est incorrect.');
+        }
+        // Appel au flux Genkit
+        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages });
+        return { response };
+    }
+    catch (error) {
+        console.error('Erreur critique Mami Chat (Backend):', error);
+        // On renvoie une erreur descriptive plutôt qu'un code internal générique si possible
+        throw new https_1.HttpsError('internal', error.message || 'Désolée, je rencontre une difficulté technique temporaire.');
+    }
+});
+exports.healthCheck = (0, https_1.onCall)((request) => {
+    return {
         status: 'online',
-        message: 'SuguMali Functions are online!',
         timestamp: new Date().toISOString()
-    });
-});
-// Option 1: Importer directement depuis le dossier local (recommandé)
-const support_chat_flows_1 = require("./ai/flows/support-chat-flows");
-exports.mamiChat = functions.https.onCall(async (data, context) => {
-    try {
-        const { message } = data;
-        const result = await (0, support_chat_flows_1.supportChatFlow)(message);
-        return {
-            success: true,
-            response: result.response || "Mami vous écoute..."
-        };
-    }
-    catch (error) {
-        console.error('Erreur Mami:', error);
-        return {
-            success: false,
-            error: "Désolée, je rencontre une difficulté technique."
-        };
-    }
-});
-// Option 2: Alternative avec import dynamique pour éviter les erreurs de type
-exports.mamiChatDynamic = functions.https.onCall(async (data, context) => {
-    try {
-        // Import dynamique pour éviter les erreurs de type
-        const { supportChatFlow } = await Promise.resolve().then(() => __importStar(require('./ai/flows/support-chat-flows')));
-        return await supportChatFlow(data.message);
-    }
-    catch (error) {
-        return { error: "Erreur technique" };
-    }
+    };
 });
 //# sourceMappingURL=index.js.map

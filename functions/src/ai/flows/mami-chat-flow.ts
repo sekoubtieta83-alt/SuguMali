@@ -1,4 +1,3 @@
-
 import { ai } from '../mami-instance';
 import { z } from 'zod';
 
@@ -9,33 +8,38 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
+ * Intègre les modes Achat et Vente avec formatage de produits.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
     name: 'mamiChatFlow',
     inputSchema: z.object({
       messages: z.array(MessageSchema),
+      mode: z.enum(['acheter', 'vendre']).optional().default('acheter'),
     }),
     outputSchema: z.string(),
   },
   async (input) => {
     try {
       if (!input.messages || input.messages.length === 0) {
-        return "Bonjour ! Comment puis-je vous aider aujourd'hui ?";
+        return "Bonjour ! Je suis Mami. Comment puis-je vous aider sur SuguMali ?";
       }
 
+      const modePrefix = input.mode === 'vendre' ? '[MODE VENTE] ' : '[MODE ACHAT] ';
+      
       const response = await ai.generate({
-        model: 'googleai/gemini-1.5-flash',
-        system: `Tu es Mami, l'assistante virtuelle de SuguMali. Ton rôle est d'aider les utilisateurs à naviguer sur la plateforme. 
+        model: 'googleai/gemini-2.0-flash-exp', // Utilisation de Gemini 2.0
+        system: `Tu es Mami, assistante petites annonces chaleureuse en Afrique de l'Ouest (FCFA).
         
-        Conseils pour les utilisateurs :
-        - Vendeurs : suggère-leur de prendre de belles photos et de bien décrire l'état de l'article.
-        - Acheteurs : conseille-leur de toujours passer par WhatsApp pour finaliser les détails et de se donner rendez-vous dans des lieux publics pour la remise en main propre.
+        - MODE ACHAT : suggère 2-4 produits fictifs ou réels selon le budget avec ce format JSON EXACT dans ta réponse (ne pas oublier les crochets) :
+          [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]
         
-        Ton ton est amical, serviable et direct. Réponds toujours en français. Ne mentionne jamais de pays ou de drapeaux spécifiques.`,
-        messages: input.messages.map(m => ({
+        - MODE VENTE : conseille sur les prix, la rédaction d'annonce percutante, et les mots-clés pour vendre vite au Mali.
+        
+        Ton ton est amical, direct et respectueux. Réponds toujours en français. Max 150 mots hors bloc de produits.`,
+        messages: input.messages.map((m, index) => ({
           role: m.role,
-          content: [{ text: m.content }]
+          content: [{ text: (index === input.messages.length - 1 && m.role === 'user') ? modePrefix + m.content : m.content }]
         })),
       });
 
@@ -46,8 +50,7 @@ export const mamiChatFlow = ai.defineFlow(
       return response.text;
     } catch (error: any) {
       console.error('Erreur Genkit mamiChatFlow:', error);
-      // Retourne un message d'erreur gracieux au lieu de faire planter la fonction
-      return "Je suis désolée, je rencontre une petite difficulté pour traiter votre demande. Pourriez-vous reformuler ?";
+      return "Désolée, je rencontre une petite difficulté technique. Veuillez réessayer dans quelques instants.";
     }
   }
 );

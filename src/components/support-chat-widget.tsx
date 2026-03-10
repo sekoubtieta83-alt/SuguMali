@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useFirebaseApp } from '@/firebase';
 import { cn } from '@/lib/utils';
@@ -15,10 +14,19 @@ type Message = {
   content: string;
 };
 
+type Product = {
+  emoji: string;
+  name: string;
+  price: string;
+  tag: string;
+  deal: boolean;
+};
+
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<'acheter' | 'vendre'>('acheter');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', content: "Bonjour ! Je suis Mami. Comment puis-je vous aider à vendre ou acheter aujourd'hui ?" }
+    { role: 'model', content: "Bonjour ! Je suis Mami. Souhaitez-vous acheter ou vendre un article aujourd'hui ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,6 +38,23 @@ export function SupportChatWidget() {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isLoading]);
+
+  const parseProducts = (text: string): Product[] | null => {
+    const match = text.match(/\[PRODUCTS:\s*(\{.*?\})\]/s);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        return parsed.items || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const cleanText = (text: string): string => {
+    return text.replace(/\[PRODUCTS:.*?\]/s, '').trim();
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading || !app) return;
@@ -44,7 +69,10 @@ export function SupportChatWidget() {
       const functions = getFunctions(app);
       const mamiChat = httpsCallable(functions, 'mamiChat');
       
-      const result = await mamiChat({ messages: currentMessages });
+      const result = await mamiChat({ 
+        messages: currentMessages,
+        mode: mode
+      });
       const data = result.data as { response: string };
       
       if (data && data.response) {
@@ -56,49 +84,99 @@ export function SupportChatWidget() {
       console.error('Erreur Mami Widget:', error);
       setMessages(prev => [...prev, { 
         role: 'model', 
-        content: "Désolée, je rencontre une petite difficulté technique. Veuillez réessayer dans quelques instants." 
+        content: "Désolée, je rencontre une petite difficulté technique. Mami revient vite !" 
       }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const MessageBubble = ({ message }: { message: Message }) => {
+    const products = parseProducts(message.content);
+    const text = cleanText(message.content);
+
+    return (
+      <div className={cn("flex flex-col gap-2 mb-4", message.role === 'user' ? "items-end" : "items-start")}>
+        <div className={cn(
+          "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm",
+          message.role === 'user' 
+            ? "bg-accent text-white rounded-tr-none" 
+            : "bg-card text-foreground rounded-tl-none border border-border/50"
+        )}>
+          {text}
+        </div>
+        {products && (
+          <div className="grid grid-cols-1 gap-2 w-full max-w-[85%]">
+            {products.map((p, idx) => (
+              <div key={idx} className="bg-white dark:bg-zinc-900 border border-border/50 rounded-xl p-3 shadow-sm flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
+                <div className="text-2xl h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
+                  {p.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-xs truncate">{p.name}</h4>
+                  <p className="text-accent font-black text-sm">{p.price}</p>
+                  <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-md font-bold">{p.tag}</span>
+                </div>
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full">
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end">
       {isOpen ? (
-        <Card className="w-[90vw] sm:w-[380px] h-[500px] shadow-2xl rounded-3xl overflow-hidden border-none flex flex-col animate-in slide-in-from-bottom-5">
-          <CardHeader className="bg-accent text-white p-4 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-                <Sparkles className="h-5 w-5" />
+        <Card className="w-[90vw] sm:w-[380px] h-[550px] shadow-2xl rounded-3xl overflow-hidden border-none flex flex-col animate-in slide-in-from-bottom-5">
+          <CardHeader className="bg-accent text-white p-4">
+            <div className="flex flex-row items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
+                  <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali</p>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
-                <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali</p>
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
-              <X className="h-5 w-5" />
-            </Button>
+            <div className="flex bg-white/10 p-1 rounded-xl backdrop-blur-sm">
+              <button 
+                onClick={() => setMode('acheter')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  mode === 'acheter' ? "bg-white text-accent shadow-sm" : "text-white/80 hover:bg-white/5"
+                )}
+              >
+                <ShoppingCart className="h-3 w-3" /> Acheter
+              </button>
+              <button 
+                onClick={() => setMode('vendre')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  mode === 'vendre' ? "bg-white text-accent shadow-sm" : "text-white/80 hover:bg-white/5"
+                )}
+              >
+                <Tag className="h-3 w-3" /> Vendre
+              </button>
+            </div>
           </CardHeader>
           
           <CardContent className="flex-1 p-0 flex flex-col bg-muted/30">
             <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
+              <div className="space-y-1">
                 {messages.map((m, i) => (
-                  <div key={i} className={cn("flex flex-col", m.role === 'user' ? "items-end" : "items-start")}>
-                    <div className={cn(
-                      "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm",
-                      m.role === 'user' 
-                        ? "bg-accent text-white rounded-tr-none" 
-                        : "bg-card text-foreground rounded-tl-none border border-border/50"
-                    )}>
-                      {m.content}
-                    </div>
-                  </div>
+                  <MessageBubble key={i} message={m} />
                 ))}
                 {isLoading && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs italic ml-1">
+                  <div className="flex items-center gap-2 text-muted-foreground text-xs italic ml-1 mb-4">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Mami réfléchit...
                   </div>
@@ -111,7 +189,7 @@ export function SupportChatWidget() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Posez votre question..."
+                  placeholder={mode === 'acheter' ? "Je cherche un iPhone..." : "Comment fixer mon prix ?"}
                   className="flex-1 bg-muted border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-accent/50 outline-none"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

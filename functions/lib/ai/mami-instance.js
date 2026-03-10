@@ -5,12 +5,12 @@ const genkit_1 = require("genkit");
 const google_genai_1 = require("@genkit-ai/google-genai");
 /**
  * Instance centrale Genkit pour SuguMali (Backend).
+ * Utilise la clé API fournie : AIzaSyBynstf2xTUpFkPSFBwlZ1DpBRFJnXuOCA
  */
-const apiKey = 'AIzaSyBbiHohK-AtBiXT9JkLkybC1WKRe2UMmCA';
 exports.ai = (0, genkit_1.genkit)({
     plugins: [
         (0, google_genai_1.googleAI)({
-            apiKey: apiKey,
+            apiKey: 'AIzaSyBynstf2xTUpFkPSFBwlZ1DpBRFJnXuOCA',
         }),
     ],
 });
