@@ -1,37 +1,29 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, X, Send, Loader2, Sparkles, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useFirebaseApp } from '@/firebase';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-type Message = {
-  role: 'user' | 'model';
-  content: string;
-};
-
-type Product = {
-  emoji: string;
-  name: string;
-  price: string;
-  tag: string;
-  deal: boolean;
-};
+import MamiAssistant, { type MamiMessage, type MamiProduct } from '@/lib/mami';
 
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'acheter' | 'vendre'>('acheter');
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<MamiMessage[]>([
     { role: 'model', content: "Bonjour ! Je suis Mami. Souhaitez-vous acheter ou vendre un article aujourd'hui ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const app = useFirebaseApp();
+  
+  // Instance stable de l'assistante
+  const mami = useMemo(() => new MamiAssistant(), []);
+
+  useEffect(() => {
+    mami.setMode(mode);
+  }, [mode, mami]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,47 +31,19 @@ export function SupportChatWidget() {
     }
   }, [messages, isLoading]);
 
-  const parseProducts = (text: string): Product[] | null => {
-    const match = text.match(/\[PRODUCTS:\s*(\{.*?\})\]/s);
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        return parsed.items || null;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  };
-
-  const cleanText = (text: string): string => {
-    return text.replace(/\[PRODUCTS:.*?\]/s, '').trim();
-  };
-
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading || !app) return;
+    if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    const userMessage: MamiMessage = { role: 'user', content: input };
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      const functions = getFunctions(app);
-      const mamiChat = httpsCallable(functions, 'mamiChat');
+      const response = await mami.chat(currentMessages);
       
-      const result = await mamiChat({ 
-        messages: currentMessages,
-        mode: mode
-      });
-      const data = result.data as { response: string };
-      
-      if (data && data.response) {
-        setMessages(prev => [...prev, { role: 'model', content: data.response }]);
-      } else {
-        throw new Error("Réponse vide du serveur");
-      }
+      setMessages(prev => [...prev, { role: 'model', content: response.raw }]);
     } catch (error: any) {
       console.error('Erreur Mami Widget:', error);
       setMessages(prev => [...prev, { 
@@ -91,25 +55,25 @@ export function SupportChatWidget() {
     }
   };
 
-  const MessageBubble = ({ message }: { message: Message }) => {
-    const products = parseProducts(message.content);
-    const text = cleanText(message.content);
+  const MessageBubble = ({ message }: { message: MamiMessage }) => {
+    const productsData = mami.parseProducts(message.content);
+    const text = mami.cleanText(message.content);
 
     return (
       <div className={cn("flex flex-col gap-2 mb-4", message.role === 'user' ? "items-end" : "items-start")}>
         <div className={cn(
-          "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm",
+          "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm leading-relaxed",
           message.role === 'user' 
             ? "bg-accent text-white rounded-tr-none" 
             : "bg-card text-foreground rounded-tl-none border border-border/50"
         )}>
           {text}
         </div>
-        {products && (
+        {productsData?.items && (
           <div className="grid grid-cols-1 gap-2 w-full max-w-[85%]">
-            {products.map((p, idx) => (
+            {productsData.items.map((p, idx) => (
               <div key={idx} className="bg-white dark:bg-zinc-900 border border-border/50 rounded-xl p-3 shadow-sm flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
-                <div className="text-2xl h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
+                <div className="text-2xl h-12 w-12 bg-muted rounded-lg flex items-center justify-center shrink-0">
                   {p.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -117,7 +81,7 @@ export function SupportChatWidget() {
                   <p className="text-accent font-black text-sm">{p.price}</p>
                   <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-md font-bold">{p.tag}</span>
                 </div>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full">
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full shrink-0">
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
@@ -140,7 +104,7 @@ export function SupportChatWidget() {
                 </div>
                 <div>
                   <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
-                  <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali</p>
+                  <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali 🇲🇱</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
@@ -169,7 +133,7 @@ export function SupportChatWidget() {
             </div>
           </CardHeader>
           
-          <CardContent className="flex-1 p-0 flex flex-col bg-muted/30">
+          <CardContent className="flex-1 p-0 flex flex-col bg-muted/30 overflow-hidden">
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-1">
                 {messages.map((m, i) => (

@@ -40,7 +40,7 @@ export const mamiChatFlow = ai.defineFlow(
         ${modeContext}
         
         - FORMAT PRODUITS (Obligatoire pour les suggestions en mode achat) :
-          Insère exactement ce bloc dans ta réponse si tu proposes des articles :
+          Insère exactement ce bloc dans ta réponse si tu proposes des articles (2 à 4 items max) :
           [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "50 000 FCFA", "tag": "Bon plan", "deal": false}]}]
         
         Historique de conversation :
