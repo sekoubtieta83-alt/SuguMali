@@ -8,7 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Le prompt est construit en JS pur pour éviter les erreurs de parsing Handlebars.
+ * Construction du prompt en JS pur pour éviter les erreurs de parsing.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -36,10 +36,11 @@ Directives :
 - Monnaie : FCFA uniquement.
 - Maximum 150 mots.
 
-Contexte : ${modeContext}
+Contexte actuel : ${modeContext}
 
-Si tu suggères des articles, termine TOUJOURS par ce bloc JSON exact :
-[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
+IMPORTANT (Format Produits) :
+Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exact :
+[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom Produit", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
@@ -48,11 +49,13 @@ Si tu suggères des articles, termine TOUJOURS par ce bloc JSON exact :
           role: m.role,
           content: [{ text: m.content }],
         })),
-        config: { temperature: 0.8 },
+        config: {
+          temperature: 0.8,
+        },
       });
 
       if (!response?.text) {
-        throw new Error("Gemini n'a pas renvoyé de réponse.");
+        throw new Error("Gemini n'a pas renvoyé de réponse valide.");
       }
 
       return response.text;

@@ -13,7 +13,7 @@ if (admin.apps.length === 0) {
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * L'utilisation de 'secrets' avec defineSecret résout l'erreur "internal".
+ * L'utilisation de 'secrets' est OBLIGATOIRE pour éviter l'erreur "internal".
  */
 export const mamiChat = onCall({ 
   cors: true,
@@ -35,7 +35,7 @@ export const mamiChat = onCall({
     return { success: true, response };
   } catch (error: any) {
     console.error('mamiChat error:', error);
-    // On renvoie un message gracieux
+    // On renvoie un message gracieux au lieu de faire planter le front
     return { 
       success: false,
       response: "Mami fait une petite pause technique. Je reviens tout de suite !",
