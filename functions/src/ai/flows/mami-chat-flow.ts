@@ -8,7 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Gère le nettoyage de l'historique pour Gemini (alternance des rôles).
+ * Gère le nettoyage de l'historique pour Gemini (le premier message DOIT être 'user').
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -25,17 +25,17 @@ export const mamiChatFlow = ai.defineFlow(
         return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider sur SuguMali ?";
       }
 
-      // Nettoyage de l'historique : le premier message doit être 'user'
+      // ✅ FIX : L'historique doit impérativement commencer par 'user'
       let cleanedMessages = [...input.messages];
       while (cleanedMessages.length > 0 && cleanedMessages[0].role !== 'user') {
         cleanedMessages.shift();
       }
 
-      // Alternance stricte des rôles pour éviter les erreurs de l'API Gemini
+      // ✅ FIX : Alternance stricte des rôles (user -> model -> user)
       const validMessages = cleanedMessages.reduce((acc: any[], msg) => {
         const last = acc[acc.length - 1];
         if (last && last.role === msg.role) {
-          // Si deux messages consécutifs ont le même rôle, on fusionne ou on ignore
+          // Si deux messages consécutifs ont le même rôle, on ignore le doublon
           return acc;
         }
         acc.push(msg);
