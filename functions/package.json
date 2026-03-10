@@ -17,7 +17,7 @@
     "firebase-functions": "^6.0.0",
     "genkit": "1.29.0",
     "@genkit-ai/ai": "1.29.0",
-    "@genkit-ai/google-genai": "1.29.0",
+    "@genkit-ai/googleai": "1.29.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

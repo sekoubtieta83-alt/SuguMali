@@ -8,7 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Construction du prompt en JS pur pour éviter les erreurs de parsing.
+ * Construction du prompt en JS pur pour éviter les erreurs de parsing Handlebars.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
