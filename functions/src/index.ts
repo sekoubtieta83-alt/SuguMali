@@ -1,16 +1,15 @@
-
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 
-// Initialisation sécurisée de l'admin
+// Initialisation de l'admin Firebase
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
 /**
  * Endpoint de chat pour Mami (Backend).
- * L'ajout de 'secrets' est OBLIGATOIRE pour accéder aux clés API dans Cloud Functions v2.
+ * L'utilisation de 'secrets' est cruciale pour éviter l'erreur "internal" liée aux clés d'API.
  */
 export const mamiChat = onCall({ 
   cors: true,
@@ -32,7 +31,7 @@ export const mamiChat = onCall({
     return { success: true, response };
   } catch (error: any) {
     console.error('mamiChat error:', error);
-    // On renvoie un message propre au client au lieu de laisser Firebase lever une erreur brute
+    // Renvoi d'un message gracieux en cas de problème serveur
     return { 
       success: false,
       response: "Mami fait une petite pause technique. Je reviens tout de suite !",
@@ -42,7 +41,7 @@ export const mamiChat = onCall({
 });
 
 /**
- * Vérification de l'état du backend.
+ * Vérification de l'état du service.
  */
 export const healthCheck = onCall((request) => {
   return {

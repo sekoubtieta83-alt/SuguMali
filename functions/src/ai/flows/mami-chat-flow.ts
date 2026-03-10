@@ -1,4 +1,3 @@
-
 import { ai } from '../mami-instance';
 import { z } from 'zod';
 
@@ -9,6 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
+ * Construction du prompt en JavaScript pur pour éviter les erreurs de parsing Handlebars.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -39,10 +39,9 @@ Directives :
 Contexte actuel : ${modeContext}
 
 IMPORTANT (Format Produits) :
-Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exact :
+Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exact à la fin de ton message :
 [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom Produit", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
-      // ✅ Utilisation de la string du modèle et construction JS pure pour éviter les erreurs de parsing
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
         system: systemInstruction,
