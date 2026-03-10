@@ -8,7 +8,7 @@ const MessageSchema = z.object({
 
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Le prompt est construit en JS pur pour éviter les erreurs de parsing Handlebars dans ai.generate().
+ * Le prompt est construit en JS pur pour éviter les erreurs de parsing Handlebars.
  */
 export const mamiChatFlow = ai.defineFlow(
   {
@@ -26,21 +26,20 @@ export const mamiChatFlow = ai.defineFlow(
       }
 
       const modeContext = input.mode === 'vendre'
-        ? "L'utilisateur souhaite VENDRE. Conseillez-le sur les prix en FCFA, la rédaction de l'annonce et la sécurité."
-        : "L'utilisateur souhaite ACHETER. Aidez-le à trouver des articles et proposez des prix en FCFA.";
+        ? "L'utilisateur souhaite VENDRE. Conseillez-le sur les prix en FCFA, la rédaction et la sécurité."
+        : "L'utilisateur souhaite ACHETER. Aidez-le à trouver des articles avec des prix en FCFA.";
 
       const systemInstruction = `Tu es Mami, l'assistante officielle de SuguMali 🇲🇱.
 Directives :
 - Ton amical, professionnel et direct.
 - Langue : Français uniquement.
 - Monnaie : FCFA uniquement.
-- Longueur : Maximum 150 mots.
+- Maximum 150 mots.
 
-Contexte actuel : ${modeContext}
+Contexte : ${modeContext}
 
-IMPORTANT (Format Produits) :
-Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exact à la fin de ton message :
-[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom Produit", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
+Si tu suggères des articles, termine TOUJOURS par ce bloc JSON exact :
+[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
@@ -49,13 +48,11 @@ Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exac
           role: m.role,
           content: [{ text: m.content }],
         })),
-        config: {
-          temperature: 0.8,
-        },
+        config: { temperature: 0.8 },
       });
 
       if (!response?.text) {
-        throw new Error("Gemini n'a pas renvoyé de réponse valide.");
+        throw new Error("Gemini n'a pas renvoyé de réponse.");
       }
 
       return response.text;
