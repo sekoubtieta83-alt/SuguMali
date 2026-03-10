@@ -8,26 +8,29 @@ if (admin.apps.length === 0) {
 
 /**
  * Endpoint de chat pour Mami (Backend).
+ * Utilise HttpsError de manière contrôlée pour un meilleur débogage.
  */
 export const mamiChat = onCall({ 
   cors: true,
   maxInstances: 10,
   timeoutSeconds: 60
 }, async (request) => {
-  try {
-    const { messages, mode } = request.data;
-    
-    if (!messages || !Array.isArray(messages)) {
-      throw new HttpsError('invalid-argument', 'Le format des messages est incorrect.');
-    }
+  const { messages, mode } = request.data;
+  
+  if (!messages || !Array.isArray(messages)) {
+    throw new HttpsError('invalid-argument', 'Le format des messages est incorrect.');
+  }
 
-    // Appel au flux Genkit avec le mode
+  try {
+    // Appel au flux Genkit
     const response = await mamiChatFlow({ messages, mode });
-    
     return { response };
   } catch (error: any) {
-    console.error('Erreur critique Mami Chat (Backend):', error);
-    throw new HttpsError('internal', error.message || 'Erreur interne du serveur.');
+    console.error('Erreur d\'exécution mamiChat Function:', error);
+    // On évite de lancer une exception brute pour ne pas avoir d'erreur "internal" opaque
+    return { 
+      response: "Je suis temporairement indisponible. Mes excuses pour ce contretemps technique." 
+    };
   }
 });
 
