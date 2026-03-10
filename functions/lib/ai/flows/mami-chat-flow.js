@@ -9,7 +9,7 @@ const MessageSchema = zod_1.z.object({
 });
 /**
  * Flux de conversation avec Mami optimisé pour SuguMali.
- * Construction du prompt en JS pur pour éviter les erreurs de parsing Handlebars.
+ * Gère le nettoyage de l'historique pour Gemini (le premier message DOIT être 'user').
  */
 exports.mamiChatFlow = mami_instance_1.ai.defineFlow({
     name: 'mamiChatFlow',
@@ -22,6 +22,24 @@ exports.mamiChatFlow = mami_instance_1.ai.defineFlow({
     try {
         if (!input.messages || input.messages.length === 0) {
             return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider sur SuguMali ?";
+        }
+        // ✅ FIX : L'historique doit impérativement commencer par 'user'
+        let cleanedMessages = [...input.messages];
+        while (cleanedMessages.length > 0 && cleanedMessages[0].role !== 'user') {
+            cleanedMessages.shift();
+        }
+        // ✅ FIX : Alternance stricte des rôles (user -> model -> user)
+        const validMessages = cleanedMessages.reduce((acc, msg) => {
+            const last = acc[acc.length - 1];
+            if (last && last.role === msg.role) {
+                // Si deux messages consécutifs ont le même rôle, on ignore le doublon
+                return acc;
+            }
+            acc.push(msg);
+            return acc;
+        }, []);
+        if (validMessages.length === 0) {
+            return "Bonjour ! Je suis Mami 🌸. Je suis prête à vous aider.";
         }
         const modeContext = input.mode === 'vendre'
             ? "L'utilisateur souhaite VENDRE. Conseillez-le sur les prix en FCFA, la rédaction et la sécurité."
@@ -41,7 +59,7 @@ Si tu suggères des articles, termine TOUJOURS ta réponse par ce bloc JSON exac
         const response = await mami_instance_1.ai.generate({
             model: 'googleai/gemini-1.5-flash',
             system: systemInstruction,
-            messages: input.messages.map(m => ({
+            messages: validMessages.map(m => ({
                 role: m.role,
                 content: [{ text: m.content }],
             })),
