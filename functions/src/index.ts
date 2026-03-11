@@ -33,7 +33,7 @@ export const mamiChat = onCall({
     const response = await mamiChatFlow({ messages, mode });
     
     // On garde la clé 'response' pour la compatibilité avec le client src/lib/mami.ts
-    return { success: true, response };
+    return { success: true, text: response, response };
   } catch (error: any) {
     console.error('mamiChat error:', error.message || error);
     // On renvoie un message gracieux au lieu de faire planter le front
