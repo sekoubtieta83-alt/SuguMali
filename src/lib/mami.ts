@@ -1,21 +1,26 @@
-
 'use client';
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 
-export type MamiMessage = {
+export interface MamiMessage {
   role: 'user' | 'model';
   content: string;
-};
+}
 
-export type MamiProduct = {
+export interface MamiProduct {
   emoji: string;
   name: string;
   price: string;
   tag: string;
   deal: boolean;
-};
+}
+
+export interface MamiResponse {
+  success: boolean;
+  response: string;
+  error?: string;
+}
 
 class MamiAssistant {
   private mode: 'acheter' | 'vendre' = 'acheter';
@@ -24,17 +29,52 @@ class MamiAssistant {
     this.mode = mode;
   }
 
-  getMode() {
-    return this.mode;
+  async chat(messages: MamiMessage[]): Promise<{ text: string; raw: string; products: { items: MamiProduct[] } | null }> {
+    // ✅ Nettoyage : Gemini impose que le premier message soit 'user'
+    let cleanMessages = [...messages];
+    while (cleanMessages.length > 0 && cleanMessages[0].role === 'model') {
+      cleanMessages.shift();
+    }
+
+    // Si après nettoyage il ne reste rien, on ne fait pas d'appel
+    if (cleanMessages.length === 0) {
+      return { text: "Bonjour ! Comment puis-je vous aider ?", raw: "", products: null };
+    }
+
+    const app = getApp();
+    const functions = getFunctions(app, 'us-central1');
+    const mamiChat = httpsCallable<{ messages: MamiMessage[]; mode: string }, MamiResponse>(
+      functions, 
+      'mamiChat'
+    );
+
+    try {
+      const result = await mamiChat({ 
+        messages: cleanMessages, 
+        mode: this.mode 
+      });
+
+      const raw = result.data.response;
+      
+      return {
+        text: this.cleanText(raw),
+        raw: raw,
+        products: this.parseProducts(raw),
+      };
+    } catch (error) {
+      console.error('Mami Assistant Error:', error);
+      throw error;
+    }
   }
 
   parseProducts(text: string): { items: MamiProduct[] } | null {
+    if (!text) return null;
     const match = text.match(/\[PRODUCTS:\s*(\{.*?\})\]/s);
     if (match) {
       try {
         return JSON.parse(match[1]);
       } catch (e) {
-        console.error('Failed to parse products JSON:', e);
+        console.error('Failed to parse products JSON from Mami:', e);
         return null;
       }
     }
@@ -42,33 +82,8 @@ class MamiAssistant {
   }
 
   cleanText(text: string): string {
+    if (!text) return "";
     return text.replace(/\[PRODUCTS:.*?\]/s, '').trim();
-  }
-
-  async chat(messages: MamiMessage[]) {
-    try {
-      const app = getApp();
-      // On spécifie explicitement la région pour correspondre au backend
-      const functions = getFunctions(app, 'us-central1');
-      const mamiChat = httpsCallable(functions, 'mamiChat');
-      
-      const result = await mamiChat({ 
-        messages, 
-        mode: this.mode 
-      });
-      
-      const data = result.data as { response: string; success: boolean };
-      const rawText = data.response;
-
-      return {
-        text: this.cleanText(rawText),
-        products: this.parseProducts(rawText),
-        raw: rawText
-      };
-    } catch (error) {
-      console.error('Mami chat error:', error);
-      throw error;
-    }
   }
 }
 
