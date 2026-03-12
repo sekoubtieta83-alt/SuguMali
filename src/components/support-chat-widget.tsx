@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, X, Send, Loader2, Sparkles, ExternalLink } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, ExternalLink, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -114,13 +114,29 @@ export function SupportChatWidget() {
                   <AvatarFallback className="bg-white/20 text-white">M</AvatarFallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
+                  <CardTitle className="text-lg font-black leading-none">Assistante Mami</CardTitle>
                   <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali 🇲🇱</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
-                <X className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsOpen(false)} 
+                  className="text-white hover:bg-white/10 rounded-xl font-bold text-xs h-8"
+                >
+                  <LogOut className="h-3 w-3 mr-1" />
+                  Quitter
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsOpen(false)} 
+                  className="text-white hover:bg-white/10 rounded-full h-8 w-8"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           
