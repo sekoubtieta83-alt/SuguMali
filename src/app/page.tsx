@@ -230,11 +230,9 @@ export default function HomePage() {
                 <Button
                   type="button"
                   onClick={handleSearch}
-                  className="h-10 sm:h-11 px-4 rounded-full bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none flex items-center gap-1.5 shrink-0 ml-2 text-xs font-bold"
+                  className="h-10 sm:h-11 w-10 sm:w-11 p-0 rounded-full bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none flex items-center justify-center shrink-0 ml-2"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Rechercher</span>
-                  <Search className="h-4 w-4 sm:hidden" />
+                  <Search className="h-5 w-5" />
                 </Button>
               </div>
               {/* ✅ Badge "Powered by Mami" */}
