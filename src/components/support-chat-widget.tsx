@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, X, Send, Loader2, Sparkles, ExternalLink } from 'lucide-react';
@@ -11,6 +12,7 @@ import MamiAssistant, { type MamiMessage } from '@/lib/mami';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function SupportChatWidget() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const mamiImage = PlaceHolderImages.find(img => img.id === 'mami')?.imageUrl;
   
@@ -23,11 +25,18 @@ export function SupportChatWidget() {
   
   const mami = useMemo(() => new MamiAssistant(), []);
 
+  // Masquer Mami sur le tableau de bord
+  const isDashboard = pathname?.startsWith('/dashboard');
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isLoading]);
+
+  if (isDashboard) {
+    return null;
+  }
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
