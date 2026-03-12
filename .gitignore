@@ -41,3 +41,6 @@ project.tar.gz
 *.zip
 *.gz
 *.tar
+.env
+.env.local
+functions/.env
