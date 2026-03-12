@@ -215,7 +215,7 @@ export default function HomePage() {
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
 
-            {/* ✅ Barre de recherche "Powered by Mami" */}
+            {/* ✅ Barre de recherche épurée */}
             <div className="mt-6 sm:mt-10 max-w-2xl mx-auto">
               <div className="flex items-center h-[50px] sm:h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50">
                 <Sparkles className="h-5 w-5 text-accent/50 shrink-0 mr-3" />
@@ -234,13 +234,6 @@ export default function HomePage() {
                 >
                   <Search className="h-5 w-5" />
                 </Button>
-              </div>
-              {/* ✅ Badge "Powered by Mami" */}
-              <div className="flex items-center justify-center gap-1.5 mt-2.5">
-                <span className="text-[11px] text-muted-foreground/50">Recherche propulsée par</span>
-                <span className="flex items-center gap-1 text-[11px] font-black text-accent/70">
-                  <Sparkles className="h-3 w-3" /> Mami IA
-                </span>
               </div>
             </div>
           </div>
