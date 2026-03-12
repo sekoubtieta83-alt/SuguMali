@@ -115,7 +115,7 @@ export function SupportChatWidget() {
                 </Avatar>
                 <div>
                   <CardTitle className="text-lg font-black leading-none">Assistante Mami</CardTitle>
-                  <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali 🇲🇱</p>
+                  <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
