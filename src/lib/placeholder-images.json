@@ -25,6 +25,12 @@
       "imageHint": "person profile"
     },
     {
+      "id": "mami",
+      "description": "Mami - SuguMali Assistant",
+      "imageUrl": "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "imageHint": "african woman smiling"
+    },
+    {
       "id": "post1",
       "description": "A beautiful landscape",
       "imageUrl": "https://images.unsplash.com/photo-1576068036336-328de1be1f2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzAwMDgzODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -6,10 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, X, Send, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import MamiAssistant, { type MamiMessage } from '@/lib/mami';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const mamiImage = PlaceHolderImages.find(img => img.id === 'mami')?.imageUrl;
+  
   const [messages, setMessages] = useState<MamiMessage[]>([
     { role: 'model', content: "Bonjour ! Je suis Mami 🌸, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?" }
   ]);
@@ -20,7 +25,6 @@ export function SupportChatWidget() {
   const mami = useMemo(() => new MamiAssistant(), []);
 
   useEffect(() => {
-    // Par défaut, Mami reste en mode polyvalent (acheter par défaut dans le flow)
     mami.setMode('acheter');
   }, [mami]);
 
@@ -59,16 +63,24 @@ export function SupportChatWidget() {
 
     return (
       <div className={cn("flex flex-col gap-2 mb-4", message.role === 'user' ? "items-end" : "items-start")}>
-        <div className={cn(
-          "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm leading-relaxed",
-          message.role === 'user' 
-            ? "bg-accent text-white rounded-tr-none" 
-            : "bg-card text-foreground rounded-tl-none border border-border/50"
-        )}>
-          {text}
+        <div className="flex items-end gap-2">
+          {message.role === 'model' && (
+            <Avatar className="h-6 w-6 border border-border">
+              <AvatarImage src={mamiImage} alt="Mami" />
+              <AvatarFallback>M</AvatarFallback>
+            </Avatar>
+          )}
+          <div className={cn(
+            "max-w-[85%] p-3 rounded-2xl text-sm shadow-sm leading-relaxed",
+            message.role === 'user' 
+              ? "bg-accent text-white rounded-tr-none" 
+              : "bg-card text-foreground rounded-tl-none border border-border/50"
+          )}>
+            {text}
+          </div>
         </div>
         {productsData?.items && (
-          <div className="grid grid-cols-1 gap-2 w-full max-w-[85%]">
+          <div className="grid grid-cols-1 gap-2 w-full max-w-[85%] ml-8">
             {productsData.items.map((p, idx) => (
               <div key={idx} className="bg-white dark:bg-zinc-900 border border-border/50 rounded-xl p-3 shadow-sm flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
                 <div className="text-2xl h-12 w-12 bg-muted rounded-lg flex items-center justify-center shrink-0">
@@ -97,9 +109,10 @@ export function SupportChatWidget() {
           <CardHeader className="bg-accent text-white p-4">
             <div className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+                <Avatar className="h-10 w-10 border-2 border-white/20">
+                  <AvatarImage src={mamiImage} alt="Mami" className="object-cover" />
+                  <AvatarFallback className="bg-white/20 text-white">M</AvatarFallback>
+                </Avatar>
                 <div>
                   <CardTitle className="text-lg font-black">Assistante Mami</CardTitle>
                   <p className="text-[10px] opacity-80 font-medium">Spécialiste SuguMali 🇲🇱</p>
@@ -153,15 +166,17 @@ export function SupportChatWidget() {
       ) : (
         <Button 
           onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 flex items-center justify-center p-0 group transition-all hover:scale-110 active:scale-95"
+          className="h-14 w-14 rounded-full bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 flex items-center justify-center p-0 group transition-all hover:scale-110 active:scale-95 overflow-hidden"
         >
-          <div className="relative">
+          {mamiImage ? (
+             <img src={mamiImage} alt="Mami" className="w-full h-full object-cover" />
+          ) : (
             <MessageCircle className="h-7 w-7" />
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-            </span>
-          </div>
+          )}
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+          </span>
         </Button>
       )}
     </div>
