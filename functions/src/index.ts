@@ -13,7 +13,7 @@ if (admin.apps.length === 0) {
 
 /**
  * Point d'entrée HTTPS pour le chat avec Mami.
- * Utilise les Secrets Firebase pour protéger la clé API.
+ * Utilise les Secrets Firebase pour protéger la clé API et éviter l'erreur "internal".
  */
 export const mamiChat = onCall({ 
   cors: true,
@@ -29,23 +29,23 @@ export const mamiChat = onCall({
       throw new HttpsError('invalid-argument', 'Le format des messages est invalide.');
     }
 
-    // Appel au flux Genkit
+    // Appel au flux mamiChatFlow robuste
     const responseText = await mamiChatFlow({ messages, mode });
     
     // On renvoie un objet structuré pour le frontend
     return { 
       success: true, 
       text: responseText,
-      response: responseText // Pour la compatibilité avec certains clients
+      response: responseText // Pour la compatibilité ascendante
     };
   } catch (error: any) {
-    console.error('Erreur mamiChat:', error.message || error);
+    console.error('Erreur critique mamiChat:', error.message || error);
     
     // On renvoie un message gracieux au lieu de faire planter l'interface
     return { 
       success: false, 
-      text: "Mami fait une petite pause technique. Je reviens tout de suite !",
-      response: "Mami fait une petite pause technique. Je reviens tout de suite !",
+      text: "Mami fait une petite pause technique pour mieux vous servir. Je reviens dans un instant !",
+      response: "Mami fait une petite pause technique pour mieux vous servir. Je reviens dans un instant !",
       error: error.message 
     };
   }
@@ -58,6 +58,7 @@ export const healthCheck = onCall(() => {
   return {
     status: 'online',
     timestamp: new Date().toISOString(),
-    service: 'Mami AI Assistant'
+    service: 'Mami AI Assistant',
+    engine: 'Gemini 1.5 Flash'
   };
 });
