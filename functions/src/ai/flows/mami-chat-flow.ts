@@ -1,11 +1,17 @@
+/**
+ * @fileOverview Flux de discussion avec l'assistante Mami.
+ * 
+ * - mamiChatFlow : Gère la logique de conversation avec Gemini.
+ */
+
 export async function mamiChatFlow(input: {
   messages: { role: 'user' | 'model'; content: string }[];
   mode?: 'acheter' | 'vendre';
-}): Promise<string> {
-  const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+}, apiKey: string): Promise<string> {
   if (!apiKey) throw new Error('Clé API manquante');
 
   let msgs = [...input.messages];
+  // Nettoyage de l'historique pour Gemini
   while (msgs.length > 0 && msgs[0].role === 'model') msgs.shift();
   msgs = msgs.reduce((acc: typeof msgs, msg) => {
     const last = acc[acc.length - 1];

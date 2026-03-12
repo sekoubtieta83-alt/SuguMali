@@ -3,62 +3,28 @@ import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 
-// Définition du secret pour la clé API Google AI
 const GOOGLE_GENAI_API_KEY = defineSecret('GOOGLE_GENAI_API_KEY');
 
-// Initialisation de l'admin Firebase (idempotent)
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
+if (!admin.apps.length) admin.initializeApp();
 
-/**
- * Point d'entrée HTTPS pour le chat avec Mami.
- * Utilise les Secrets Firebase pour protéger la clé API et éviter l'erreur "internal".
- */
-export const mamiChat = onCall({ 
+export const mamiChat = onCall({
   cors: true,
-  maxInstances: 10,
-  timeoutSeconds: 60,
   region: 'us-central1',
-  secrets: [GOOGLE_GENAI_API_KEY] 
+  secrets: [GOOGLE_GENAI_API_KEY],
+  timeoutSeconds: 30,        // ✅ Réduit de 60 à 30
+  memory: '512MiB',          // ✅ Plus de RAM = plus rapide
 }, async (request) => {
   try {
     const { messages, mode } = request.data;
+    if (!messages?.length) throw new HttpsError('invalid-argument', 'Messages requis');
     
-    if (!messages || !Array.isArray(messages)) {
-      throw new HttpsError('invalid-argument', 'Le format des messages est invalide.');
-    }
-
-    // Appel au flux mamiChatFlow robuste
-    const responseText = await mamiChatFlow({ messages, mode });
+    // Récupération de la clé API via .value()
+    const apiKey = GOOGLE_GENAI_API_KEY.value();
     
-    // On renvoie un objet structuré pour le frontend
-    return { 
-      success: true, 
-      text: responseText,
-      response: responseText // Pour la compatibilité ascendante
-    };
+    const response = await mamiChatFlow({ messages, mode: mode || 'acheter' }, apiKey);
+    return { success: true, text: response, response };
   } catch (error: any) {
-    console.error('Erreur critique mamiChat:', error.message || error);
-    
-    // On renvoie un message gracieux au lieu de faire planter l'interface
-    return { 
-      success: false, 
-      text: "Mami fait une petite pause technique pour mieux vous servir. Je reviens dans un instant !",
-      response: "Mami fait une petite pause technique pour mieux vous servir. Je reviens dans un instant !",
-      error: error.message 
-    };
+    console.error('mamiChat error:', error.message || error);
+    throw new HttpsError('internal', error.message || 'Erreur interne');
   }
-});
-
-/**
- * Vérification simple de l'état du service.
- */
-export const healthCheck = onCall(() => {
-  return {
-    status: 'online',
-    timestamp: new Date().toISOString(),
-    service: 'Mami AI Assistant',
-    engine: 'Gemini 1.5 Flash'
-  };
 });
