@@ -218,7 +218,7 @@ export default function HomePage() {
             {/* ✅ Barre de recherche "Powered by Mami" */}
             <div className="mt-6 sm:mt-10 max-w-2xl mx-auto">
               <div className="flex items-center h-[50px] sm:h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50">
-                <Search className="h-5 w-5 text-muted-foreground/50 shrink-0 mr-3" />
+                <Sparkles className="h-5 w-5 text-accent/50 shrink-0 mr-3" />
                 <input
                   type="text"
                   value={searchValue}
