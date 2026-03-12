@@ -22,11 +22,8 @@ export async function mamiChatFlow(input: {
 
   const sys = `Tu es Mami, assistante SuguMali 🇲🇱. Réponds toujours en français, complètement. Utilise FCFA. Max 200 mots.\n${ctx}\nSi tu suggères des articles, termine par :\n[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
-  // Utilisation de Gemini 2.0 Flash pour une rapidité et une intelligence accrues
-  const model = 'gemini-2.0-flash';
-
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -37,6 +34,7 @@ export async function mamiChatFlow(input: {
           temperature: 0.7,
           maxOutputTokens: 1024,
           candidateCount: 1,
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       }),
     }
@@ -49,7 +47,6 @@ export async function mamiChatFlow(input: {
   }
 
   const data = await res.json();
-  console.log('Gemini generation finished with reason:', data.candidates?.[0]?.finishReason);
-  
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, je n'ai pas pu générer de réponse pour le moment.";
+  console.log('Finish reason:', data.candidates?.[0]?.finishReason);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
 }
