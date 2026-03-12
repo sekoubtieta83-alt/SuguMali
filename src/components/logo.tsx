@@ -8,6 +8,17 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
+      <style>
+        {`
+          @keyframes cart-move {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(0.8px); }
+          }
+          .cart-animate {
+            animation: cart-move 2s ease-in-out infinite;
+          }
+        `}
+      </style>
       <defs>
         {/* Dégradé pour le socle orange pour garder un peu de profondeur */}
         <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -19,8 +30,8 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       {/* Socle arrondi orange */}
       <rect width="32" height="32" rx="10" fill="url(#orangeGradient)" />
       
-      {/* Structure du chariot - Entièrement Blanche */}
-      <g>
+      {/* Structure du chariot - Entièrement Blanche avec animation */}
+      <g className="cart-animate">
         {/* Cadre principal et poignée */}
         <path
           d="M6 8L8 8L9.5 19H23L25 10H11"
