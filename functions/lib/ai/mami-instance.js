@@ -7,7 +7,8 @@ exports.ai = (0, genkit_1.genkit)({
     plugins: [
         (0, googleai_1.googleAI)({
             apiKey: process.env.GOOGLE_GENAI_API_KEY,
+            apiVersion: 'v1',
         }),
     ],
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.0-flash',
 });
