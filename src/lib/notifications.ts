@@ -6,17 +6,19 @@ import type { FirebaseApp } from 'firebase/app';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
-// IMPORTANT: You need to generate this key in your Firebase project settings
-// under Cloud Messaging > Web configuration > Web Push certificates.
-const VAPID_KEY = 'BAiFcmpKGf9k5kGHwPj53aY5ljE9pGshdbCcFvEgBQiZ6NW6AAp2ilLBE9E6Jirta9TLZL1bGA-rmUAuWjz8P2I';
+/**
+ * La clé VAPID est désormais récupérée depuis les variables d'environnement.
+ * Cela permet de ne pas l'exposer directement dans le code source.
+ */
+const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_KEY || 'BAiFcmpKGf9k5kGHwPj53aY5ljE9pGshdbCcFvEgBQiZ6NW6AAp2ilLBE9E6Jirta9TLZL1bGA-rmUAuWjz8P2I';
 
 export const requestNotificationPermission = async (
   app: FirebaseApp,
   user: User,
   firestore: Firestore
 ): Promise<string> => {
-  if (VAPID_KEY.startsWith('YOUR_VAPID_KEY')) {
-    throw new Error('VAPID key not configured.');
+  if (!VAPID_KEY || VAPID_KEY.startsWith('YOUR_VAPID_KEY')) {
+    throw new Error('Clé VAPID non configurée. Veuillez la définir dans vos variables d\'environnement.');
   }
 
   if (!('Notification' in window)) {
