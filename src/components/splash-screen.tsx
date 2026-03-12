@@ -7,18 +7,22 @@ import { cn } from '@/lib/utils';
 export function SplashScreen() {
   const [status, setStatus] = useState<'loading' | 'fading' | 'hidden'>('loading');
   const [showText, setShowText] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     // Bloquer le scroll pendant le chargement
     document.body.style.overflow = 'hidden';
 
-    // Animation du texte très rapide
-    const textTimer = setTimeout(() => setShowText(true), 300);
+    // Animation du texte
+    const textTimer = setTimeout(() => setShowText(true), 200);
     
+    // Animation de la barre de progression (0 à 100% en 1.5s)
+    const progressTimer = setTimeout(() => setProgress(100), 100);
+
     // Début de la disparition après 1.5s
     const fadeTimer = setTimeout(() => setStatus('fading'), 1500);
     
-    // Suppression complète après 2s (fin de la transition)
+    // Suppression complète après 2s
     const hiddenTimer = setTimeout(() => {
       setStatus('hidden');
       document.body.style.overflow = 'unset';
@@ -26,6 +30,7 @@ export function SplashScreen() {
 
     return () => {
       clearTimeout(textTimer);
+      clearTimeout(progressTimer);
       clearTimeout(fadeTimer);
       clearTimeout(hiddenTimer);
       document.body.style.overflow = 'unset';
@@ -42,22 +47,27 @@ export function SplashScreen() {
       <div className="flex flex-col items-center gap-6">
         <div className="relative">
           {/* Logo avec animation pulsée */}
-          <div className="relative z-10 animate-in fade-in zoom-in duration-700">
+          <div className="relative z-10 animate-in fade-in zoom-in duration-500">
             <Logo className="h-24 w-24 sm:h-32 sm:w-32 animate-pulse" />
           </div>
-          {/* Lueur subtile orange sur fond blanc */}
-          <div className="absolute inset-0 bg-primary/10 blur-[60px] rounded-full animate-pulse -z-10" />
         </div>
         
         {/* Texte animé SuguMali */}
         <div className={cn(
-          "transition-all duration-700 transform flex flex-col items-center gap-1",
+          "transition-all duration-500 transform flex flex-col items-center gap-1",
           showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         )}>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-foreground">
             Sugu<span className="text-accent">Mali</span>
           </h1>
-          <div className="h-1 w-8 bg-accent rounded-full animate-bounce mt-1" />
+          
+          {/* Barre de progression orange */}
+          <div className="w-40 sm:w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-4">
+            <div 
+              className="h-full bg-accent transition-all duration-[1500ms] ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
       </div>
     </div>
