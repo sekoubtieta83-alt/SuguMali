@@ -29,8 +29,8 @@ export async function mamiChatFlow(input: {
   }
 
   const modeContext = input.mode === 'vendre'
-    ? "L'utilisateur souhaite VENDRE. Donne des conseils précis sur la fixation du prix en FCFA, la rédaction d'une annonce attractive, l'importance de belles photos et la sécurité lors de la transaction physique."
-    : "L'utilisateur souhaite ACHETER ou pose une question générale. Aide-le à trouver les meilleurs articles et suggère des produits avec leurs prix en FCFA.";
+    ? "L'utilisateur souhaite VENDRE. Conseille prix FCFA, rédaction annonce, photos, sécurité transaction."
+    : "L'utilisateur souhaite ACHETER ou pose une question générale. Réponds complètement. Suggère articles avec prix FCFA si pertinent.";
 
   const systemInstruction = `Tu es Mami, l'assistante officielle et bienveillante de SuguMali 🇲🇱.
 Ton but est d'aider les Maliens à faire de bonnes affaires en toute sécurité.
@@ -47,7 +47,7 @@ Contexte actuel : ${modeContext}
 Si tu suggères des articles ou des bons plans, termine TOUJOURS ton message par ce bloc JSON exact pour l'affichage :
 [PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom du produit", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
 
-  // Appel direct à l'API REST pour une fiabilité maximale dans l'environnement Functions
+  // Appel direct à l'API REST pour une fiabilité maximale
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
@@ -76,11 +76,9 @@ Si tu suggères des articles ou des bons plans, termine TOUJOURS ton message par
 
   const data = await res.json();
   
-  // Log du finishReason pour le débogage en production
+  // Log du finishReason pour surveiller les coupures (MAX_TOKENS) ou la modération (SAFETY)
   const finishReason = data.candidates?.[0]?.finishReason;
-  if (finishReason !== 'STOP') {
-    console.log('Gemini generation finished with reason:', finishReason);
-  }
+  console.log('Gemini generation finished with reason:', finishReason);
   
   const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
   
