@@ -16,17 +16,17 @@ export function SplashScreen() {
     // Animation du texte
     const textTimer = setTimeout(() => setShowText(true), 200);
     
-    // Animation de la barre de progression (0 à 100% en 1.5s)
+    // Animation de la barre de progression (0 à 100% en 2.5s)
     const progressTimer = setTimeout(() => setProgress(100), 100);
 
-    // Début de la disparition après 1.5s
-    const fadeTimer = setTimeout(() => setStatus('fading'), 1500);
+    // Début de la disparition après 2.5s
+    const fadeTimer = setTimeout(() => setStatus('fading'), 2500);
     
-    // Suppression complète après 2s
+    // Suppression complète après 3s
     const hiddenTimer = setTimeout(() => {
       setStatus('hidden');
       document.body.style.overflow = 'unset';
-    }, 2000);
+    }, 3000);
 
     return () => {
       clearTimeout(textTimer);
@@ -61,10 +61,10 @@ export function SplashScreen() {
             Sugu<span className="text-accent">Mali</span>
           </h1>
           
-          {/* Barre de progression orange */}
+          {/* Barre de progression orange - Durée synchronisée sur 2.5s */}
           <div className="w-40 sm:w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-4">
             <div 
-              className="h-full bg-accent transition-all duration-[1500ms] ease-out"
+              className="h-full bg-accent transition-all duration-[2500ms] ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
