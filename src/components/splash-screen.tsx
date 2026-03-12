@@ -13,16 +13,16 @@ export function SplashScreen() {
     // Bloquer le scroll pendant le chargement
     document.body.style.overflow = 'hidden';
 
-    // Animation du texte
-    const textTimer = setTimeout(() => setShowText(true), 200);
-    
-    // Animation de la barre de progression (0 à 100% en 2.5s)
-    const progressTimer = setTimeout(() => setProgress(100), 100);
+    // Déclencher le remplissage de la barre presque immédiatement (0 à 100% en 2.4s)
+    const progressTimer = setTimeout(() => setProgress(100), 50);
 
-    // Début de la disparition après 2.5s
+    // Apparition du nom SuguMali après un délai (800ms) pour qu'il arrive APRES le logo et la barre
+    const textTimer = setTimeout(() => setShowText(true), 800);
+
+    // Début de la disparition du splash screen (2.5s)
     const fadeTimer = setTimeout(() => setStatus('fading'), 2500);
     
-    // Suppression complète après 3s
+    // Suppression complète du composant (3.0s)
     const hiddenTimer = setTimeout(() => {
       setStatus('hidden');
       document.body.style.overflow = 'unset';
@@ -45,29 +45,27 @@ export function SplashScreen() {
       status === 'fading' ? "opacity-0 pointer-events-none" : "opacity-100"
     )}>
       <div className="flex flex-col items-center gap-6">
-        <div className="relative">
-          {/* Logo avec animation pulsée */}
-          <div className="relative z-10 animate-in fade-in zoom-in duration-500">
-            <Logo className="h-24 w-24 sm:h-32 sm:w-32 animate-pulse" />
-          </div>
+        {/* LOGO - Apparaît immédiatement avec une animation scale/fade */}
+        <div className="relative z-10 animate-in fade-in zoom-in duration-500">
+          <Logo className="h-24 w-24 sm:h-32 sm:w-32 animate-pulse" />
+        </div>
+
+        {/* BARRE DE PROGRESSION - Apparaît en même temps que le logo */}
+        <div className="w-40 sm:w-48 h-1.5 bg-muted rounded-full overflow-hidden animate-in fade-in duration-700">
+          <div 
+            className="h-full bg-accent transition-all duration-[2400ms] ease-out"
+            style={{ width: `${progress}%` }}
+          />
         </div>
         
-        {/* Texte animé SuguMali */}
+        {/* NOM DE L'APPLICATION - Apparition décalée après le logo et la barre */}
         <div className={cn(
-          "transition-all duration-500 transform flex flex-col items-center gap-1",
+          "transition-all duration-1000 transform",
           showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         )}>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-foreground">
             Sugu<span className="text-accent">Mali</span>
           </h1>
-          
-          {/* Barre de progression orange - Durée synchronisée sur 2.5s */}
-          <div className="w-40 sm:w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-4">
-            <div 
-              className="h-full bg-accent transition-all duration-[2500ms] ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
         </div>
       </div>
     </div>
