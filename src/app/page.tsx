@@ -211,7 +211,7 @@ export default function HomePage() {
         {/* Hero + barre de recherche */}
         <section className="relative pt-32 sm:pt-48 pb-10 sm:pb-16 px-6 sm:px-10 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-            <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70">
+            <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
 
