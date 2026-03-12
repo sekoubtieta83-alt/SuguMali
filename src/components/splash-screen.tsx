@@ -12,17 +12,17 @@ export function SplashScreen() {
     // Bloquer le scroll pendant le chargement
     document.body.style.overflow = 'hidden';
 
-    // Animation du texte après 0.8s
-    const textTimer = setTimeout(() => setShowText(true), 800);
+    // Animation du texte très rapide
+    const textTimer = setTimeout(() => setShowText(true), 300);
     
-    // Début de la disparition après 3.5s
-    const fadeTimer = setTimeout(() => setStatus('fading'), 3500);
+    // Début de la disparition après 1.5s
+    const fadeTimer = setTimeout(() => setStatus('fading'), 1500);
     
-    // Suppression complète après 4.5s (fin de la transition)
+    // Suppression complète après 2s (fin de la transition)
     const hiddenTimer = setTimeout(() => {
       setStatus('hidden');
       document.body.style.overflow = 'unset';
-    }, 4500);
+    }, 2000);
 
     return () => {
       clearTimeout(textTimer);
@@ -36,27 +36,28 @@ export function SplashScreen() {
 
   return (
     <div className={cn(
-      "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background transition-opacity duration-1000 ease-in-out",
+      "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white transition-opacity duration-500 ease-in-out",
       status === 'fading' ? "opacity-0 pointer-events-none" : "opacity-100"
     )}>
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-col items-center gap-6">
         <div className="relative">
-          {/* Logo avec animation pulsée et lueur stylisée */}
-          <div className="relative z-10 animate-in fade-in zoom-in duration-1000">
-            <Logo className="h-28 w-28 sm:h-36 sm:w-36 animate-pulse" />
+          {/* Logo avec animation pulsée */}
+          <div className="relative z-10 animate-in fade-in zoom-in duration-700">
+            <Logo className="h-24 w-24 sm:h-32 sm:w-32 animate-pulse" />
           </div>
-          <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse -z-10" />
+          {/* Lueur subtile orange sur fond blanc */}
+          <div className="absolute inset-0 bg-primary/10 blur-[60px] rounded-full animate-pulse -z-10" />
         </div>
         
         {/* Texte animé SuguMali */}
         <div className={cn(
-          "transition-all duration-1000 transform flex flex-col items-center gap-2",
-          showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          "transition-all duration-700 transform flex flex-col items-center gap-1",
+          showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         )}>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-foreground">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-foreground">
             Sugu<span className="text-accent">Mali</span>
           </h1>
-          <div className="h-1 w-12 bg-accent rounded-full animate-bounce mt-2" />
+          <div className="h-1 w-8 bg-accent rounded-full animate-bounce mt-1" />
         </div>
       </div>
     </div>
