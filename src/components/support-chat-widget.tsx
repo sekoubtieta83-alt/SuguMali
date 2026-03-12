@@ -100,7 +100,7 @@ export function SupportChatWidget() {
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end">
       {isOpen ? (
-        <Card className="w-[90vw] sm:w-[380px] h-[550px] shadow-2xl rounded-3xl overflow-hidden border-none flex flex-col animate-in slide-in-from-bottom-5">
+        <Card className="w-[90vw] sm:w-[380px] h-[480px] shadow-2xl rounded-3xl overflow-hidden border-none flex flex-col animate-in slide-in-from-bottom-5">
           <CardHeader className="bg-accent text-white p-4">
             <div className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-3">
