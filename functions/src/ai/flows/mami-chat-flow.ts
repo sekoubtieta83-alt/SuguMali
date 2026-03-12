@@ -1,4 +1,3 @@
-
 export async function mamiChatFlow(input: {
   messages: { role: 'user' | 'model'; content: string }[];
   mode?: 'acheter' | 'vendre';

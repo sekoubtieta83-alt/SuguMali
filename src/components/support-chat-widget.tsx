@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -23,10 +22,6 @@ export function SupportChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const mami = useMemo(() => new MamiAssistant(), []);
-
-  useEffect(() => {
-    mami.setMode('acheter');
-  }, [mami]);
 
   useEffect(() => {
     if (scrollRef.current) {
