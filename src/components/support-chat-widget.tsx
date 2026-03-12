@@ -16,7 +16,7 @@ export function SupportChatWidget() {
   const mamiImage = PlaceHolderImages.find(img => img.id === 'mami')?.imageUrl;
   
   const [messages, setMessages] = useState<MamiMessage[]>([
-    { role: 'model', content: "Bonjour ! Je suis Mami 🌸, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?" }
+    { role: 'model', content: "Bonjour ! Je suis Mami, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

@@ -15,7 +15,7 @@
     {
       "id": "avatar3",
       "description": "User avatar 3",
-      "imageUrl": "https://images.unsplash.com/photo-1621624666561-84d0107001dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc3MDAyMjI1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1621624666561-84d0107001dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc3MDAyMjI1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man smiling"
     },
     {
@@ -28,12 +28,12 @@
       "id": "mami",
       "description": "Mami - SuguMali Assistant",
       "imageUrl": "https://images.unsplash.com/photo-1531123897727-8f129e16fd3c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-      "imageHint": "african woman smiling"
+      "imageHint": "young beautiful african woman smiling"
     },
     {
       "id": "post1",
       "description": "A beautiful landscape",
-      "imageUrl": "https://images.unsplash.com/photo-1576068036336-328de1be1f2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzAwMDgzODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1576068036336-328de1be1f2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw8fHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzAwMDgzODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "mountain landscape"
     },
     {

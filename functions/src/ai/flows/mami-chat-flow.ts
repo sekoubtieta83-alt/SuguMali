@@ -1,3 +1,4 @@
+
 export async function mamiChatFlow(input: {
   messages: { role: 'user' | 'model'; content: string }[];
   mode?: 'acheter' | 'vendre';
@@ -20,7 +21,7 @@ export async function mamiChatFlow(input: {
     return acc;
   }, []);
 
-  if (msgs.length === 0) return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider ?";
+  if (msgs.length === 0) return "Bonjour ! Je suis Mami. Comment puis-je vous aider ?";
 
   const ctx = input.mode === 'vendre'
     ? "L'utilisateur veut VENDRE. Conseille prix FCFA, rédaction annonce, photos, sécurité transaction."
@@ -32,7 +33,7 @@ export async function mamiChatFlow(input: {
       ).join('\n')}\nSi pertinentes, utilise leur ID dans le bloc PRODUCTS avec sponsored:true.`
     : '';
 
-  const sys = `Tu es Mami 🌸, l'assistante intelligente de SuguMali 🇲🇱 — la plus grande communauté de commerce local au Mali.
+  const sys = `Tu es Mami, l'assistante intelligente de SuguMali 🇲🇱 — la plus grande communauté de commerce local au Mali.
 
 RÈGLES ABSOLUES :
 - Réponds TOUJOURS en français, avec chaleur et naturel
