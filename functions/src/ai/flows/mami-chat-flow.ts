@@ -1,17 +1,17 @@
-/**
- * @fileOverview Flux de discussion avec l'assistante Mami.
- * 
- * - mamiChatFlow : Gère la logique de conversation avec Gemini.
- */
-
 export async function mamiChatFlow(input: {
   messages: { role: 'user' | 'model'; content: string }[];
   mode?: 'acheter' | 'vendre';
+  sponsoredAnnonces?: Array<{
+    id: string;
+    titre: string;
+    prix: string;
+    categorie: string;
+    localisation: string;
+  }>;
 }, apiKey: string): Promise<string> {
   if (!apiKey) throw new Error('Clé API manquante');
 
   let msgs = [...input.messages];
-  // Nettoyage de l'historique pour Gemini
   while (msgs.length > 0 && msgs[0].role === 'model') msgs.shift();
   msgs = msgs.reduce((acc: typeof msgs, msg) => {
     const last = acc[acc.length - 1];
@@ -23,13 +23,37 @@ export async function mamiChatFlow(input: {
   if (msgs.length === 0) return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider ?";
 
   const ctx = input.mode === 'vendre'
-    ? "Utilisateur veut VENDRE. Conseille prix FCFA, rédaction annonce, photos, sécurité transaction."
-    : "Utilisateur veut ACHETER ou pose une question générale. Réponds complètement. Suggère articles avec prix FCFA si pertinent.";
+    ? "L'utilisateur veut VENDRE. Conseille prix FCFA, rédaction annonce, photos, sécurité transaction."
+    : "L'utilisateur veut ACHETER ou pose une question. Réponds complètement. Suggère articles avec prix FCFA si pertinent.";
 
-  const sys = `Tu es Mami, assistante SuguMali 🇲🇱. Réponds toujours en français, complètement. Utilise FCFA. Max 200 mots.\n${ctx}\nSi tu suggères des articles, termine par :\n[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
+  const sponsoredCtx = input.sponsoredAnnonces?.length
+    ? `\nANNONCES SPONSORISÉES PRIORITAIRES :\n${input.sponsoredAnnonces.map(a =>
+        `- ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`
+      ).join('\n')}\nSi pertinentes, utilise leur ID dans le bloc PRODUCTS avec sponsored:true.`
+    : '';
+
+  const sys = `Tu es Mami 🌸, l'assistante intelligente de SuguMali 🇲🇱 — la plus grande communauté de commerce local au Mali.
+
+RÈGLES ABSOLUES :
+- Réponds TOUJOURS en français, avec chaleur et naturel
+- Utilise uniquement les prix en FCFA
+- Maximum 180 mots par réponse
+- Tu connais le marché malien (Bamako, Sikasso, Mopti, Kayes, etc.)
+
+CONTEXTE : ${ctx}${sponsoredCtx}
+
+QUAND TU SUGGÈRES DES PRODUITS, termine OBLIGATOIREMENT par ce bloc JSON exact sur UNE SEULE LIGNE :
+[PRODUCTS: {"items": [{"id": "firestore_id_ou_null", "emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
+
+RÈGLES PRODUITS :
+- Annonce sponsorisée disponible et pertinente → sponsored:true + vrai id Firestore
+- Pas d'annonce sponsorisée → sponsored:false + id:null
+- Les annonces sponsored s'affichent EN PREMIER avec badge doré
+- deal:true = badge orange "Offre spéciale"
+- Propose toujours 2 à 4 produits pertinents`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-03-25:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,6 +77,5 @@ export async function mamiChatFlow(input: {
   }
 
   const data = await res.json();
-  console.log('Finish reason:', data.candidates?.[0]?.finishReason);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
 }

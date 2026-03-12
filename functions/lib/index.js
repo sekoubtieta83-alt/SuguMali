@@ -38,21 +38,22 @@ const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
 const mami_chat_flow_1 = require("./ai/flows/mami-chat-flow");
-const GOOGLE_GENAI_API_KEY = (0, params_1.defineSecret)('GOOGLE_GENAI_API_KEY');
+const GOOGLE_GENAI_API_KEY = (0, params_1.defineSecret)("GOOGLE_GENAI_API_KEY");
 if (!admin.apps.length)
     admin.initializeApp();
 exports.mamiChat = (0, https_1.onCall)({
     cors: true,
     region: 'us-central1',
     secrets: [GOOGLE_GENAI_API_KEY],
-    timeoutSeconds: 30, // ✅ Réduit de 60 à 30
-    memory: '512MiB', // ✅ Plus de RAM = plus rapide
+    timeoutSeconds: 30,
+    memory: '512MiB',
 }, async (request) => {
     try {
         const { messages, mode } = request.data;
         if (!messages?.length)
             throw new https_1.HttpsError('invalid-argument', 'Messages requis');
-        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode: mode || 'acheter' });
+        const apiKey = GOOGLE_GENAI_API_KEY.value();
+        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode: mode || 'acheter' }, apiKey);
         return { success: true, text: response, response };
     }
     catch (error) {

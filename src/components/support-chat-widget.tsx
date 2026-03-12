@@ -3,27 +3,26 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, X, Send, Loader2, Sparkles, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import MamiAssistant, { type MamiMessage, type MamiProduct } from '@/lib/mami';
+import MamiAssistant, { type MamiMessage } from '@/lib/mami';
 
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<'acheter' | 'vendre'>('acheter');
   const [messages, setMessages] = useState<MamiMessage[]>([
-    { role: 'model', content: "Bonjour ! Je suis Mami. Souhaitez-vous acheter ou vendre un article aujourd'hui ?" }
+    { role: 'model', content: "Bonjour ! Je suis Mami 🌸, votre assistante SuguMali. Comment puis-je vous aider aujourd'hui ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Instance stable de l'assistante
   const mami = useMemo(() => new MamiAssistant(), []);
 
   useEffect(() => {
-    mami.setMode(mode);
-  }, [mode, mami]);
+    // Par défaut, Mami reste en mode polyvalent (acheter par défaut dans le flow)
+    mami.setMode('acheter');
+  }, [mami]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -42,7 +41,6 @@ export function SupportChatWidget() {
 
     try {
       const response = await mami.chat(currentMessages);
-      
       setMessages(prev => [...prev, { role: 'model', content: response.raw }]);
     } catch (error: any) {
       console.error('Erreur Mami Widget:', error);
@@ -97,7 +95,7 @@ export function SupportChatWidget() {
       {isOpen ? (
         <Card className="w-[90vw] sm:w-[380px] h-[550px] shadow-2xl rounded-3xl overflow-hidden border-none flex flex-col animate-in slide-in-from-bottom-5">
           <CardHeader className="bg-accent text-white p-4">
-            <div className="flex flex-row items-center justify-between mb-3">
+            <div className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
                   <Sparkles className="h-5 w-5" />
@@ -110,26 +108,6 @@ export function SupportChatWidget() {
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/10 rounded-full">
                 <X className="h-5 w-5" />
               </Button>
-            </div>
-            <div className="flex bg-white/10 p-1 rounded-xl backdrop-blur-sm">
-              <button 
-                onClick={() => setMode('acheter')}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-lg transition-all",
-                  mode === 'acheter' ? "bg-white text-accent shadow-sm" : "text-white/80 hover:bg-white/5"
-                )}
-              >
-                <ShoppingCart className="h-3 w-3" /> Acheter
-              </button>
-              <button 
-                onClick={() => setMode('vendre')}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-lg transition-all",
-                  mode === 'vendre' ? "bg-white text-accent shadow-sm" : "text-white/80 hover:bg-white/5"
-                )}
-              >
-                <Tag className="h-3 w-3" /> Vendre
-              </button>
             </div>
           </CardHeader>
           
@@ -153,7 +131,7 @@ export function SupportChatWidget() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder={mode === 'acheter' ? "Je cherche un iPhone..." : "Comment fixer mon prix ?"}
+                  placeholder="Posez votre question à Mami..."
                   className="flex-1 bg-muted border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-accent/50 outline-none"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

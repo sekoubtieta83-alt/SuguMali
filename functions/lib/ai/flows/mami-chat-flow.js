@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mamiChatFlow = mamiChatFlow;
-async function mamiChatFlow(input) {
-    const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+async function mamiChatFlow(input, apiKey) {
     if (!apiKey)
         throw new Error('Clé API manquante');
     let msgs = [...input.messages];

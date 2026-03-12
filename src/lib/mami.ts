@@ -7,17 +7,21 @@ export interface MamiMessage {
 }
 
 export interface MamiProduct {
+  id?: string;
   emoji: string;
   name: string;
   price: string;
   tag: string;
   deal: boolean;
+  sponsored?: boolean;
 }
 
-interface MamiResponse {
-  success: boolean;
-  text: string;
-  response?: string;
+export interface SponsoredAnnonce {
+  id: string;
+  titre: string;
+  prix: string;
+  categorie: string;
+  localisation: string;
 }
 
 class MamiAssistant {
@@ -27,39 +31,83 @@ class MamiAssistant {
     this.mode = mode;
   }
 
-  async chat(messages: MamiMessage[]): Promise<{ text: string; raw: string }> {
+  async chat(
+    messages: MamiMessage[],
+    options?: { sponsoredAnnonces?: SponsoredAnnonce[] }
+  ): Promise<{ text: string; raw: string }> {
+
     let cleanMessages = [...messages];
+
     while (cleanMessages.length > 0 && cleanMessages[0].role === 'model') {
       cleanMessages.shift();
     }
 
     const functions = getFunctions(getApp(), 'us-central1');
-    const mamiChat = httpsCallable<{ messages: MamiMessage[]; mode: string }, MamiResponse>(functions, 'mamiChat');
+    const mamiChat = httpsCallable(functions, 'mamiChat');
 
-    const result = await mamiChat({ messages: cleanMessages, mode: this.mode });
-    
-    // ✅ Support des deux formats de réponse possibles
-    const raw = result.data.text || result.data.response || '';
-    
-    if (!raw) {
-      return { text: "Désolée, je n'ai pas pu répondre. Réessayez !", raw: '' };
+    const payload: any = {
+      messages: cleanMessages,
+      mode: this.mode,
+    };
+
+    if (options?.sponsoredAnnonces?.length) {
+      payload.sponsoredAnnonces = options.sponsoredAnnonces;
     }
 
-    return { text: this.cleanText(raw), raw };
+    const result: any = await mamiChat(payload);
+
+    const raw =
+      result.data?.text ||
+      result.data?.response ||
+      '';
+
+    if (!raw) {
+      return {
+        text: "Désolée, je n'ai pas pu répondre. Réessayez !",
+        raw: '',
+      };
+    }
+
+    return {
+      text: this.cleanText(raw),
+      raw,
+    };
   }
 
+  // ✅ CORRECTION ICI
   parseProducts(text: string): { items: MamiProduct[] } | null {
+
     if (!text) return null;
-    const match = text.match(/\[PRODUCTS:\s*(\{[\s\S]*?\})\]/);
-    if (match) {
-      try { return JSON.parse(match[1]); } catch { return null; }
+
+    const match = text.match(/\[PRODUCTS:\s*([\s\S]*?)\]/);
+
+    if (!match) return null;
+
+    try {
+      const parsed = JSON.parse(match[1]);
+
+      if (parsed.items) {
+        return parsed;
+      }
+
+      if (Array.isArray(parsed)) {
+        return { items: parsed };
+      }
+
+      return null;
+
+    } catch (e) {
+      console.log("❌ parseProducts error:", e);
+      return null;
     }
-    return null;
   }
 
   cleanText(text: string): string {
     if (!text) return '';
-    return text.replace(/\[PRODUCTS:[\s\S]*?\]/g, '').trim();
+
+    return text
+      .replace(/\[PRODUCTS:[\s\S]*?\]/g, '')
+      .trim();
   }
 }
 
