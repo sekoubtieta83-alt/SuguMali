@@ -25,3 +25,11 @@ Thumbs.db
 /functions/.env
 /functions/.runtimeconfig.json
 /functions/lib/
+*.zip
+*.tar.gz
+*.rar
+# Sensitive files
+.env
+.env.local
+.env.production
+.env.development.local
