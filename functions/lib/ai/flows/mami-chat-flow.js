@@ -16,10 +16,40 @@ async function mamiChatFlow(input, apiKey) {
     }, []);
     if (msgs.length === 0)
         return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider ?";
+    const isFirstMessage = msgs.filter(m => m.role === 'user').length === 1;
     const ctx = input.mode === 'vendre'
-        ? "Utilisateur veut VENDRE. Conseille prix FCFA, rédaction annonce, photos, sécurité transaction."
-        : "Utilisateur veut ACHETER ou pose une question générale. Réponds complètement. Suggère articles avec prix FCFA si pertinent.";
-    const sys = `Tu es Mami, assistante SuguMali 🇲🇱. Réponds toujours en français, complètement. Utilise FCFA. Max 200 mots.\n${ctx}\nSi tu suggères des articles, termine par :\n[PRODUCTS: {"items": [{"emoji": "📱", "name": "Nom", "price": "75 000 FCFA", "tag": "Bon plan", "deal": false}]}]`;
+        ? "L'utilisateur veut VENDRE sur SuguMali. Conseille-le sur le prix en FCFA, la rédaction de l'annonce, les photos et la sécurité de la transaction."
+        : "L'utilisateur veut ACHETER. Base-toi UNIQUEMENT sur les annonces disponibles sur SuguMali listées ci-dessous.";
+    const sponsoredCtx = input.sponsoredAnnonces?.length
+        ? `\n⭐ ANNONCES SPONSORISÉES (afficher EN PREMIER si pertinentes) :\n${input.sponsoredAnnonces.map(a => `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`).join('\n')}`
+        : '';
+    const allCtx = input.allAnnonces?.length
+        ? `\nTOUTES LES ANNONCES DISPONIBLES SUR SUGUMALI :\n${input.allAnnonces.slice(0, 50).map(a => `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`).join('\n')}\n\nIMPORTANT : Suggère UNIQUEMENT des produits de cette liste. Si aucun ne correspond, dis-le honnêtement sans inventer.`
+        : "\nAucune annonce disponible sur SuguMali pour l'instant. Invite l'utilisateur à revenir bientôt ou à publier la sienne.";
+    const greetingRule = isFirstMessage
+        ? ''
+        : '\nNe commence JAMAIS par une salutation (Bonjour, Salut, Bonsoir, etc.) — va directement au sujet.';
+    const sys = `Tu es Mami 🌸, l'assistante de SuguMali — la plus grande communauté de commerce local au Mali.
+
+RÈGLES ABSOLUES :
+- Réponds TOUJOURS en français naturel et chaleureux
+- Utilise uniquement les prix en FCFA
+- Maximum 180 mots par réponse
+- Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
+- Tu parles UNIQUEMENT des annonces présentes sur SuguMali, jamais de produits extérieurs${greetingRule}
+
+CONTEXTE : ${ctx}
+${sponsoredCtx}
+${allCtx}
+
+QUAND TU SUGGÈRES DES PRODUITS, termine OBLIGATOIREMENT par ce bloc JSON sur UNE SEULE LIGNE :
+[PRODUCTS: {"items": [{"id": "vrai_id_firestore", "emoji": "📱", "name": "Nom exact de l'annonce", "price": "Prix exact", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
+
+RÈGLES PRODUITS :
+- Utilise UNIQUEMENT les IDs Firestore exacts des annonces listées ci-dessus
+- sponsored:true → badge doré ⭐, mis EN PREMIER dans la liste
+- deal:true → badge orange "Offre spéciale"
+- Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS, explique simplement`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -27,7 +57,7 @@ async function mamiChatFlow(input, apiKey) {
             systemInstruction: { parts: [{ text: sys }] },
             contents: msgs.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
             generationConfig: {
-                temperature: 0.7,
+                temperature: 0.4,
                 maxOutputTokens: 1024,
                 candidateCount: 1,
                 thinkingConfig: { thinkingLevel: 'low' },
@@ -40,6 +70,5 @@ async function mamiChatFlow(input, apiKey) {
         throw new Error(`Erreur Gemini: ${res.statusText}`);
     }
     const data = await res.json();
-    console.log('Finish reason:', data.candidates?.[0]?.finishReason);
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
 }

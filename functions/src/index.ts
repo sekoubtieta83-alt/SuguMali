@@ -15,12 +15,21 @@ export const mamiChat = onCall({
   memory: '512MiB',
 }, async (request) => {
   try {
-    const { messages, mode } = request.data;
+    const { messages, mode, sponsoredAnnonces, allAnnonces } = request.data;
     if (!messages?.length) throw new HttpsError('invalid-argument', 'Messages requis');
 
     const apiKey = GOOGLE_GENAI_API_KEY.value();
 
-    const response = await mamiChatFlow({ messages, mode: mode || 'acheter' }, apiKey);
+    const response = await mamiChatFlow(
+      {
+        messages,
+        mode: mode || 'acheter',
+        sponsoredAnnonces: sponsoredAnnonces || [],
+        allAnnonces: allAnnonces || [],
+      },
+      apiKey
+    );
+
     return { success: true, text: response, response };
   } catch (error: any) {
     console.error('mamiChat error:', error.message || error);

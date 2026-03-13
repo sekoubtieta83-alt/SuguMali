@@ -33,11 +33,12 @@ class MamiAssistant {
 
   async chat(
     messages: MamiMessage[],
-    options?: { sponsoredAnnonces?: SponsoredAnnonce[] }
+    options?: {
+      sponsoredAnnonces?: SponsoredAnnonce[];
+      allAnnonces?: SponsoredAnnonce[];
+    }
   ): Promise<{ text: string; raw: string }> {
-
     let cleanMessages = [...messages];
-
     while (cleanMessages.length > 0 && cleanMessages[0].role === 'model') {
       cleanMessages.shift();
     }
@@ -53,61 +54,32 @@ class MamiAssistant {
     if (options?.sponsoredAnnonces?.length) {
       payload.sponsoredAnnonces = options.sponsoredAnnonces;
     }
+    if (options?.allAnnonces?.length) {
+      payload.allAnnonces = options.allAnnonces;
+    }
 
     const result: any = await mamiChat(payload);
-
-    const raw =
-      result.data?.text ||
-      result.data?.response ||
-      '';
+    const raw = result.data?.text || result.data?.response || '';
 
     if (!raw) {
-      return {
-        text: "Désolée, je n'ai pas pu répondre. Réessayez !",
-        raw: '',
-      };
+      return { text: "Désolée, je n'ai pas pu répondre. Réessayez !", raw: '' };
     }
 
-    return {
-      text: this.cleanText(raw),
-      raw,
-    };
+    return { text: this.cleanText(raw), raw };
   }
 
-  // ✅ CORRECTION ICI
   parseProducts(text: string): { items: MamiProduct[] } | null {
-
     if (!text) return null;
-
-    const match = text.match(/\[PRODUCTS:\s*([\s\S]*?)\]/);
-
-    if (!match) return null;
-
-    try {
-      const parsed = JSON.parse(match[1]);
-
-      if (parsed.items) {
-        return parsed;
-      }
-
-      if (Array.isArray(parsed)) {
-        return { items: parsed };
-      }
-
-      return null;
-
-    } catch (e) {
-      console.log("❌ parseProducts error:", e);
-      return null;
+    const match = text.match(/\[PRODUCTS:\s*(\{[\s\S]*?\})\]/);
+    if (match) {
+      try { return JSON.parse(match[1]); } catch { return null; }
     }
+    return null;
   }
 
   cleanText(text: string): string {
     if (!text) return '';
-
-    return text
-      .replace(/\[PRODUCTS:[\s\S]*?\]/g, '')
-      .trim();
+    return text.replace(/\[PRODUCTS:[\s\S]*?\]/g, '').trim();
   }
 }
 
