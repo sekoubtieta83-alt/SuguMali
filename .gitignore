@@ -34,4 +34,5 @@ Thumbs.db
 .env.local
 .env*.local
 functions/.env
-functions/.env.local
+functions/.env.localproject.zip
+project.tar.gz
