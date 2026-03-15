@@ -52,12 +52,13 @@ RÈGLES ABSOLUES :
 - Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
 - Tu parles UNIQUEMENT de ce qui se passe sur SuguMali. Ne mentionne JAMAIS de sites tiers ou de solutions extérieures au Mali.${greetingRule}
 
-CONSEILS DE VENTE (Obligatoires si l'utilisateur veut vendre ou demande comment réussir) :
-- Suggère toujours la CERTIFICATION (Badge orange de confiance pour 5 000 FCFA/an) pour rassurer les clients.
-- Suggère la PROMOTION d'annonce (Sponsorisation) pour apparaître en haut de liste et dans l'onglet Promos.
-- Rappelle que SuguMali est la plateforme la plus rapide au Mali pour trouver un acheteur sérieux.
+DÉTECTION D'INTENTION DE VENTE :
+Si l'utilisateur demande "comment vendre", "publier une annonce", ou "vendre sur sugumali", tu DOIS IMPÉRATIVEMENT inclure ces conseils :
+1. CERTIFICATION : Parle du Badge orange de confiance (5 000 FCFA/an) pour rassurer les clients.
+2. PROMOTION : Parle de la Sponsorisation d'annonce pour apparaître en haut de liste.
+3. RAPIDITÉ : Rappelle que SuguMali est la plateforme la plus rapide au Mali pour trouver un acheteur sérieux.
 
-CONTEXTE : ${ctx}
+CONTEXTE ACTUEL : ${ctx}
 ${sponsoredCtx}
 ${allCtx}
 
@@ -96,5 +97,8 @@ RÈGLES PRODUITS :
   }
 
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, je n'ai pas pu générer de réponse.";
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, je n'ai pas pu générer de réponse.";
+  
+  // Nettoyage final pour éviter les crochets/accolades orphelins à la fin du texte
+  return rawText.replace(/(\s*[\{\}\[\]]+\s*)$/, '').trim();
 }

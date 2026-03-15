@@ -198,7 +198,6 @@ export function SupportChatWidget() {
     setIsLoading(true);
     try {
       const response = await mami.chat(currentMessages, { sponsoredAnnonces, allAnnonces });
-      console.log('MAMI RAW RESPONSE:', response.raw);
       setMessages(prev => [...prev, { role: 'model', content: response.raw }]);
     } catch (error: any) {
       setMessages(prev => [...prev, {
@@ -271,9 +270,6 @@ export function SupportChatWidget() {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-center text-[10px] text-muted-foreground/40 mt-2 flex items-center justify-center gap-1">
-                <Sparkles className="h-2.5 w-2.5" /> Propulsé par Mami IA
-              </p>
             </div>
           </CardContent>
         </Card>
