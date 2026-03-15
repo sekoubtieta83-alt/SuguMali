@@ -50,26 +50,30 @@ RÈGLES ABSOLUES :
 - Utilise uniquement les prix en FCFA
 - Maximum 120 mots par réponse
 - Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
-- Tu parles UNIQUEMENT des annonces présentes sur SuguMali, jamais de produits extérieurs${greetingRule}
+- Tu parles UNIQUEMENT de ce qui se passe sur SuguMali. Ne mentionne JAMAIS de sites tiers ou de solutions extérieures au Mali.${greetingRule}
+
+CONSEILS DE VENTE (Obligatoires si l'utilisateur veut vendre ou demande comment réussir) :
+- Suggère toujours la CERTIFICATION (Badge orange de confiance pour 5 000 FCFA/an) pour rassurer les clients.
+- Suggère la PROMOTION d'annonce (Sponsorisation) pour apparaître en haut de liste et dans l'onglet Promos.
+- Rappelle que SuguMali est la plateforme la plus rapide au Mali pour trouver un acheteur sérieux.
 
 CONTEXTE : ${ctx}
 ${sponsoredCtx}
 ${allCtx}
 
- QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE EXACTEMENT comme ceci :
+QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE EXACTEMENT comme ceci :
 [PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
 
-IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Si plusieurs annonces correspondent, inclus jusqu'à 3 produits dans le bloc PRODUCTS. Ne jamais expliquer les images ou les liens.
-IMPORTANT : Le bloc PRODUCTS est automatiquement converti en carte cliquable par l'application. Tu n'as PAS besoin d'expliquer les images ou les liens — écris juste le bloc et l'application s'occupe du reste.
+IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Ne jamais expliquer les images ou les liens.
 
 RÈGLES PRODUITS :
 - Utilise UNIQUEMENT les IDs Firestore exacts des annonces listées ci-dessus
 - sponsored:true → badge doré ⭐, mis EN PREMIER dans la liste
 - deal:true → badge orange "Offre spéciale"
-- Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS, explique simplement`;
+- Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS.`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,5 +96,5 @@ RÈGLES PRODUITS :
   }
 
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, je n'ai pas pu générer de réponse.";
 }
