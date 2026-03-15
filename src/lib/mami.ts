@@ -79,7 +79,8 @@ class MamiAssistant {
 
   cleanText(text: string): string {
     if (!text) return '';
-    return text.replace(/\[PRODUCTS:[\s\S]*?\]/g, '').trim();
+    // Nettoie le bloc PRODUCTS et tout ce qui pourrait rester après (crochets, accolades mal fermés)
+    return text.replace(/\[PRODUCTS:[\s\S]*\]/g, '').trim();
   }
 }
 

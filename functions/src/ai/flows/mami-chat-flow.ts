@@ -57,7 +57,7 @@ ${sponsoredCtx}
 ${allCtx}
 
  QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE EXACTEMENT comme ceci :
-[PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]
+[PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
 
 IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Si plusieurs annonces correspondent, inclus jusqu'à 3 produits dans le bloc PRODUCTS. Ne jamais expliquer les images ou les liens.
 IMPORTANT : Le bloc PRODUCTS est automatiquement converti en carte cliquable par l'application. Tu n'as PAS besoin d'expliquer les images ou les liens — écris juste le bloc et l'application s'occupe du reste.
