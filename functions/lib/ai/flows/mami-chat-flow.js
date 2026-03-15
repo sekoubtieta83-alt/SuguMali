@@ -29,30 +29,36 @@ async function mamiChatFlow(input, apiKey) {
     const greetingRule = isFirstMessage
         ? ''
         : '\nNe commence JAMAIS par une salutation (Bonjour, Salut, Bonsoir, etc.) — va directement au sujet.';
-    const sys = `Tu es Mami , l'assistante de SuguMali — la plus grande communauté de commerce local au Mali.
+    const sys = `Tu es Mami, l'assistante de SuguMali — la plus grande communauté de commerce local au Mali.
 
 RÈGLES ABSOLUES :
 - Réponds TOUJOURS en français naturel et chaleureux
 - Utilise uniquement les prix en FCFA
 - Maximum 120 mots par réponse
 - Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
-- Tu parles UNIQUEMENT des annonces présentes sur SuguMali, jamais de produits extérieurs${greetingRule}
+- Tu parles UNIQUEMENT de ce qui se passe sur SuguMali. Ne mentionne JAMAIS de sites tiers.
+- N'utilise JAMAIS d'emojis dans tes réponses texte${greetingRule}
 
-CONTEXTE : ${ctx}
+DÉTECTION D'INTENTION DE VENTE :
+Si l'utilisateur demande "comment vendre", "publier une annonce", "avoir plus de clients" ou "vendre sur SuguMali", tu DOIS inclure :
+1. CERTIFICATION : Badge orange de confiance (5 000 FCFA/an) pour rassurer les acheteurs.
+2. PROMOTION : Sponsorisation d'annonce pour apparaître en haut de liste et avoir plus de visibilité.
+3. RAPIDITÉ : SuguMali est la plateforme la plus rapide au Mali pour trouver un acheteur sérieux.
+
+CONTEXTE ACTUEL : ${ctx}
 ${sponsoredCtx}
 ${allCtx}
 
- QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE EXACTEMENT comme ceci :
-[PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]
+QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE :
+[PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
 
-IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Si plusieurs annonces correspondent, inclus jusqu'à 3 produits dans le bloc PRODUCTS. Ne jamais expliquer les images ou les liens.
-IMPORTANT : Le bloc PRODUCTS est automatiquement converti en carte cliquable par l'application. Tu n'as PAS besoin d'expliquer les images ou les liens — écris juste le bloc et l'application s'occupe du reste.
+IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Ne jamais expliquer les images ou les liens. Inclus jusqu'à 3 produits si plusieurs correspondent.
 
 RÈGLES PRODUITS :
 - Utilise UNIQUEMENT les IDs Firestore exacts des annonces listées ci-dessus
-- sponsored:true → badge doré ⭐, mis EN PREMIER dans la liste
+- sponsored:true → badge doré, mis EN PREMIER dans la liste
 - deal:true → badge orange "Offre spéciale"
-- Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS, explique simplement`;
+- Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,5 +78,12 @@ RÈGLES PRODUITS :
         throw new Error(`Erreur Gemini: ${res.statusText}`);
     }
     const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "Désolée, pas de réponse.";
+    // Sépare proprement le texte du bloc PRODUCTS
+    const productsMatch = raw.match(/\[PRODUCTS:[\s\S]*\]/);
+    const textPart = raw
+        .replace(/\[PRODUCTS:[\s\S]*\]/, '')
+        .replace(/[\{\}\[\]]+\s*$/, '')
+        .trim();
+    return productsMatch ? `${textPart}\n${productsMatch[0]}` : textPart;
 }

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { type Post } from "@/lib/data";
-import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2 } from "lucide-react";
+import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare } from "lucide-react";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,10 +26,11 @@ import {
 import { EditProfileForm } from "@/components/dashboard/edit-profile-form";
 import { requestNotificationPermission } from "@/lib/notifications";
 import { useToast } from "@/hooks/use-toast";
-import { type Review } from "@/components/dashboard/review-card";
+import { type Review, ReviewCard } from "@/components/dashboard/review-card";
 import { ReviewStars } from "@/components/dashboard/review-stars";
 import { addYears, isAfter } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type UserProfile = {
     uid: string;
@@ -362,43 +363,74 @@ export default function ProfilePage() {
       </div>
 
       <div className="p-4 sm:p-8 bg-secondary/30 flex-1">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-6 px-1 sm:px-4 gap-3 sm:gap-4">
-            <h2 className="text-xl sm:text-2xl font-semibold">Mes publications</h2>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder="Rechercher..." className="pl-10 bg-card rounded-xl h-9 text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                </div>
-                {userPosts.length > 0 && (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" className="rounded-xl font-bold w-full sm:w-auto h-9">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Tout supprimer
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-2xl max-w-sm">
-                            <AlertDialogHeader>
-                                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                                    <AlertTriangle className="h-5 w-5" />
-                                    Attention
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Cette action supprimera **définitivement** vos {userPosts.length} annonces. Voulez-vous continuer ?
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteAllAnnonces} disabled={isDeletingAll} className="bg-destructive hover:bg-destructive/90 rounded-xl font-bold">
-                                    {isDeletingAll ? <Loader2 className="animate-spin h-4 w-4" /> : "Oui, tout supprimer"}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
+        <Tabs defaultValue="posts" className="w-full">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 px-1 gap-4">
+                <TabsList className="bg-card rounded-xl h-auto p-1 border">
+                    <TabsTrigger value="posts" className="rounded-lg font-bold data-[state=active]:bg-primary data-[state=active]:text-white px-4 py-2">
+                        Mes publications
+                    </TabsTrigger>
+                    <TabsTrigger value="reviews" className="rounded-lg font-bold data-[state=active]:bg-primary data-[state=active]:text-white px-4 py-2">
+                        Mes avis ({reviews.length})
+                    </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="posts" className="m-0 mt-0 w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input placeholder="Rechercher..." className="pl-10 bg-card rounded-xl h-9 text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        </div>
+                        {userPosts.length > 0 && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" className="rounded-xl font-bold w-full sm:w-auto h-9">
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Tout supprimer
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-2xl max-w-sm">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                            <AlertTriangle className="h-5 w-5" />
+                                            Attention
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Cette action supprimera **définitivement** vos {userPosts.length} annonces. Voulez-vous continuer ?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteAllAnnonces} disabled={isDeletingAll} className="bg-destructive hover:bg-destructive/90 rounded-xl font-bold">
+                                            {isDeletingAll ? <Loader2 className="animate-spin h-4 w-4" /> : "Oui, tout supprimer"}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </div>
+                </TabsContent>
             </div>
-        </div>
-        {postsLoading ? <Skeleton className="h-64 w-full rounded-2xl" /> : <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{filteredUserPosts.length > 0 ? filteredUserPosts.map(post => <PostCard key={post.id} post={post} />) : <div className="col-span-full py-10 sm:py-20 text-center text-muted-foreground text-xs sm:text-sm">Aucune annonce trouvée.</div>}</div>}
+
+            <TabsContent value="posts" className="mt-0">
+                {postsLoading ? <Skeleton className="h-64 w-full rounded-2xl" /> : <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{filteredUserPosts.length > 0 ? filteredUserPosts.map(post => <PostCard key={post.id} post={post} />) : <div className="col-span-full py-10 sm:py-20 text-center text-muted-foreground text-xs sm:text-sm">Aucune annonce trouvée.</div>}</div>}
+            </TabsContent>
+
+            <TabsContent value="reviews" className="mt-0">
+                {reviews.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {reviews.map(review => (
+                            <ReviewCard key={review.id} review={review} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border border-dashed border-muted-foreground/30">
+                        <MessageSquare className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                        <h3 className="text-lg font-bold">Aucun avis reçu</h3>
+                        <p className="text-sm text-muted-foreground">Vos acheteurs peuvent laisser un avis après un achat.</p>
+                    </div>
+                )}
+            </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

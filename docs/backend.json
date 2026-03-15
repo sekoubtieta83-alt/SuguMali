@@ -54,6 +54,22 @@
       },
       "required": ["annonceId", "createdAt"]
     },
+    "review": {
+      "title": "Review",
+      "description": "A review left for a seller.",
+      "type": "object",
+      "properties": {
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerName": { "type": "string" },
+        "reviewerPhotoURL": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "annonceId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["rating", "comment", "reviewerId", "sellerId", "annonceId", "createdAt"]
+    },
     "auditLog": {
       "title": "Audit Log",
       "description": "A record of an administrative or system action.",
@@ -85,6 +101,10 @@
     "/annonces/{annonceId}": {
       "schema": { "$ref": "#/entities/annonce" },
       "description": "Stores all listings/advertisements on the platform."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/review" },
+      "description": "Stores reviews for sellers."
     },
     "/auditLogs/{logId}": {
       "schema": { "$ref": "#/entities/auditLog" },

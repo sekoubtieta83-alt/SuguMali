@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,12 +19,13 @@ import {
   BadgeCheck,
   MoreVertical,
   ShieldAlert,
-  Play
+  Play,
+  Star
 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ReviewStars } from '@/components/dashboard/review-stars';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import { AddReviewForm } from '@/components/dashboard/add-review-form';
 
 type Seller = {
     uid: string;
@@ -63,9 +66,7 @@ export default function AnnoncePage() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportComment, setReportComment] = useState('');
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   
   // Lightbox state
@@ -295,6 +296,22 @@ export default function AnnoncePage() {
               <div className="flex items-center gap-1.5"><p className="text-sm font-bold">{seller.displayName}</p>{seller.isVerified && <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 fill-accent text-white" />}</div>
               <ReviewStars rating={averageRating} size={14} />
             </div>
+            {!isOwner && user && (
+                <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="rounded-xl font-bold">
+                            <Star className="h-4 w-4 mr-2" /> Laisser un avis
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Évaluer le vendeur</DialogTitle>
+                            <DialogDescription>Partagez votre expérience avec {seller.displayName}.</DialogDescription>
+                        </DialogHeader>
+                        <AddReviewForm sellerId={seller.uid} annonceId={post.id} onFinished={() => setIsReviewDialogOpen(false)} />
+                    </DialogContent>
+                </Dialog>
+            )}
           </div>
 
           {isOwner && (
