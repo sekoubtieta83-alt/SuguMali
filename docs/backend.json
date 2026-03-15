@@ -68,7 +68,7 @@
         "annonceId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["rating", "comment", "reviewerId", "sellerId", "annonceId", "createdAt"]
+      "required": ["rating", "reviewerId", "sellerId", "annonceId", "createdAt"]
     },
     "auditLog": {
       "title": "Audit Log",
