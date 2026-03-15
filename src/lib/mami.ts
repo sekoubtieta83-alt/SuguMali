@@ -43,7 +43,7 @@ class MamiAssistant {
       cleanMessages.shift();
     }
 
-    const functions = getFunctions(getApp(), 'us-central1');
+    const functions = getFunctions(getApp(), 'europe-west1');
     const mamiChat = httpsCallable(functions, 'mamiChat');
 
     const payload: any = {
@@ -70,7 +70,7 @@ class MamiAssistant {
 
   parseProducts(text: string): { items: MamiProduct[] } | null {
     if (!text) return null;
-    const match = text.match(/\[PRODUCTS:\s*(\{[\s\S]*?\})\]/);
+    const match = text.match(/\[PRODUCTS:\s*(\{[\s\S]*\})\]/);
     if (match) {
       try { return JSON.parse(match[1]); } catch { return null; }
     }

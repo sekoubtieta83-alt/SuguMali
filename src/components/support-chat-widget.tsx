@@ -198,6 +198,7 @@ export function SupportChatWidget() {
     setIsLoading(true);
     try {
       const response = await mami.chat(currentMessages, { sponsoredAnnonces, allAnnonces });
+      console.log('MAMI RAW RESPONSE:', response.raw);
       setMessages(prev => [...prev, { role: 'model', content: response.raw }]);
     } catch (error: any) {
       setMessages(prev => [...prev, {

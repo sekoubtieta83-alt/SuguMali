@@ -15,7 +15,7 @@ async function mamiChatFlow(input, apiKey) {
         return acc;
     }, []);
     if (msgs.length === 0)
-        return "Bonjour ! Je suis Mami 🌸. Comment puis-je vous aider ?";
+        return "Bonjour ! Je suis Mami. Comment puis-je vous aider ?";
     const isFirstMessage = msgs.filter(m => m.role === 'user').length === 1;
     const ctx = input.mode === 'vendre'
         ? "L'utilisateur veut VENDRE sur SuguMali. Conseille-le sur le prix en FCFA, la rédaction de l'annonce, les photos et la sécurité de la transaction."
@@ -24,17 +24,17 @@ async function mamiChatFlow(input, apiKey) {
         ? `\n⭐ ANNONCES SPONSORISÉES (afficher EN PREMIER si pertinentes) :\n${input.sponsoredAnnonces.map(a => `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`).join('\n')}`
         : '';
     const allCtx = input.allAnnonces?.length
-        ? `\nTOUTES LES ANNONCES DISPONIBLES SUR SUGUMALI :\n${input.allAnnonces.slice(0, 50).map(a => `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`).join('\n')}\n\nIMPORTANT : Suggère UNIQUEMENT des produits de cette liste. Si aucun ne correspond, dis-le honnêtement sans inventer.`
+        ? `\nTOUTES LES ANNONCES DISPONIBLES SUR SUGUMALI :\n${input.allAnnonces.slice(0, 20).map(a => `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`).join('\n')}\n\nIMPORTANT : Suggère UNIQUEMENT des produits de cette liste. Si aucun ne correspond, dis-le honnêtement sans inventer.`
         : "\nAucune annonce disponible sur SuguMali pour l'instant. Invite l'utilisateur à revenir bientôt ou à publier la sienne.";
     const greetingRule = isFirstMessage
         ? ''
         : '\nNe commence JAMAIS par une salutation (Bonjour, Salut, Bonsoir, etc.) — va directement au sujet.';
-    const sys = `Tu es Mami 🌸, l'assistante de SuguMali — la plus grande communauté de commerce local au Mali.
+    const sys = `Tu es Mami , l'assistante de SuguMali — la plus grande communauté de commerce local au Mali.
 
 RÈGLES ABSOLUES :
 - Réponds TOUJOURS en français naturel et chaleureux
 - Utilise uniquement les prix en FCFA
-- Maximum 180 mots par réponse
+- Maximum 120 mots par réponse
 - Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
 - Tu parles UNIQUEMENT des annonces présentes sur SuguMali, jamais de produits extérieurs${greetingRule}
 
@@ -42,15 +42,18 @@ CONTEXTE : ${ctx}
 ${sponsoredCtx}
 ${allCtx}
 
-QUAND TU SUGGÈRES DES PRODUITS, termine OBLIGATOIREMENT par ce bloc JSON sur UNE SEULE LIGNE :
-[PRODUCTS: {"items": [{"id": "vrai_id_firestore", "emoji": "📱", "name": "Nom exact de l'annonce", "price": "Prix exact", "tag": "Bon plan", "deal": false, "sponsored": false}]}]
+ QUAND TU SUGGÈRES DES PRODUITS, tu DOIS OBLIGATOIREMENT terminer ta réponse par ce bloc JSON sur UNE SEULE LIGNE EXACTEMENT comme ceci :
+[PRODUCTS: {"items": [{"id": "ID_1", "emoji": "📱", "name": "Titre 1", "price": "Prix 1", "tag": "Bon plan", "deal": false, "sponsored": false}, {"id": "ID_2", "emoji": "📱", "name": "Titre 2", "price": "Prix 2", "tag": "Bon plan", "deal": false, "sponsored": false}]
+
+IMPORTANT : Le bloc PRODUCTS est automatiquement converti en cartes cliquables par l'application. Si plusieurs annonces correspondent, inclus jusqu'à 3 produits dans le bloc PRODUCTS. Ne jamais expliquer les images ou les liens.
+IMPORTANT : Le bloc PRODUCTS est automatiquement converti en carte cliquable par l'application. Tu n'as PAS besoin d'expliquer les images ou les liens — écris juste le bloc et l'application s'occupe du reste.
 
 RÈGLES PRODUITS :
 - Utilise UNIQUEMENT les IDs Firestore exacts des annonces listées ci-dessus
 - sponsored:true → badge doré ⭐, mis EN PREMIER dans la liste
 - deal:true → badge orange "Offre spéciale"
 - Si aucune annonce pertinente → n'affiche PAS de bloc PRODUCTS, explique simplement`;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -58,9 +61,8 @@ RÈGLES PRODUITS :
             contents: msgs.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
             generationConfig: {
                 temperature: 0.4,
-                maxOutputTokens: 1024,
+                maxOutputTokens: 600,
                 candidateCount: 1,
-                thinkingConfig: { thinkingLevel: 'low' },
             },
         }),
     });

@@ -23,7 +23,7 @@ import {
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -292,7 +292,7 @@ export default function AnnoncePage() {
           <div className="flex items-center gap-3 p-4 bg-muted rounded-2xl">
              <Avatar><AvatarImage src={seller.photoURL} /><AvatarFallback>{seller.displayName.charAt(0)}</AvatarFallback></Avatar>
             <div className="flex-1">
-              <div className="flex items-center gap-1.5"><p className="text-sm font-bold">{seller.displayName}</p>{seller.isVerified && <BadgeCheck className="h-5 w-5 fill-accent text-white" />}</div>
+              <div className="flex items-center gap-1.5"><p className="text-sm font-bold">{seller.displayName}</p>{seller.isVerified && <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 fill-accent text-white" />}</div>
               <ReviewStars rating={averageRating} size={14} />
             </div>
           </div>
@@ -317,9 +317,14 @@ export default function AnnoncePage() {
       {/* Lightbox Dialog */}
       <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 border-none bg-black/90 flex items-center justify-center overflow-hidden" hideCloseButton>
+            <DialogHeader className="sr-only">
+              <DialogTitle>Média de l'annonce</DialogTitle>
+              <DialogDescription>Vue agrandie de l'image ou de la vidéo de l'annonce sélectionnée.</DialogDescription>
+            </DialogHeader>
             <button 
                 onClick={() => setIsLightboxOpen(false)} 
                 className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                aria-label="Fermer la vue agrandie"
             >
                 <X className="h-6 w-6" />
             </button>

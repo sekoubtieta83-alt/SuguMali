@@ -9,30 +9,19 @@ if (!admin.apps.length) admin.initializeApp();
 
 export const mamiChat = onCall({
   cors: true,
-  region: 'us-central1',
+  region: 'europe-west1',
+  enforceAppCheck: false,
   secrets: [GOOGLE_GENAI_API_KEY],
   timeoutSeconds: 30,
   memory: '512MiB',
 }, async (request) => {
-  try {
-    const { messages, mode, sponsoredAnnonces, allAnnonces } = request.data;
-    if (!messages?.length) throw new HttpsError('invalid-argument', 'Messages requis');
+  const apiKey = GOOGLE_GENAI_API_KEY.value();
+  const { messages, mode, sponsoredAnnonces, allAnnonces } = request.data;
 
-    const apiKey = GOOGLE_GENAI_API_KEY.value();
+  const response = await mamiChatFlow(
+    { messages, mode, sponsoredAnnonces, allAnnonces },
+    apiKey
+  );
 
-    const response = await mamiChatFlow(
-      {
-        messages,
-        mode: mode || 'acheter',
-        sponsoredAnnonces: sponsoredAnnonces || [],
-        allAnnonces: allAnnonces || [],
-      },
-      apiKey
-    );
-
-    return { success: true, text: response, response };
-  } catch (error: any) {
-    console.error('mamiChat error:', error.message || error);
-    throw new HttpsError('internal', error.message || 'Erreur interne');
-  }
+  return { text: response };
 });
