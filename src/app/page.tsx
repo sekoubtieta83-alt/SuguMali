@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Star } from 'lucide-react';
+import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Star, ChevronRight } from 'lucide-react';
 import Footer from '@/components/footer';
 import ThemeToggle from '@/components/theme-toggle';
 import { useAuth, useUser, useFirestore } from '@/firebase';
@@ -14,9 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post, posts as mockPosts } from '@/lib/data';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 // ── Carte annonce avec badge sponsorisé ──────────────────────────────────────
 const FeaturedProductCard = ({
@@ -27,7 +29,7 @@ const FeaturedProductCard = ({
 }) => (
   <Link
     href={`/annonces/${id}`}
-    className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl sm:rounded-3xl p-3 shadow-sm hover:shadow-xl transition-all duration-300 relative"
+    className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl sm:rounded-3xl p-3 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
   >
     {/* Badge sponsorisé */}
     {sponsored && (
@@ -150,7 +152,6 @@ export default function HomePage() {
           id: doc.id,
           userId: data.vendeurId,
           content: data.description || '',
-          // Utilise directement imageUrl (Firebase Storage) ou image (base64/url)
           media: data.imageUrl
             ? [{ url: data.imageUrl, type: 'image' as const }]
             : data.image
@@ -161,7 +162,6 @@ export default function HomePage() {
             : new Date().toISOString(),
           isProduct: true,
           isPromoted: data.isPromoted || false,
-          // ✅ Champ sponsored pour les annonces payantes
           sponsored: data.sponsored || false,
           location: data.localisation || '',
           whatsappNumber: data.whatsapp || '',
@@ -176,7 +176,6 @@ export default function HomePage() {
         } as Post & { sponsored: boolean };
       });
 
-      // ✅ Sponsored en premier, puis isPromoted, puis plus récents
       const sorted = [...posts].sort((a: any, b: any) => {
         if (a.sponsored && !b.sponsored) return -1;
         if (!a.sponsored && b.sponsored) return 1;
@@ -185,7 +184,8 @@ export default function HomePage() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
-      setFeaturedProducts(sorted.length > 0 ? sorted.slice(0, 4) : mockPosts.slice(0, 4));
+      // Augmentation du nombre de produits pour le carrousel
+      setFeaturedProducts(sorted.length > 0 ? sorted.slice(0, 12) : mockPosts.slice(0, 6));
       setIsLoading(false);
     }, async () => {
       const permissionError = new FirestorePermissionError({
@@ -215,7 +215,6 @@ export default function HomePage() {
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
 
-            {/* ✅ Barre de recherche épurée */}
             <div className="mt-6 sm:mt-10 max-w-2xl mx-auto">
               <div className="flex items-center h-[50px] sm:h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50">
                 <Sparkles className="h-5 w-5 text-accent/50 shrink-0 mr-3" />
@@ -239,7 +238,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Annonces à la une */}
+        {/* Annonces à la une avec Carrousel */}
         <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-8 pb-12 sm:pt-12 sm:pb-20">
           <div className="flex justify-between items-end mb-6 sm:mb-8">
             <div className="space-y-1 sm:space-y-2">
@@ -267,19 +266,31 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {featuredProducts.map((post: any) => (
-                <FeaturedProductCard
-                  key={post.id}
-                  id={post.id}
-                  title={post.product?.name || post.content}
-                  price={post.product?.price || ''}
-                  location={post.location || 'N/A'}
-                  image={post.media?.[0]?.url || ''}
-                  condition={post.condition}
-                  sponsored={post.sponsored}
-                />
-              ))}
+            <div className="relative group/carousel">
+              <Carousel 
+                opts={{ align: "start", loop: true }} 
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4">
+                  {featuredProducts.map((post: any) => (
+                    <CarouselItem key={post.id} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                      <FeaturedProductCard
+                        id={post.id}
+                        title={post.product?.name || post.content}
+                        price={post.product?.price || ''}
+                        location={post.location || 'N/A'}
+                        image={post.media?.[0]?.url || ''}
+                        condition={post.condition}
+                        sponsored={post.sponsored}
+                      />
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="hidden sm:flex items-center justify-center gap-4 mt-8">
+                  <CarouselPrevious className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
+                  <CarouselNext className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
+                </div>
+              </Carousel>
             </div>
           )}
         </section>
