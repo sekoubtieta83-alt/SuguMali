@@ -1,60 +1,79 @@
-'use server';
-/**
- * @fileOverview Flux d'analyse d'images par IA pour SuguMali.
- * 
- * - analyzeImage - Fonction pour analyser la sécurité et le contenu d'une image.
- * - AnalyzeImageInput - Type d'entrée (URI de données base64).
- * - AnalyzeImageOutput - Type de sortie (sécurité, description, catégorie).
- */
+export async function analyzeImageFlow(input: {
+  imageBase64: string;
+  apiKey: string;
+}): Promise<{
+  titre: string;
+  description: string;
+  categorie: string;
+}> {
+  const { imageBase64, apiKey } = input;
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+  // Extraire le type MIME et les données base64
+  const match = imageBase64.match(/^data:(.+);base64,(.+)$/);
+  if (!match) throw new Error('Format image invalide');
+  const mimeType = match[1];
+  const base64Data = match[2];
 
-const AnalyzeImageInputSchema = z.object({
-  photoDataUri: z
-    .string()
-    .describe(
-      "Une photo du produit, sous forme d'URI de données incluant le type MIME et le codage Base64. Format attendu : 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type AnalyzeImageInput = z.infer<typeof AnalyzeImageInputSchema>;
+  const prompt = `Tu es Mami, experte en commerce local malien sur SuguMali.
 
-const AnalyzeImageOutputSchema = z.object({
-  isSafe: z.boolean().describe('Indique si l\'image est sûre pour la plateforme (pas de contenu interdit).'),
-  description: z.string().describe('Une brève description de l\'objet principal dans l\'image.'),
-  detectedCategory: z.string().describe('La catégorie probable du produit détecté.'),
-  confidence: z.number().describe('Niveau de confiance de l\'analyse (0 à 1).'),
-  reason: z.string().optional().describe('Raison du rejet si l\'image est jugée inappropriée.'),
-});
-export type AnalyzeImageOutput = z.infer<typeof AnalyzeImageOutputSchema>;
-
-export async function analyzeImage(input: AnalyzeImageInput): Promise<AnalyzeImageOutput> {
-  return analyzeImageFlow(input);
+Analyse cette image de produit et génère EN JSON UNIQUEMENT (sans texte avant ou après, sans markdown) :
+{
+  "titre": "Titre court et accrocheur du produit (max 60 caractères)",
+  "description": "Description vendeuse et attrayante pour les acheteurs maliens (2-3 phrases max, en français naturel, mentionne l'état visible, les caractéristiques clés)",
+  "categorie": "Une seule catégorie parmi : Téléphones & Tablettes, Ordinateurs & Portables, Électronique, Véhicules, Immobilier, Mode & Beauté, Maison & Jardin, Sports & Loisirs, Emploi, Services, Animaux, Autre"
 }
 
-const prompt = ai.definePrompt({
-  name: 'analyzeImagePrompt',
-  input: { schema: AnalyzeImageInputSchema },
-  output: { schema: AnalyzeImageOutputSchema },
-  prompt: `Tu es Mami, l'experte en modération visuelle de SuguMali.
-  Analyse cette image pour vérifier si elle respecte les règles de la communauté.
-  
-  CRITÈRES DE SÉCURITÉ :
-  1. CONTENU INTERDIT : Pas de nudité, violence, drogues, armes ou symboles de haine.
-  2. QUALITÉ : L'image doit montrer un produit réel, pas un écran noir ou du texte uniquement.
-  3. IDENTIFICATION : Décris ce que tu vois et suggère une catégorie.
+RÈGLES :
+- Écris en français naturel et chaleureux
+- Le titre doit donner envie d'acheter
+- La description doit mettre en valeur le produit
+- Si tu ne reconnais pas le produit, génère quand même quelque chose de plausible
+- Réponds UNIQUEMENT avec le JSON, rien d'autre`;
 
-  Image à analyser : {{media url=photoDataUri}}`,
-});
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: base64Data,
+              }
+            },
+            { text: prompt }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 500,
+        },
+      }),
+    }
+  );
 
-const analyzeImageFlow = ai.defineFlow(
-  {
-    name: 'analyzeImageFlow',
-    inputSchema: AnalyzeImageInputSchema,
-    outputSchema: AnalyzeImageOutputSchema,
-  },
-  async input => {
-    const { output } = await prompt(input);
-    return output!;
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error('Gemini Vision Error:', errText);
+    throw new Error(`Erreur Gemini Vision: ${res.statusText}`);
   }
-);
+
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  // Nettoyer et parser le JSON
+  const clean = raw.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    // Fallback si le JSON est invalide
+    return {
+      titre: '',
+      description: '',
+      categorie: 'Autre',
+    };
+  }
+}

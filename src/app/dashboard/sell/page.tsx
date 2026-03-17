@@ -14,6 +14,7 @@ import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
+import { analyzeImageFlow } from '@/ai/flows/analyze-image-flow';
 
 const MAX_VIDEO_DURATION = 30; // 30 seconds
 const MAX_IMAGE_RES = 3840; // 4K Quality
@@ -64,6 +65,7 @@ export default function SellPage() {
   const [description, setDescription] = useState('');
   const [condition, setCondition] = useState<'Neuf' | 'Comme neuf' | 'Occasion'>('Neuf');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [moderationMessage, setModerationMessage] = useState('');
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
@@ -85,9 +87,48 @@ export default function SellPage() {
     }
   }, []);
 
+  const analyzeWithMami = async (imageBase64: string) => {
+    try {
+      setIsAnalyzing(true);
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+      if (!apiKey) {
+        console.warn('GEMINI API KEY non configurée');
+        return;
+      }
+
+      const result = await analyzeImageFlow({ imageBase64, apiKey });
+
+      if (result.titre && !title) setTitle(result.titre);
+      if (result.description && !description) setDescription(result.description);
+      if (result.categorie && !category) {
+        for (const cat of categories) {
+          const found = cat.subcategories.find(s => 
+            s.toLowerCase().includes(result.categorie.toLowerCase()) || 
+            result.categorie.toLowerCase().includes(s.toLowerCase())
+          );
+          if (found) {
+            setCategory(found);
+            break;
+          }
+        }
+      }
+
+      toast({
+        title: "Mami a analysé votre photo",
+        description: "Titre et description générés automatiquement.",
+      });
+    } catch (err) {
+      console.error('Erreur analyse image:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+
+    let firstImageProcessed = false;
 
     Array.from(files).forEach(file => {
       if (file.type.startsWith('video/')) {
@@ -124,7 +165,14 @@ export default function SellPage() {
         reader.onload = async (e) => {
           let resultUrl = e.target?.result as string;
           resultUrl = await resizeImage(resultUrl);
-          setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'image' }]);
+          
+          setMediaPreviews(prev => {
+            if (prev.length === 0 && !firstImageProcessed) {
+              firstImageProcessed = true;
+              analyzeWithMami(resultUrl);
+            }
+            return [...prev, { url: resultUrl, type: 'image' }];
+          });
         };
         reader.readAsDataURL(file);
       }
@@ -150,7 +198,6 @@ export default function SellPage() {
     setModerationMessage("Mami analyse votre annonce...");
 
     try {
-      // 1. Analyse par Mami
       const moderation = await moderateAnnonce({
         titre: title,
         description: description,
@@ -244,6 +291,14 @@ export default function SellPage() {
           <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             PHOTOS (4K) & VIDÉOS (1080p) <span className="normal-case font-normal">(Max 30s)</span>
           </Label>
+
+          {isAnalyzing && (
+            <div className="flex items-center gap-3 bg-accent/10 border border-accent/20 rounded-2xl px-4 py-3 text-sm text-accent font-medium animate-in fade-in slide-in-from-top-2">
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              Mami analyse votre photo et génère une description...
+            </div>
+          )}
+
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {mediaPreviews.map((m, i) => (
               <div key={i} className="relative aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden border border-border group shadow-sm bg-muted">
@@ -283,7 +338,10 @@ export default function SellPage() {
 
         <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-[3rem] border border-border/50 shadow-sm space-y-6 sm:space-y-8">
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm font-bold ml-1 sm:ml-2">Titre de l'annonce</Label>
+            <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
+              Titre de l'annonce
+              {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
+            </Label>
             <input 
               type="text" 
               placeholder="ex: iPhone 13 Pro Max" 
@@ -347,7 +405,10 @@ export default function SellPage() {
 
           <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-bold ml-1 sm:ml-2">Catégorie</Label>
+              <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
+                Catégorie
+                {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
+              </Label>
               <select 
                 className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base" 
                 value={category} 
@@ -376,7 +437,10 @@ export default function SellPage() {
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm font-bold ml-1 sm:ml-2">Description</Label>
+            <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
+              Description
+              {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
+            </Label>
             <textarea 
               rows={4} 
               placeholder="Décrivez votre article..." 
@@ -390,13 +454,18 @@ export default function SellPage() {
 
         <button 
           type="submit" 
-          disabled={isLoading} 
+          disabled={isLoading || isAnalyzing} 
           className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg min-h-[80px]"
         >
           {isLoading ? (
             <div className="flex flex-col items-center gap-1">
                 <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
                 <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">{moderationMessage}</span>
+            </div>
+          ) : isAnalyzing ? (
+            <div className="flex flex-col items-center gap-1">
+                <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
+                <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Mami analyse votre photo...</span>
             </div>
           ) : (
             <div className="flex items-center gap-3">
