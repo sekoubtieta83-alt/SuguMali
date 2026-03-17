@@ -13,6 +13,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
 
 const MAX_VIDEO_DURATION = 30; // 30 seconds
 const MAX_IMAGE_RES = 3840; // 4K Quality
@@ -40,7 +41,6 @@ const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MA
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, width, height);
-      // Compression JPEG à 0.7 pour rester sous la limite de 1Mo de Firestore tout en gardant une qualité 4K perçue
       resolve(canvas.toDataURL('image/jpeg', 0.7)); 
     };
     img.onerror = () => resolve(base64Str);
@@ -64,6 +64,7 @@ export default function SellPage() {
   const [description, setDescription] = useState('');
   const [condition, setCondition] = useState<'Neuf' | 'Comme neuf' | 'Occasion'>('Neuf');
   const [isLoading, setIsLoading] = useState(false);
+  const [moderationMessage, setModerationMessage] = useState('');
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   useEffect(() => {
@@ -94,8 +95,6 @@ export default function SellPage() {
         video.preload = 'metadata';
         video.onloadedmetadata = function() {
           window.URL.revokeObjectURL(video.src);
-          
-          // Vérification durée (30s)
           if (video.duration > MAX_VIDEO_DURATION) {
             toast({
               variant: "destructive",
@@ -104,8 +103,6 @@ export default function SellPage() {
             });
             return;
           }
-
-          // Vérification résolution (1080p)
           if (video.videoWidth > MAX_VIDEO_RES || video.videoHeight > MAX_VIDEO_RES) {
             toast({
               variant: "destructive",
@@ -114,7 +111,6 @@ export default function SellPage() {
             });
             return;
           }
-          
           const reader = new FileReader();
           reader.onload = (e) => {
             const resultUrl = e.target?.result as string;
@@ -127,7 +123,6 @@ export default function SellPage() {
         const reader = new FileReader();
         reader.onload = async (e) => {
           let resultUrl = e.target?.result as string;
-          // Redimensionnement en 4K automatique
           resultUrl = await resizeImage(resultUrl);
           setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'image' }]);
         };
@@ -152,8 +147,22 @@ export default function SellPage() {
     }
 
     setIsLoading(true);
+    setModerationMessage("Mami analyse votre annonce...");
 
     try {
+      // 1. Analyse par Mami
+      const moderation = await moderateAnnonce({
+        titre: title,
+        description: description,
+        prix: `${price} FCFA`
+      });
+
+      const isApproved = moderation.approved;
+      const status = isApproved ? 'approved' : 'rejected';
+      const reason = moderation.reason;
+
+      setModerationMessage(isApproved ? "Validation réussie..." : "Sécurité : Analyse terminée...");
+
       const cleanWhatsapp = `${countryCode}${whatsappNumber.replace(/\D/g, '')}`;
 
       const annonceData = {
@@ -162,7 +171,8 @@ export default function SellPage() {
         media: mediaPreviews,
         image: mediaPreviews[0]?.url || "",
         vendeurId: user.uid,
-        status: 'approved',
+        status: status,
+        moderationReason: reason,
         description: description,
         localisation: location,
         whatsapp: cleanWhatsapp,
@@ -177,17 +187,25 @@ export default function SellPage() {
       addDoc(annoncesCollection, annonceData)
         .then(() => {
           logActivity(db, {
-            action: 'AUTO_MODERATION',
+            action: isApproved ? 'AUTO_MODERATION' : 'REJECT_ANNONCE',
             userId: user.uid,
             userName: user.displayName || 'Utilisateur',
             targetName: title,
-            details: 'Annonce publiée'
+            details: isApproved ? 'Annonce validée par Mami' : `Rejeté par Mami : ${reason}`
           });
 
-          toast({ 
-            title: "Annonce publiée !", 
-            description: "Votre annonce est désormais visible en haute qualité."
-          });
+          if (isApproved) {
+            toast({ 
+              title: "Annonce publiée !", 
+              description: "Mami a validé votre annonce. Elle est maintenant en ligne."
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Annonce en attente",
+              description: "Mami a détecté un problème. Un modérateur va vérifier votre annonce."
+            });
+          }
           
           router.push('/dashboard');
         })
@@ -203,9 +221,10 @@ export default function SellPage() {
         });
     } catch (error: any) {
       console.error("Submit error:", error);
-      toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de la publication." });
+      toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de l'analyse." });
     } finally {
       setIsLoading(false);
+      setModerationMessage("");
     }
   };
 
@@ -372,12 +391,18 @@ export default function SellPage() {
         <button 
           type="submit" 
           disabled={isLoading} 
-          className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg"
+          className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg min-h-[80px]"
         >
           {isLoading ? (
-            <><Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" /> Publication...</>
+            <div className="flex flex-col items-center gap-1">
+                <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
+                <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">{moderationMessage}</span>
+            </div>
           ) : (
-            <><Sparkles className="h-5 w-5 sm:h-6 sm:w-6" /> Publier l'annonce</>
+            <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+                <span>Publier l'annonce</span>
+            </div>
           )}
         </button>
       </form>
