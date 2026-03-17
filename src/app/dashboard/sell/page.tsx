@@ -14,7 +14,8 @@ import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
-import { analyzeImageFlow } from '@/ai/flows/analyze-image-flow';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 const MAX_VIDEO_DURATION = 30; // 30 seconds
 const MAX_IMAGE_RES = 3840; // 4K Quality
@@ -90,21 +91,20 @@ export default function SellPage() {
   const analyzeWithMami = async (imageBase64: string) => {
     try {
       setIsAnalyzing(true);
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
-      if (!apiKey) {
-        console.warn('GEMINI API KEY non configurée');
-        return;
-      }
+      
+      const functions = getFunctions(getApp(), 'europe-west1');
+      const analyzeImage = httpsCallable(functions, 'analyzeImage');
+      
+      const result: any = await analyzeImage({ imageBase64 });
+      const data = result.data;
 
-      const result = await analyzeImageFlow({ imageBase64, apiKey });
-
-      if (result.titre && !title) setTitle(result.titre);
-      if (result.description && !description) setDescription(result.description);
-      if (result.categorie && !category) {
+      if (data.titre && !title) setTitle(data.titre);
+      if (data.description && !description) setDescription(data.description);
+      if (data.categorie && !category) {
         for (const cat of categories) {
           const found = cat.subcategories.find(s => 
-            s.toLowerCase().includes(result.categorie.toLowerCase()) || 
-            result.categorie.toLowerCase().includes(s.toLowerCase())
+            s.toLowerCase().includes(data.categorie.toLowerCase()) || 
+            data.categorie.toLowerCase().includes(s.toLowerCase())
           );
           if (found) {
             setCategory(found);
@@ -115,7 +115,7 @@ export default function SellPage() {
 
       toast({
         title: "Mami a analysé votre photo",
-        description: "Titre et description générés automatiquement.",
+        description: "Titre et description générés. Vous pouvez les modifier.",
       });
     } catch (err) {
       console.error('Erreur analyse image:', err);
