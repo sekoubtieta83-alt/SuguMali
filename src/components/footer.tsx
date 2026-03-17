@@ -1,6 +1,7 @@
 'use client';
 
 import { useMami } from '@/components/mami-context';
+import { MessageCircle } from 'lucide-react';
 
 const CATEGORIES = [
   { label: 'Véhicules',    question: 'Je cherche des véhicules disponibles sur SuguMali' },
@@ -29,11 +30,20 @@ export default function Footer() {
           <p className="text-sm leading-relaxed opacity-80 max-w-sm">
             La plateforme de confiance numéro 1 pour acheter et vendre au Mali. Connectez-vous avec votre communauté et faites de bonnes affaires en toute sécurité.
           </p>
+          <a 
+            href="https://wa.link/5hdjag" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-xl font-black text-sm hover:scale-105 transition-transform shadow-lg shadow-[#25D366]/20 w-fit"
+          >
+            <MessageCircle className="h-5 w-5" />
+            WhatsApp SuguMali
+          </a>
         </div>
 
         {/* Catégories → Mami */}
         <div className="md:pl-8">
-          <h4 className="text-white font-black mb-6 text-xl tracking-tight">Catégories</h4>
+          <h4 className="text-white font-black mb-6 text-xl tracking-tight uppercase">Catégories</h4>
           <ul className="space-y-4 text-sm font-medium">
             {CATEGORIES.map(({ label, question }) => (
               <li key={label}
@@ -49,7 +59,7 @@ export default function Footer() {
 
         {/* Aide & Support → Mami */}
         <div className="md:pl-8">
-          <h4 className="text-white font-black mb-6 text-xl tracking-tight">Aide & Support</h4>
+          <h4 className="text-white font-black mb-6 text-xl tracking-tight uppercase">Aide & Support</h4>
           <ul className="space-y-4 text-sm font-medium">
             {SUPPORT.map(({ label, question }) => (
               <li key={label}
