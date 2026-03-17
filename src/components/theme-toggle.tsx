@@ -35,10 +35,10 @@ export default function ThemeToggle() {
   return (
     <button 
       onClick={toggleDarkMode}
-      className="p-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all hover:scale-110 active:scale-95"
+      className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all hover:scale-110 active:scale-95"
       aria-label="Changer de thème"
     >
-      {darkMode ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5" />}
+      {darkMode ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4" />}
     </button>
   );
 }
