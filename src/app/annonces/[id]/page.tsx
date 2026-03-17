@@ -22,14 +22,13 @@ import {
   Play,
   Star,
   ChevronRight,
-  MessageSquareText
 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -246,7 +245,6 @@ export default function AnnoncePage() {
   const whatsappMessage = encodeURIComponent(`Bonjour, je vous contacte depuis SuguMali à propos de votre annonce : ${post.product?.name}`);
   const whatsappLink = post.whatsappNumber ? `https://wa.me/${post.whatsappNumber.replace(/\D/g, '')}?text=${whatsappMessage}` : '#';
   const telLink = post.whatsappNumber ? `tel:${post.whatsappNumber.replace(/\D/g, '')}` : '#';
-  const smsLink = post.whatsappNumber ? `sms:${post.whatsappNumber.replace(/\D/g, '')}?body=${whatsappMessage}` : '#';
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-28">
@@ -429,7 +427,7 @@ export default function AnnoncePage() {
 
       {/* Floating Action Bar (Sticky Footer) */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t p-4 pb-6 flex items-center gap-2 z-40 max-w-2xl mx-auto shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)]">
-        {/* Favorite Button Overlaying slightly */}
+        {/* Favorite Button */}
         <Button 
           variant="outline" 
           size="icon" 
@@ -446,26 +444,19 @@ export default function AnnoncePage() {
         <div className="flex-1 flex gap-2 h-14">
           <a 
             href={telLink} 
-            className="flex-1 bg-[#e91e63] hover:bg-[#d81b60] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-sm sm:text-base transition-all active:scale-[0.98] shadow-lg shadow-[#e91e63]/20"
+            className="flex-1 bg-[#d32f2f] hover:bg-[#b71c1c] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-red-500/20"
           >
-            <Phone size={18} />
+            <Phone size={20} />
             Appel
           </a>
           <a 
             href={whatsappLink} 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="flex-1 bg-[#25D366] hover:bg-[#1ebe57] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-sm sm:text-base transition-all active:scale-[0.98] shadow-lg shadow-[#25D366]/20"
+            className="flex-1 bg-[#25D366] hover:bg-[#1ebe57] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-green-500/20"
           >
-            <MessageCircle size={18} />
+            <MessageCircle size={20} />
             WhatsApp
-          </a>
-          <a 
-            href={smsLink} 
-            className="flex-1 bg-[#f9a825] hover:bg-[#f57f17] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-sm sm:text-base transition-all active:scale-[0.98] shadow-lg shadow-[#f9a825]/20"
-          >
-            <MessageSquareText size={18} />
-            SMS
           </a>
         </div>
       </div>
