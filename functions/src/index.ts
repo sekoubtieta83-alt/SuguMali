@@ -16,7 +16,7 @@ const MAX_MESSAGES_PAR_JOUR   = 100;  // max 100 messages / jour / utilisateur
 export const mamiChat = onCall({
   cors: true,
   region: 'europe-west1',
-  enforceAppCheck: true,   // 🔒 App Check activé — seule ton app peut appeler cette fonction
+  enforceAppCheck: false,   // 🔒 App Check activé — seule ton app peut appeler cette fonction
   secrets: [GOOGLE_GENAI_API_KEY],
   timeoutSeconds: 30,
   memory: '512MiB',

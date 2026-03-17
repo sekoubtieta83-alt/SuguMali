@@ -5,6 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { NotificationHandler } from '@/components/notifications/notification-handler';
 import { SupportChatWidget } from '@/components/support-chat-widget';
 import { SplashScreen } from '@/components/splash-screen';
+import { MamiProvider } from '@/components/mami-context';
 
 export const metadata: Metadata = {
   title: 'SuguMali - Le MALI achète et vend ici',
@@ -36,10 +37,12 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <SplashScreen />
         <FirebaseClientProvider>
-          <NotificationHandler />
-          {children}
-          <SupportChatWidget />
-          <Toaster />
+          <MamiProvider>
+            <NotificationHandler />
+            {children}
+            <SupportChatWidget />
+            <Toaster />
+          </MamiProvider>
         </FirebaseClientProvider>
       </body>
     </html>
