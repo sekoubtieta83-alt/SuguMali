@@ -37,7 +37,7 @@ export default function Footer() {
             className="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-xl font-black text-sm hover:scale-105 transition-transform shadow-lg shadow-[#25D366]/20 w-fit"
           >
             <MessageCircle className="h-5 w-5" />
-            WhatsApp SuguMali
+            Contactez-nous
           </a>
         </div>
 
