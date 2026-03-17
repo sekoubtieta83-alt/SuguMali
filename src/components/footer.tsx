@@ -1,6 +1,5 @@
 'use client';
 
-import { MessageCircle } from 'lucide-react';
 import { useMami } from '@/components/mami-context';
 
 const CATEGORIES = [
@@ -13,7 +12,6 @@ const CATEGORIES = [
 const SUPPORT = [
   { label: 'Comment ça marche ?',   question: 'Comment fonctionne SuguMali ? Explique-moi les étapes pour acheter ou vendre.' },
   { label: 'Conseils de sécurité',  question: 'Quels sont les conseils de sécurité pour acheter et vendre sur SuguMali ?' },
-  { label: 'Contactez-nous',        question: 'Je voudrais contacter le support de SuguMali. Comment puis-je vous joindre ?' },
 ];
 
 export default function Footer() {
@@ -31,23 +29,12 @@ export default function Footer() {
           <p className="text-sm leading-relaxed opacity-80 max-w-sm">
             La plateforme de confiance numéro 1 pour acheter et vendre au Mali. Connectez-vous avec votre communauté et faites de bonnes affaires en toute sécurité.
           </p>
-          <div className="flex gap-4">
-            <a 
-              href="https://wa.link/5hdjag" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-500 px-4 py-2 rounded-full transition-all border border-green-500/20"
-            >
-              <MessageCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
-              <span className="text-xs font-bold uppercase tracking-wider">Contact WhatsApp</span>
-            </a>
-          </div>
         </div>
 
         {/* Catégories → Mami */}
         <div className="md:pl-8">
-          <h4 className="text-white font-black mb-6 uppercase text-xs tracking-[0.2em] opacity-50">Catégories</h4>
-          <ul className="space-y-4 text-sm">
+          <h4 className="text-white font-black mb-6 text-xl tracking-tight">Catégories</h4>
+          <ul className="space-y-4 text-sm font-medium">
             {CATEGORIES.map(({ label, question }) => (
               <li key={label}
                 className="hover:text-accent cursor-pointer transition-all flex items-center gap-2 group w-fit"
@@ -62,8 +49,8 @@ export default function Footer() {
 
         {/* Aide & Support → Mami */}
         <div className="md:pl-8">
-          <h4 className="text-white font-black mb-6 uppercase text-xs tracking-[0.2em] opacity-50">Aide & Support</h4>
-          <ul className="space-y-4 text-sm">
+          <h4 className="text-white font-black mb-6 text-xl tracking-tight">Aide & Support</h4>
+          <ul className="space-y-4 text-sm font-medium">
             {SUPPORT.map(({ label, question }) => (
               <li key={label}
                 className="hover:text-accent cursor-pointer transition-all flex items-center gap-2 group w-fit"
