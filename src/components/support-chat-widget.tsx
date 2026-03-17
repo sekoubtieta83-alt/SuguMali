@@ -358,7 +358,7 @@ export function SupportChatWidget() {
                   ))}
                   {isLoading && (
                     <div className="flex items-center gap-2 text-muted-foreground text-xs italic ml-8 mb-4">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Mami réfléchit...
+                      <Loader2 className="h-3 w-3 animate-spin" /> Mami est en train d'écrire...
                     </div>
                   )}
                   <div ref={scrollRef} />
