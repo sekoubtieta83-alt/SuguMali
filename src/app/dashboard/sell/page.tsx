@@ -17,9 +17,9 @@ import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 
-const MAX_VIDEO_DURATION = 30; // 30 seconds
-const MAX_IMAGE_RES = 3840; // 4K Quality
-const MAX_VIDEO_RES = 1920; // 1080p Quality
+const MAX_VIDEO_DURATION = 30;
+const MAX_IMAGE_RES = 3840;
+const MAX_VIDEO_RES = 1920;
 
 const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MAX_IMAGE_RES): Promise<string> => {
   return new Promise((resolve) => {
@@ -29,21 +29,15 @@ const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MA
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-
       if (width > maxWidth || height > maxHeight) {
-        if (width > height) {
-          height *= maxWidth / width;
-          width = maxWidth;
-        } else {
-          width *= maxHeight / height;
-          height = maxHeight;
-        }
+        if (width > height) { height *= maxWidth / width; width = maxWidth; }
+        else { width *= maxHeight / height; height = maxHeight; }
       }
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = () => resolve(base64Str);
   });
@@ -91,10 +85,8 @@ export default function SellPage() {
   const analyzeWithMami = async (imageBase64: string) => {
     try {
       setIsAnalyzing(true);
-      
       const functions = getFunctions(getApp(), 'europe-west1');
       const analyzeImage = httpsCallable(functions, 'analyzeImage');
-      
       const result: any = await analyzeImage({ imageBase64 });
       const data = result.data;
 
@@ -102,14 +94,11 @@ export default function SellPage() {
       if (data.description && !description) setDescription(data.description);
       if (data.categorie && !category) {
         for (const cat of categories) {
-          const found = cat.subcategories.find(s => 
-            s.toLowerCase().includes(data.categorie.toLowerCase()) || 
+          const found = cat.subcategories.find(s =>
+            s.toLowerCase().includes(data.categorie.toLowerCase()) ||
             data.categorie.toLowerCase().includes(s.toLowerCase())
           );
-          if (found) {
-            setCategory(found);
-            break;
-          }
+          if (found) { setCategory(found); break; }
         }
       }
 
@@ -117,8 +106,13 @@ export default function SellPage() {
         title: "Mami a analysé votre photo",
         description: "Titre et description générés. Vous pouvez les modifier.",
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur analyse image:', err);
+      toast({
+        variant: "destructive",
+        title: "Analyse indisponible",
+        description: err.message || "Mami n'a pas pu analyser la photo."
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -127,7 +121,6 @@ export default function SellPage() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
-
     let firstImageProcessed = false;
 
     Array.from(files).forEach(file => {
@@ -137,19 +130,7 @@ export default function SellPage() {
         video.onloadedmetadata = function() {
           window.URL.revokeObjectURL(video.src);
           if (video.duration > MAX_VIDEO_DURATION) {
-            toast({
-              variant: "destructive",
-              title: "Vidéo trop longue",
-              description: `La durée maximale autorisée est de ${MAX_VIDEO_DURATION} secondes.`
-            });
-            return;
-          }
-          if (video.videoWidth > MAX_VIDEO_RES || video.videoHeight > MAX_VIDEO_RES) {
-            toast({
-              variant: "destructive",
-              title: "Qualité trop élevée",
-              description: `Les vidéos sont limitées à la qualité 1080p (${MAX_VIDEO_RES}px).`
-            });
+            toast({ variant: "destructive", title: "Vidéo trop longue", description: `Max ${MAX_VIDEO_DURATION} secondes.` });
             return;
           }
           const reader = new FileReader();
@@ -182,13 +163,12 @@ export default function SellPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!db) return;
-    
+
     const user = auth?.currentUser;
     if (!user) {
       toast({ variant: "destructive", title: "Non connecté", description: "Vous devez être connecté pour publier." });
       return;
     }
-
     if (mediaPreviews.length === 0) {
       toast({ variant: "destructive", title: "Media requis", description: "Veuillez ajouter au moins une photo ou vidéo." });
       return;
@@ -198,12 +178,7 @@ export default function SellPage() {
     setModerationMessage("Mami analyse votre annonce...");
 
     try {
-      const moderation = await moderateAnnonce({
-        titre: title,
-        description: description,
-        prix: `${price} FCFA`
-      });
-
+      const moderation = await moderateAnnonce({ titre: title, description: description, prix: `${price} FCFA` });
       const isApproved = moderation.approved;
       const status = isApproved ? 'approved' : 'rejected';
       const reason = moderation.reason;
@@ -230,45 +205,27 @@ export default function SellPage() {
       };
 
       const annoncesCollection = collection(db, "annonces");
-      
-      addDoc(annoncesCollection, annonceData)
-        .then(() => {
-          logActivity(db, {
-            action: isApproved ? 'AUTO_MODERATION' : 'REJECT_ANNONCE',
-            userId: user.uid,
-            userName: user.displayName || 'Utilisateur',
-            targetName: title,
-            details: isApproved ? 'Annonce validée par Mami' : `Rejeté par Mami : ${reason}`
-          });
 
-          if (isApproved) {
-            toast({ 
-              title: "Annonce publiée !", 
-              description: "Mami a validé votre annonce. Elle est maintenant en ligne."
-            });
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Annonce en attente",
-              description: "Mami a détecté un problème. Un modérateur va vérifier votre annonce."
-            });
-          }
-          
-          router.push('/dashboard');
-        })
-        .catch(async (serverError: any) => {
-          if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-              path: annoncesCollection.path,
-              operation: 'create',
-              requestResourceData: annonceData,
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          }
-        });
+      await addDoc(annoncesCollection, annonceData);
+      
+      logActivity(db, {
+        action: isApproved ? 'AUTO_MODERATION' : 'REJECT_ANNONCE',
+        userId: user.uid,
+        userName: user.displayName || 'Utilisateur',
+        targetName: title,
+        details: isApproved ? 'Annonce validée par Mami' : `Rejeté par Mami : ${reason}`
+      });
+
+      if (isApproved) {
+        toast({ title: "Annonce publiée !", description: "Mami a validé votre annonce. Elle est maintenant en ligne." });
+      } else {
+        toast({ variant: "destructive", title: "Annonce en attente", description: "Mami a détecté un problème. Un modérateur va vérifier votre annonce." });
+      }
+      router.push('/dashboard');
+      
     } catch (error: any) {
       console.error("Submit error:", error);
-      toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de l'analyse." });
+      toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de la publication." });
     } finally {
       setIsLoading(false);
       setModerationMessage("");
@@ -308,27 +265,27 @@ export default function SellPage() {
                   <div className="relative w-full h-full">
                     <video src={m.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
                     <div className="absolute top-1 left-1 bg-black/50 p-1 rounded-full">
-                        <Video size={10} className="text-white" />
+                      <Video size={10} className="text-white" />
                     </div>
                   </div>
                 )}
-                <button 
-                  type="button" 
-                  onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))} 
+                <button
+                  type="button"
+                  onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
                   className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/50 text-white rounded-full p-1 sm:p-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <X size={12}/>
+                  <X size={12} />
                 </button>
               </div>
             ))}
-            
-            <button 
-              type="button" 
-              onClick={() => fileInputRef.current?.click()} 
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
               className="aspect-square border-2 border-dashed border-muted-foreground/20 rounded-2xl sm:rounded-[2rem] flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-muted/50 hover:border-accent/40 transition-all group"
             >
               <div className="bg-muted p-2 sm:p-3 rounded-full group-hover:bg-accent/10 transition-colors">
-                <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground group-hover:text-accent transition-colors" /> 
+                <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground group-hover:text-accent transition-colors" />
               </div>
               <span className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase group-hover:text-accent text-center px-1">Ajouter</span>
             </button>
@@ -342,13 +299,13 @@ export default function SellPage() {
               Titre de l'annonce
               {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
             </Label>
-            <input 
-              type="text" 
-              placeholder="ex: iPhone 13 Pro Max" 
-              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-foreground text-base sm:text-lg" 
-              value={title} 
-              onChange={e => setTitle(e.target.value)} 
-              required 
+            <input
+              type="text"
+              placeholder="ex: iPhone 13 Pro Max"
+              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-foreground text-base sm:text-lg"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              required
             />
           </div>
 
@@ -368,36 +325,36 @@ export default function SellPage() {
             <div className="space-y-2 sm:space-y-3">
               <Label className="text-sm font-bold ml-1 sm:ml-2">Localisation</Label>
               <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="Bamako" 
-                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 pl-10 sm:pl-12 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base" 
-                  value={location} 
-                  onChange={e => setLocation(e.target.value)} 
-                  required 
+                <input
+                  type="text"
+                  placeholder="Bamako"
+                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 pl-10 sm:pl-12 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base"
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  required
                 />
                 <MapPin className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 {isFetchingLocation && <Loader2 className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 animate-spin text-accent" />}
               </div>
             </div>
-            
+
             <div className="space-y-2 sm:space-y-3">
               <Label className="text-sm font-bold ml-1 sm:ml-2">WhatsApp</Label>
               <div className="flex gap-2">
-                <select 
-                  value={countryCode} 
-                  onChange={e => setCountryCode(e.target.value)} 
+                <select
+                  value={countryCode}
+                  onChange={e => setCountryCode(e.target.value)}
                   className="bg-muted/30 border-none rounded-xl sm:rounded-2xl px-2 sm:px-4 py-4 sm:py-5 outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm"
                 >
                   {countryCodes.map(c => <option key={c.code} value={c.dial_code}>{c.flag} {c.dial_code}</option>)}
                 </select>
-                <input 
-                  type="tel" 
-                  placeholder="76 00 00 00" 
-                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base" 
-                  value={whatsappNumber} 
-                  onChange={e => setWhatsappNumber(e.target.value)} 
-                  required 
+                <input
+                  type="tel"
+                  placeholder="76 00 00 00"
+                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base"
+                  value={whatsappNumber}
+                  onChange={e => setWhatsappNumber(e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -409,10 +366,10 @@ export default function SellPage() {
                 Catégorie
                 {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
               </Label>
-              <select 
-                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base" 
-                value={category} 
-                onChange={e => setCategory(e.target.value)} 
+              <select
+                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
+                value={category}
+                onChange={e => setCategory(e.target.value)}
                 required
               >
                 <option value="">Choisir...</option>
@@ -425,13 +382,13 @@ export default function SellPage() {
             </div>
             <div className="space-y-2 sm:space-y-3">
               <Label className="text-sm font-bold ml-1 sm:ml-2">Prix (FCFA)</Label>
-              <input 
-                type="number" 
-                placeholder="0" 
-                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base" 
-                value={price} 
-                onChange={e => setPrice(e.target.value)} 
-                required 
+              <input
+                type="number"
+                placeholder="0"
+                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
+                value={price}
+                onChange={e => setPrice(e.target.value)}
+                required
               />
             </div>
           </div>
@@ -441,36 +398,36 @@ export default function SellPage() {
               Description
               {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
             </Label>
-            <textarea 
-              rows={4} 
-              placeholder="Décrivez votre article..." 
-              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none resize-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base" 
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              required 
+            <textarea
+              rows={4}
+              placeholder="Décrivez votre article..."
+              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none resize-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              required
             />
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          disabled={isLoading || isAnalyzing} 
+        <button
+          type="submit"
+          disabled={isLoading || isAnalyzing}
           className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg min-h-[80px]"
         >
           {isLoading ? (
             <div className="flex flex-col items-center gap-1">
-                <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">{moderationMessage}</span>
+              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">{moderationMessage}</span>
             </div>
           ) : isAnalyzing ? (
             <div className="flex flex-col items-center gap-1">
-                <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Mami analyse votre photo...</span>
+              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Mami analyse votre photo...</span>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span>Publier l'annonce</span>
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span>Publier l'annonce</span>
             </div>
           )}
         </button>

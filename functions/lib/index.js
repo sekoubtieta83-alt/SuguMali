@@ -33,11 +33,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mamiChat = void 0;
+exports.analyzeImage = exports.mamiChat = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
 const mami_chat_flow_1 = require("./ai/flows/mami-chat-flow");
+const analyze_image_flow_1 = require("./ai/flows/analyze-image-flow");
 const GOOGLE_GENAI_API_KEY = (0, params_1.defineSecret)("GOOGLE_GENAI_API_KEY");
 if (!admin.apps.length)
     admin.initializeApp();
@@ -48,7 +49,7 @@ const MAX_MESSAGES_PAR_JOUR = 100; // max 100 messages / jour / utilisateur
 exports.mamiChat = (0, https_1.onCall)({
     cors: true,
     region: 'europe-west1',
-    enforceAppCheck: false, // 🔒 App Check activé — seule ton app peut appeler cette fonction
+    enforceAppCheck: true, // 🔒 App Check activé — seule ton app peut appeler cette fonction
     secrets: [GOOGLE_GENAI_API_KEY],
     timeoutSeconds: 30,
     memory: '512MiB',
@@ -101,4 +102,29 @@ exports.mamiChat = (0, https_1.onCall)({
     const apiKey = GOOGLE_GENAI_API_KEY.value();
     const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode, sponsoredAnnonces, allAnnonces }, apiKey);
     return { text: response };
+});
+// ─── analyzeImage — Analyse d'image par Mami ────────────────────────────────
+exports.analyzeImage = (0, https_1.onCall)({
+    cors: true,
+    region: 'europe-west1',
+    enforceAppCheck: false,
+    secrets: [GOOGLE_GENAI_API_KEY],
+    timeoutSeconds: 60,
+    memory: '512MiB',
+}, async (request) => {
+    // Auth obligatoire
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Tu dois être connecté.');
+    }
+    const { imageBase64 } = request.data;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Image invalide.');
+    }
+    // Limite taille image (max 4MB en base64)
+    if (imageBase64.length > 5500000) {
+        throw new https_1.HttpsError('invalid-argument', 'Image trop lourde. Max 4MB.');
+    }
+    const apiKey = GOOGLE_GENAI_API_KEY.value();
+    const result = await (0, analyze_image_flow_1.analyzeImageFlow)({ imageBase64, apiKey });
+    return result;
 });
