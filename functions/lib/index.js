@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeImage = exports.mamiChat = void 0;
+exports.moderateAnnonce = exports.analyzeImage = exports.mamiChat = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
@@ -43,19 +43,18 @@ const GOOGLE_GENAI_API_KEY = (0, params_1.defineSecret)("GOOGLE_GENAI_API_KEY");
 if (!admin.apps.length)
     admin.initializeApp();
 const db = admin.firestore();
-// ─── Constantes de rate limiting ───────────────────────────────────────────
-const MAX_MESSAGES_PAR_MINUTE = 10; // max 10 messages / minute / utilisateur
-const MAX_MESSAGES_PAR_JOUR = 100; // max 100 messages / jour / utilisateur
+const MAX_MESSAGES_PAR_MINUTE = 10;
+const MAX_MESSAGES_PAR_JOUR = 100;
 exports.mamiChat = (0, https_1.onCall)({
     cors: true,
     region: 'europe-west1',
-    enforceAppCheck: true, // 🔒 App Check activé
+    enforceAppCheck: true,
     secrets: [GOOGLE_GENAI_API_KEY],
     timeoutSeconds: 30,
     memory: '512MiB',
 }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'Tu dois être connecté pour utiliser Mami.');
+        throw new https_1.HttpsError('unauthenticated', 'Tu dois etre connecte pour utiliser Mami.');
     }
     const userId = request.auth.uid;
     const now = Date.now();
@@ -87,10 +86,9 @@ exports.mamiChat = (0, https_1.onCall)({
     }
     catch (error) {
         console.error("Mami Chat Error:", error);
-        throw new https_1.HttpsError('internal', 'Mami a eu un petit problème technique.');
+        throw new https_1.HttpsError('internal', 'Mami a eu un petit probleme technique.');
     }
 });
-// ─── analyzeImage — Analyse d'image par Mami ────────────────────────────────
 exports.analyzeImage = (0, https_1.onCall)({
     cors: true,
     region: 'europe-west1',
@@ -100,26 +98,52 @@ exports.analyzeImage = (0, https_1.onCall)({
     memory: '512MiB',
 }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'Tu dois être connecté.');
+        throw new https_1.HttpsError('unauthenticated', 'Tu dois etre connecte.');
     }
     const { imageBase64 } = request.data;
     if (!imageBase64 || typeof imageBase64 !== 'string') {
         throw new https_1.HttpsError('invalid-argument', 'Image manquante ou invalide.');
     }
     if (imageBase64.length > 6000000) {
-        throw new https_1.HttpsError('invalid-argument', 'Image trop lourde pour l\'analyse.');
+        throw new https_1.HttpsError('invalid-argument', 'Image trop lourde.');
     }
     try {
         const apiKey = GOOGLE_GENAI_API_KEY.value();
-        if (!apiKey) {
-            throw new Error("Clé API Gemini non configurée dans le backend.");
-        }
+        if (!apiKey)
+            throw new Error("Cle API Gemini non configuree.");
         const result = await (0, analyze_image_flow_1.analyzeImageFlow)({ imageBase64, apiKey });
         return result;
     }
     catch (error) {
         console.error('AnalyzeImage Backend Error:', error);
-        // On transforme l'erreur interne en HttpsError pour éviter le message "INTERNAL" générique sur le client
-        throw new https_1.HttpsError('internal', error.message || 'Erreur lors de l\'analyse de l\'image.');
+        throw new https_1.HttpsError('internal', error.message || 'Erreur analyse image.');
+    }
+});
+exports.moderateAnnonce = (0, https_1.onCall)({
+    cors: true,
+    region: 'europe-west1',
+    enforceAppCheck: false,
+    secrets: [GOOGLE_GENAI_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB',
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Tu dois etre connecte.');
+    }
+    const { titre, description, prix } = request.data;
+    if (!titre || !description) {
+        throw new https_1.HttpsError('invalid-argument', 'Titre et description sont requis.');
+    }
+    try {
+        const apiKey = GOOGLE_GENAI_API_KEY.value();
+        if (!apiKey)
+            throw new Error("Cle API Gemini non configuree.");
+        const { moderateAnnonce: moderateFlow } = await Promise.resolve().then(() => __importStar(require('./ai/flows/moderate-annonce-flow')));
+        const result = await moderateFlow({ titre, description, prix }, apiKey);
+        return result;
+    }
+    catch (error) {
+        console.error('ModerateAnnonce Backend Error:', error);
+        throw new https_1.HttpsError('internal', error.message || 'Erreur lors de la moderation.');
     }
 });
