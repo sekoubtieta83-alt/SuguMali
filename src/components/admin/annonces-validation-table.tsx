@@ -1,6 +1,6 @@
-
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
 import { collection, onSnapshot, query, where, updateDoc, doc, deleteDoc } from 'firebase/firestore';

@@ -13,7 +13,6 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { moderateAnnonce } from '@/ai/flows/moderate-annonce-flow';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 
@@ -178,7 +177,9 @@ export default function SellPage() {
     setModerationMessage("Mami analyse votre annonce...");
 
     try {
-      const moderation = await moderateAnnonce({ titre: title, description: description, prix: `${price} FCFA` });
+      const moderateImageFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
+      const modResult: any = await moderateImageFn({ titre: title, description: description, prix: `${price} FCFA` });
+      const moderation = modResult.data;
       const isApproved = moderation.approved;
       const status = isApproved ? 'approved' : 'rejected';
       const reason = moderation.reason;
