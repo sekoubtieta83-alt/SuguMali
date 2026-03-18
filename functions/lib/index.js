@@ -49,36 +49,28 @@ const MAX_MESSAGES_PAR_JOUR = 100; // max 100 messages / jour / utilisateur
 exports.mamiChat = (0, https_1.onCall)({
     cors: true,
     region: 'europe-west1',
-    enforceAppCheck: true, // 🔒 App Check activé — seule ton app peut appeler cette fonction
+    enforceAppCheck: true, // 🔒 App Check activé
     secrets: [GOOGLE_GENAI_API_KEY],
     timeoutSeconds: 30,
     memory: '512MiB',
 }, async (request) => {
-    // ── 1. Authentification obligatoire ────────────────────────────────────────
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Tu dois être connecté pour utiliser Mami.');
     }
     const userId = request.auth.uid;
     const now = Date.now();
-    const today = new Date().toISOString().slice(0, 10); // "2026-03-16"
-    // ── 2. Rate Limiting — par minute et par jour ───────────────────────────────
+    const today = new Date().toISOString().slice(0, 10);
     const rateLimitRef = db.collection('rateLimits').doc(userId);
     await db.runTransaction(async (tx) => {
         const snap = await tx.get(rateLimitRef);
         const data = snap.data() || {};
-        // Compteur par minute
-        const minuteCount = (now - (data.lastMinuteReset || 0) < 60000)
-            ? (data.minuteCount || 0)
-            : 0;
-        // Compteur par jour
-        const dailyCount = (data.lastDay === today)
-            ? (data.dailyCount || 0)
-            : 0;
+        const minuteCount = (now - (data.lastMinuteReset || 0) < 60000) ? (data.minuteCount || 0) : 0;
+        const dailyCount = (data.lastDay === today) ? (data.dailyCount || 0) : 0;
         if (minuteCount >= MAX_MESSAGES_PAR_MINUTE) {
-            throw new https_1.HttpsError('resource-exhausted', 'Trop de messages envoyés. Attends 1 minute avant de réessayer.');
+            throw new https_1.HttpsError('resource-exhausted', 'Trop de messages. Attends 1 minute.');
         }
         if (dailyCount >= MAX_MESSAGES_PAR_JOUR) {
-            throw new https_1.HttpsError('resource-exhausted', 'Tu as atteint la limite de messages pour aujourd\'hui. Reviens demain !');
+            throw new https_1.HttpsError('resource-exhausted', 'Limite quotidienne atteinte. Reviens demain !');
         }
         tx.set(rateLimitRef, {
             minuteCount: minuteCount + 1,
@@ -87,21 +79,16 @@ exports.mamiChat = (0, https_1.onCall)({
             lastDay: today,
         }, { merge: true });
     });
-    // ── 3. Validation des données entrantes ────────────────────────────────────
     const { messages, mode, sponsoredAnnonces, allAnnonces } = request.data;
-    if (!Array.isArray(messages) || messages.length === 0) {
-        throw new https_1.HttpsError('invalid-argument', 'Messages invalides.');
+    try {
+        const apiKey = GOOGLE_GENAI_API_KEY.value();
+        const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode, sponsoredAnnonces, allAnnonces }, apiKey);
+        return { text: response };
     }
-    if (messages.length > 20) {
-        throw new https_1.HttpsError('invalid-argument', 'Trop de messages dans la conversation (max 20).');
+    catch (error) {
+        console.error("Mami Chat Error:", error);
+        throw new https_1.HttpsError('internal', 'Mami a eu un petit problème technique.');
     }
-    if (mode && !['acheter', 'vendre'].includes(mode)) {
-        throw new https_1.HttpsError('invalid-argument', 'Mode invalide.');
-    }
-    // ── 4. Appel Gemini ────────────────────────────────────────────────────────
-    const apiKey = GOOGLE_GENAI_API_KEY.value();
-    const response = await (0, mami_chat_flow_1.mamiChatFlow)({ messages, mode, sponsoredAnnonces, allAnnonces }, apiKey);
-    return { text: response };
 });
 // ─── analyzeImage — Analyse d'image par Mami ────────────────────────────────
 exports.analyzeImage = (0, https_1.onCall)({
@@ -112,19 +99,27 @@ exports.analyzeImage = (0, https_1.onCall)({
     timeoutSeconds: 60,
     memory: '512MiB',
 }, async (request) => {
-    // Auth obligatoire
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Tu dois être connecté.');
     }
     const { imageBase64 } = request.data;
     if (!imageBase64 || typeof imageBase64 !== 'string') {
-        throw new https_1.HttpsError('invalid-argument', 'Image invalide.');
+        throw new https_1.HttpsError('invalid-argument', 'Image manquante ou invalide.');
     }
-    // Limite taille image (max 4MB en base64)
-    if (imageBase64.length > 5500000) {
-        throw new https_1.HttpsError('invalid-argument', 'Image trop lourde. Max 4MB.');
+    if (imageBase64.length > 6000000) {
+        throw new https_1.HttpsError('invalid-argument', 'Image trop lourde pour l\'analyse.');
     }
-    const apiKey = GOOGLE_GENAI_API_KEY.value();
-    const result = await (0, analyze_image_flow_1.analyzeImageFlow)({ imageBase64, apiKey });
-    return result;
+    try {
+        const apiKey = GOOGLE_GENAI_API_KEY.value();
+        if (!apiKey) {
+            throw new Error("Clé API Gemini non configurée dans le backend.");
+        }
+        const result = await (0, analyze_image_flow_1.analyzeImageFlow)({ imageBase64, apiKey });
+        return result;
+    }
+    catch (error) {
+        console.error('AnalyzeImage Backend Error:', error);
+        // On transforme l'erreur interne en HttpsError pour éviter le message "INTERNAL" générique sur le client
+        throw new https_1.HttpsError('internal', error.message || 'Erreur lors de l\'analyse de l\'image.');
+    }
 });
