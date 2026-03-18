@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,22 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          toast({ title: 'Connexion Google reussie', description: 'Bienvenue sur SuguMali !' });
+          router.push('/dashboard');
+        }
+      })
+      .catch((error) => {
+        if (error.code && error.code !== 'auth/no-current-user') {
+          console.error('Redirect result error:', error);
+        }
+      });
+  }, [auth]);
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
