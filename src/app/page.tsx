@@ -84,7 +84,7 @@ function Header() {
         <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
           {loading ? (
-            <Skeleton className="h-9 w-20 sm:w-28 rounded-full" />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted animate-pulse" />
           ) : user ? (
             <>
               <Button asChild className="rounded-full font-bold px-3 sm:px-5 bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none h-8 sm:h-10 text-[11px] sm:text-sm">
@@ -115,7 +115,7 @@ function Header() {
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild className="hidden md:flex font-bold text-foreground/80 hover:text-accent">
+              <Button variant="ghost" asChild className="font-bold text-foreground/80 hover:text-accent h-8 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-4">
                 <Link href="/login">Se connecter</Link>
               </Button>
               <Button asChild className="rounded-full font-bold px-3 sm:px-5 bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none h-8 sm:h-10 text-[11px] sm:text-sm">
