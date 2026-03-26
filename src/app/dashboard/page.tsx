@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -19,6 +18,7 @@ export default function DashboardPage() {
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
   const searchParams = useSearchParams();
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     });
   }, [searchParams]);
 
-  // Requête vers Firestore simplifiée pour éviter le besoin d'index composite
+  // Requête vers Firestore
   const annoncesQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
@@ -102,8 +102,6 @@ export default function DashboardPage() {
           operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
-      } else {
-        console.error("Erreur Firestore dans DashboardPage:", serverError);
       }
       setIsLoading(false);
     });
@@ -143,11 +141,9 @@ export default function DashboardPage() {
         return matchesSearch && matchesLocation && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition;
     });
 
-    // Tri combiné côté client : Sponsorisés d'abord, puis par date décroissante
     const finalResults = [...filteredResults].sort((a, b) => {
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
-        
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
@@ -155,17 +151,15 @@ export default function DashboardPage() {
 
     setFilteredPosts(finalResults);
 
-    // Logging des recherches uniquement si changement réel
     if (filters.searchQuery && filters.searchQuery !== lastLoggedSearch.current && firestore) {
         lastLoggedSearch.current = filters.searchQuery;
         const searchLogsRef = collection(firestore, 'searchLogs');
-        const logData = {
+        addDoc(searchLogsRef, {
             query: filters.searchQuery,
             resultsCount: finalResults.length,
             userId: user?.uid || 'anonymous',
             timestamp: serverTimestamp(),
-        };
-        addDoc(searchLogsRef, logData).catch(() => {});
+        }).catch(() => {});
     }
 
   }, [filters, allPosts, firestore, user]);
@@ -176,7 +170,7 @@ export default function DashboardPage() {
 
   return (
      <div className="flex flex-1 bg-secondary/5">
-        <div className="hidden lg:block lg:w-80 xl:w-96 sticky top-20 h-[calc(100vh-5rem)]">
+        <div className="hidden lg:block lg:w-80 xl:w-96 sticky top-20 h-[calc(100vh-5rem)] border-r bg-background">
             <FilterSidebar filters={filters} setFilters={setFilters} />
         </div>
         <main className="flex-1 p-4 md:p-8 lg:p-10">
@@ -191,7 +185,7 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="lg:hidden flex justify-end">
-                    <Sheet>
+                    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" className="rounded-2xl border-2 font-bold px-6 h-12 flex items-center gap-2 bg-background shadow-sm hover:bg-accent hover:text-white transition-all">
                                 <ListFilter className="h-5 w-5" />
@@ -200,10 +194,14 @@ export default function DashboardPage() {
                         </SheetTrigger>
                         <SheetContent side="left" className="p-0 w-full sm:w-80 border-none">
                             <SheetHeader className="sr-only">
-                                <SheetTitle>Filtres de recherche</SheetTitle>
-                                <SheetDescription>Ajustez vos critères pour trouver l'annonce parfaite sur SuguMali.</SheetDescription>
+                                <SheetTitle>Filtres</SheetTitle>
+                                <SheetDescription>Ajustez vos critères.</SheetDescription>
                             </SheetHeader>
-                            <FilterSidebar filters={filters} setFilters={setFilters} />
+                            <FilterSidebar 
+                                filters={filters} 
+                                setFilters={setFilters} 
+                                onApply={() => setIsSheetOpen(false)} 
+                            />
                         </SheetContent>
                     </Sheet>
                 </div>
@@ -233,7 +231,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-3xl font-black text-foreground">Oups ! Rien ici</h3>
-                        <p className="text-base max-w-sm font-medium">Nous n'avons rien trouvé correspondant à vos critères. Élargissez vos filtres pour voir plus d'annonces.</p>
+                        <p className="text-base max-w-sm font-medium">Nous n'avons rien trouvé. Essayez d'autres critères ou réinitialisez les filtres.</p>
                     </div>
                     <Button 
                         variant="default" 
@@ -247,7 +245,7 @@ export default function DashboardPage() {
                             location: '',
                         })}
                     >
-                        Réinitialiser tous les filtres
+                        Réinitialiser les filtres
                     </Button>
                 </div>
                 </div>
