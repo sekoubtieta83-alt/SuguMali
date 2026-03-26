@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { categories } from '@/lib/categories';
 import { cn } from '@/lib/utils';
-import { Search, X } from 'lucide-react';
+import { Search, X, MapPin } from 'lucide-react';
 import { Dispatch, SetStateAction } from 'react';
 
 export type Filters = {
@@ -17,6 +17,7 @@ export type Filters = {
   minPrice: string;
   maxPrice: string;
   conditions: string[];
+  location: string;
 };
 
 interface FilterSidebarProps {
@@ -28,6 +29,10 @@ interface FilterSidebarProps {
 export function FilterSidebar({ filters, setFilters, className }: FilterSidebarProps) {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters(prev => ({ ...prev, searchQuery: e.target.value }));
+  };
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, location: e.target.value }));
   };
 
   const handleCategorySelect = (category: string) => {
@@ -55,6 +60,7 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
       minPrice: '',
       maxPrice: '',
       conditions: [],
+      location: '',
     });
   };
   
@@ -70,15 +76,30 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Search Input */}
         <div className="space-y-2">
-          <Label htmlFor="search">Rechercher</Label>
+          <Label htmlFor="search">Mots-clés</Label>
           <div className="relative flex items-center gap-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input 
               id="search"
-              placeholder="ex: téléphone..."
+              placeholder="ex: iPhone, ordinateur..."
               className="pl-10"
               value={filters.searchQuery}
               onChange={handleSearchChange}
+            />
+          </div>
+        </div>
+
+        {/* Location Input */}
+        <div className="space-y-2">
+          <Label htmlFor="location">Ville ou quartier</Label>
+          <div className="relative flex items-center gap-2">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input 
+              id="location"
+              placeholder="ex: Bamako, Kalaban..."
+              className="pl-10"
+              value={filters.location}
+              onChange={handleLocationChange}
             />
           </div>
         </div>
@@ -89,7 +110,7 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
           <Accordion type="single" collapsible className="w-full">
             {categories.map((category) => (
               <AccordionItem value={category.name} key={category.name}>
-                <AccordionTrigger>{category.name}</AccordionTrigger>
+                <AccordionTrigger className="text-sm py-2 hover:no-underline">{category.name}</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col items-start gap-1 pl-2">
                      {category.subcategories.map((subcategory) => (
@@ -97,8 +118,8 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
                         key={subcategory}
                         onClick={() => handleCategorySelect(subcategory)}
                         className={cn(
-                          'w-full text-left p-2 rounded-md text-sm text-muted-foreground hover:bg-muted',
-                          { 'bg-accent/20 text-accent font-semibold': filters.category === subcategory }
+                          'w-full text-left p-2 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors',
+                          { 'bg-accent/10 text-accent font-bold': filters.category === subcategory }
                         )}
                       >
                         {subcategory}
@@ -110,8 +131,8 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
             ))}
           </Accordion>
            {filters.category && (
-            <Button variant="ghost" size="sm" onClick={() => handleCategorySelect(filters.category!)} className="w-full justify-start text-accent">
-                <X className="mr-2 h-4 w-4"/>
+            <Button variant="ghost" size="sm" onClick={() => handleCategorySelect(filters.category!)} className="w-full justify-start text-accent mt-1 h-8 text-xs">
+                <X className="mr-2 h-3 w-3"/>
                 Effacer la catégorie
             </Button>
           )}
@@ -124,13 +145,15 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
             <Input 
               type="text" 
               placeholder="Min" 
+              className="h-9"
               value={filters.minPrice}
               onChange={(e) => handlePriceChange('minPrice', e.target.value)}
             />
-            <span>-</span>
+            <span className="text-muted-foreground">-</span>
             <Input 
               type="text" 
               placeholder="Max"
+              className="h-9"
               value={filters.maxPrice}
               onChange={(e) => handlePriceChange('maxPrice', e.target.value)}
             />
@@ -140,9 +163,9 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
         {/* Condition */}
         <div className="space-y-2">
           <Label>État</Label>
-          <div className="space-y-2">
+          <div className="space-y-3 pt-1">
             {conditions.map((condition) => (
-              <div key={condition} className="flex items-center space-x-2">
+              <div key={condition} className="flex items-center space-x-3">
                 <Checkbox
                   id={`condition-${condition}`}
                   checked={filters.conditions.includes(condition)}
@@ -150,7 +173,7 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
                 />
                 <label
                   htmlFor={`condition-${condition}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
                   {condition}
                 </label>
@@ -161,7 +184,7 @@ export function FilterSidebar({ filters, setFilters, className }: FilterSidebarP
       </div>
       
       <div className="p-4 border-t">
-        <Button onClick={clearFilters} variant="outline" className="w-full">
+        <Button onClick={clearFilters} variant="outline" className="w-full rounded-xl font-bold">
           Effacer tous les filtres
         </Button>
       </div>

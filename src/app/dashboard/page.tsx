@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { PostCard } from '@/components/dashboard/post-card';
-import { type Post, posts as mockPosts } from '@/lib/data';
+import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
 import { Frown, ListFilter } from 'lucide-react';
@@ -11,7 +11,7 @@ import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sideb
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, where } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -29,6 +29,7 @@ export default function DashboardPage() {
     minPrice: '',
     maxPrice: '',
     conditions: [],
+    location: '',
   });
 
   const lastLoggedSearch = useRef<string>('');
@@ -40,6 +41,7 @@ export default function DashboardPage() {
     const minPrice = searchParams.get('minPrice') || '';
     const maxPrice = searchParams.get('maxPrice') || '';
     const conditionsStr = searchParams.get('conditions') || '';
+    const location = searchParams.get('location') || '';
     const conditions = conditionsStr ? conditionsStr.split(',') : [];
 
     setFilters({
@@ -48,16 +50,16 @@ export default function DashboardPage() {
       minPrice,
       maxPrice,
       conditions,
+      location,
     });
   }, [searchParams]);
 
-  // Requête vers Firestore simplifiée pour éviter le besoin d'index composite avec status + createdAt
+  // Requête vers Firestore simplifiée pour éviter le besoin d'index composite
   const annoncesQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
       collection(firestore, 'annonces'), 
       where('status', '==', 'approved')
-      // orderBy('createdAt', 'desc') a été retiré ici pour éviter l'erreur d'index composite
     );
   }, [firestore]);
 
@@ -71,7 +73,7 @@ export default function DashboardPage() {
           id: doc.id,
           userId: data.vendeurId,
           content: data.description || '',
-          media: data.image ? [{ url: data.image, type: 'image' }] : [],
+          media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
           likes: 0,
           comments: 0,
@@ -94,7 +96,6 @@ export default function DashboardPage() {
       setAllPosts(postsFromFirestore);
       setIsLoading(false);
     }, async (serverError) => {
-      // On n'émet l'erreur de permission que si c'en est réellement une
       if (serverError.code === 'permission-denied') {
         const permissionError = new FirestorePermissionError({
           path: 'annonces',
@@ -112,21 +113,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const filteredResults = allPosts.filter((post: Post) => {
-        const { searchQuery, category, minPrice, maxPrice, conditions } = filters;
+        const { searchQuery, category, minPrice, maxPrice, conditions, location } = filters;
 
         const title = (post.product?.name || post.content).toLowerCase();
         const description = post.content.toLowerCase();
-        const location = (post.location || '').toLowerCase();
+        const postLocation = (post.location || '').toLowerCase();
         const postCategory = post.category || '';
         const postCondition = post.condition || '';
         const postPrice = post.product?.price ? parseFloat(post.product.price.replace(/[^0-9]/g, '')) : 0;
         
         const queryText = searchQuery.toLowerCase();
+        const locationText = location.toLowerCase();
 
         const matchesSearch = queryText ? (
             title.includes(queryText) ||
             description.includes(queryText) ||
-            location.includes(queryText)
+            postLocation.includes(queryText)
+        ) : true;
+
+        const matchesLocation = locationText ? (
+            postLocation.includes(locationText)
         ) : true;
 
         const matchesCategory = category ? postCategory === category : true;
@@ -134,16 +140,14 @@ export default function DashboardPage() {
         const matchesMaxPrice = maxPrice ? postPrice <= parseFloat(maxPrice) : true;
         const matchesCondition = conditions.length > 0 ? conditions.includes(postCondition) : true;
         
-        return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition;
+        return matchesSearch && matchesLocation && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition;
     });
 
     // Tri combiné côté client : Sponsorisés d'abord, puis par date décroissante
     const finalResults = [...filteredResults].sort((a, b) => {
-        // 1. Priorité aux annonces promues
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
         
-        // 2. Puis tri par date (plus récent d'abord)
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
@@ -151,6 +155,7 @@ export default function DashboardPage() {
 
     setFilteredPosts(finalResults);
 
+    // Logging des recherches uniquement si changement réel
     if (filters.searchQuery && filters.searchQuery !== lastLoggedSearch.current && firestore) {
         lastLoggedSearch.current = filters.searchQuery;
         const searchLogsRef = collection(firestore, 'searchLogs');
@@ -160,21 +165,14 @@ export default function DashboardPage() {
             userId: user?.uid || 'anonymous',
             timestamp: serverTimestamp(),
         };
-        addDoc(searchLogsRef, logData).catch(async (serverError) => {
-          if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-              path: 'searchLogs',
-              operation: 'create',
-              requestResourceData: logData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-          }
-        });
+        addDoc(searchLogsRef, logData).catch(() => {});
     }
 
   }, [filters, allPosts, firestore, user]);
 
-  const pageTitle = filters.searchQuery ? `Résultats pour "${filters.searchQuery}"` : "Toutes les annonces";
+  const pageTitle = filters.searchQuery 
+    ? `Résultats pour "${filters.searchQuery}"` 
+    : (filters.location ? `Annonces à ${filters.location}` : "Toutes les annonces");
 
   return (
      <div className="flex flex-1">
@@ -182,13 +180,13 @@ export default function DashboardPage() {
             <FilterSidebar filters={filters} setFilters={setFilters} />
         </div>
         <main className="flex-1 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h1 className="font-semibold text-lg md:text-2xl">{pageTitle}</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="font-black text-xl md:text-3xl tracking-tight">{pageTitle}</h1>
                 <div className="lg:hidden">
                     <Sheet>
                         <SheetTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <ListFilter className="h-4 w-4" />
+                            <Button variant="outline" size="icon" className="rounded-xl border-2">
+                                <ListFilter className="h-5 w-5" />
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="p-0 w-80">
@@ -215,11 +213,19 @@ export default function DashboardPage() {
                 ))}
                 </div>
             ) : (
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed py-20 mt-8">
-                <div className="flex flex-col items-center gap-1 text-center text-muted-foreground">
-                    <Frown className="h-10 w-10" />
-                    <h3 className="text-2xl font-bold">Aucun résultat</h3>
-                    <p className="text-sm">Essayez de modifier vos filtres.</p>
+                <div className="flex flex-1 items-center justify-center rounded-3xl border-2 border-dashed py-32 mt-4 bg-muted/20">
+                <div className="flex flex-col items-center gap-2 text-center text-muted-foreground px-6">
+                    <Frown className="h-12 w-12 opacity-50" />
+                    <h3 className="text-2xl font-black text-foreground">Aucun résultat trouvé</h3>
+                    <p className="text-sm max-w-xs">Nous n'avons rien trouvé correspondant à vos critères. Essayez de modifier les filtres de prix ou de lieu.</p>
+                    <Button variant="link" className="text-accent font-bold mt-2" onClick={() => setFilters({
+                        searchQuery: '',
+                        category: null,
+                        minPrice: '',
+                        maxPrice: '',
+                        conditions: [],
+                        location: '',
+                    })}>Réinitialiser tous les filtres</Button>
                 </div>
                 </div>
             )}
