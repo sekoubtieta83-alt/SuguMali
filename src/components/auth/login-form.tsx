@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -252,7 +251,7 @@ export function LoginForm() {
         
         <Button 
           variant="outline" 
-          className="h-14 rounded-2xl border-border/50 font-bold text-base hover:bg-muted/50 flex items-center justify-center gap-3 transition-all" 
+          className="h-14 rounded-2xl border-border/50 font-bold text-base hover:bg-accent/10 hover:text-accent hover:border-accent flex items-center justify-center gap-3 transition-all" 
           onClick={handleGoogleSignIn}
           disabled={isLoading}
           type="button"
