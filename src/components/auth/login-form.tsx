@@ -155,7 +155,7 @@ export function LoginForm() {
           <CardTitle className="text-4xl font-black tracking-tighter text-foreground">Sugu<span className="text-[#FF8C00]">Mali</span></CardTitle>
         </div>
         <CardDescription className="text-base font-medium opacity-70">
-          {confirmationResult ? "Saisissez le code reçu par SMS" : "Connectez-vous avec votre numéro malien 🇲🇱"}
+          {confirmationResult ? "Saisissez le code reçu par SMS" : "Connectez-vous avec votre numéro de téléphone"}
         </CardDescription>
       </CardHeader>
       
