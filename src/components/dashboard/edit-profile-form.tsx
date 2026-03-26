@@ -215,7 +215,7 @@ export function EditProfileForm({ userProfile, onFinished }: EditProfileFormProp
               <FormItem>
                 <FormLabel>Nom et prénom</FormLabel>
                 <FormControl>
-                  <Input placeholder="Jean Dupont" {...field} />
+                  <Input placeholder="Sekou Tieta" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
