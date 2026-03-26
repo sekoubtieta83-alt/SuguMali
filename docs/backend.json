@@ -8,7 +8,7 @@
       "properties": {
         "uid": { "type": "string" },
         "displayName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
+        "phoneNumber": { "type": "string" },
         "photoURL": { "type": "string", "format": "uri" },
         "isVerified": { "type": "boolean", "default": false },
         "verifiedAt": { "type": "string", "format": "date-time" },
@@ -20,7 +20,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "fcmTokens": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["uid", "email", "displayName", "photoURL"]
+      "required": ["uid", "phoneNumber", "displayName"]
     },
     "annonce": {
       "title": "Annonce",
@@ -87,7 +87,7 @@
     }
   },
   "auth": {
-    "providers": ["email", "google.com", "apple.com"]
+    "providers": ["phone", "google.com"]
   },
   "firestore": {
     "/users/{userId}": {

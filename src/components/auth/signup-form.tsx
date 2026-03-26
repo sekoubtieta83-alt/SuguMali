@@ -1,12 +1,20 @@
+
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { 
+  RecaptchaVerifier, 
+  signInWithPhoneNumber, 
+  ConfirmationResult,
+  GoogleAuthProvider, 
+  signInWithRedirect,
+  updateProfile
+} from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 
@@ -23,44 +31,19 @@ import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, User, Smartphone } from 'lucide-react';
 
 const signupSchema = z.object({
-  fullName: z.string().min(1, { message: 'Le nom complet est requis' }),
-  email: z.string().email({ message: 'Veuillez saisir une adresse e-mail valide.' }),
-  password: z.string().min(6, { message: 'Le mot de passe doit contenir au moins 6 caractères.' }),
+  fullName: z.string().min(3, { message: 'Le nom complet est requis' }),
+  phoneNumber: z.string().min(8, { message: 'Numéro invalide (ex: 76000000)' }),
+});
+
+const otpSchema = z.object({
+  code: z.string().length(6, { message: 'Le code doit contenir 6 chiffres.' }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
-
-function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="1em"
-      height="1em"
-      viewBox="0 0 48 48"
-    >
-      <path
-        fill="#FFC107"
-        d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917"
-      />
-      <path
-        fill="#FF3D00"
-        d="M6.306 14.691c-1.219 2.44-1.936 5.25-1.936 8.309s.717 5.869 1.936 8.309l7.707-6.002c-.39-.94-.636-1.97-.636-3.054s.246-2.114.636-3.054z"
-      />
-      <path
-        fill="#4CAF50"
-        d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-4.819c-1.745 1.16-3.956 1.858-6.319 1.858c-4.661 0-8.656-3.007-10.079-7.02l-7.707 6.002C9.516 39.544 16.22 44 24 44"
-      />
-      <path
-        fill="#1976D2"
-        d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.574l6.19 4.819c3.424-3.175 5.594-7.916 5.594-13.393c0-1.341-.138-2.65-.389-3.917"
-      />
-    </svg>
-  );
-}
+type OtpFormValues = z.infer<typeof otpSchema>;
 
 export function SignupForm() {
   const router = useRouter();
@@ -68,72 +51,77 @@ export function SignupForm() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [tempUserData, setTempUserData] = useState<SignupFormValues | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+    
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-signup', {
+      size: 'invisible',
+    });
+    setRecaptchaVerifier(verifier);
+
+    return () => verifier.clear();
+  }, [auth]);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       fullName: '',
-      email: '',
-      password: '',
+      phoneNumber: '',
     },
   });
 
-  const onSubmit = async (data: SignupFormValues) => {
-    if (!auth || !firestore) return;
+  const otpForm = useForm<OtpFormValues>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: {
+      code: '',
+    },
+  });
+
+  const onSendCode = async (data: SignupFormValues) => {
+    if (!auth || !recaptchaVerifier) return;
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-      
-      await sendEmailVerification(user);
-      
-      const photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
-      await updateProfile(user, { displayName: data.fullName, photoURL });
-
-      await setDoc(doc(firestore, 'users', user.uid), {
-        uid: user.uid,
-        displayName: data.fullName,
-        email: user.email,
-        photoURL: photoURL,
-        isVerified: false,
-        isBanned: false,
-        bio: '',
-        createdAt: serverTimestamp(),
-      });
-
+      const fullNumber = `+223${data.phoneNumber.replace(/\s/g, '')}`;
+      const result = await signInWithPhoneNumber(auth, fullNumber, recaptchaVerifier);
+      setConfirmationResult(result);
+      setTempUserData(data);
       toast({
-        title: "Compte créé !",
-        description: "Bienvenue sur SuguMali. Vérifiez votre boîte de réception.",
+        title: "Code envoyé !",
+        description: "Veuillez saisir le code reçu par SMS.",
       });
-
-      router.push('/dashboard');
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: "Échec de l'inscription",
-        description: error.message,
-      });
+      toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'envoyer le SMS." });
+    } finally {
       setIsLoading(false);
     }
   };
-  
-  const handleGoogleSignIn = async () => {
-    if (!auth || !firestore) return;
+
+  const onVerifyAndCreate = async (data: OtpFormValues) => {
+    if (!confirmationResult || !tempUserData || !firestore || !auth) return;
     setIsLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithRedirect(auth, provider);
-      const user = result.user;
-      
+      const userCredential = await confirmationResult.confirm(data.code);
+      const user = userCredential.user;
+
+      const photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
+      await updateProfile(user, { 
+        displayName: tempUserData.fullName,
+        photoURL 
+      });
+
       const userRef = doc(firestore, 'users', user.uid);
       const docSnap = await getDoc(userRef);
 
       if (!docSnap.exists()) {
         await setDoc(userRef, {
           uid: user.uid,
-          displayName: user.displayName || 'Utilisateur SuguMali',
-          email: user.email,
-          photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
+          displayName: tempUserData.fullName,
+          phoneNumber: user.phoneNumber,
+          photoURL: photoURL,
           isVerified: false,
           isBanned: false,
           bio: '',
@@ -141,82 +129,117 @@ export function SignupForm() {
         });
       }
 
-      toast({
-        title: 'Connexion Google réussie',
-        description: 'Bienvenue sur SuguMali !',
-      });
+      toast({ title: "Compte créé !", description: "Bienvenue sur SuguMali 🇲🇱" });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Google Signup Error:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur Google',
-        description: "Impossible de s'inscrire avec Google.",
-      });
+      toast({ variant: 'destructive', title: "Erreur", description: "Code invalide." });
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) return;
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erreur Google', description: "Échec de l'inscription." });
       setIsLoading(false);
     }
   };
 
   return (
     <Card className="w-full max-w-md shadow-2xl rounded-3xl border-none">
+      <div id="recaptcha-signup"></div>
       <CardHeader className="space-y-1 text-center pt-8">
          <div className="flex justify-center items-center gap-2">
             <Logo className="h-10 w-10 text-primary" />
             <CardTitle className="text-3xl font-black tracking-tighter">SuguMali</CardTitle>
         </div>
         <CardDescription className="text-base">
-          Créez votre compte SuguMali gratuitement
+          {confirmationResult ? "Finalisation de l'inscription" : "Créez votre compte en 1 minute"}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 px-8 pb-10">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-             <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Nom et prénom</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Jean Dupont" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="votre@email.com" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Mot de passe</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none px-4" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-bold h-[55px] rounded-xl text-base mt-2 shadow-lg shadow-accent/20" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              Créer un compte
-            </Button>
-          </form>
-        </Form>
+        {!confirmationResult ? (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSendCode)} className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Nom et prénom</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                        <Input placeholder="Jean Dupont" {...field} className="h-[55px] rounded-xl bg-muted/30 border-none pl-12" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormItem>
+                <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Numéro Malien</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r pr-3 border-border/50 h-6">
+                      <span className="text-sm font-bold text-foreground">🇲🇱 +223</span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="phoneNumber"
+                      render={({ field }) => (
+                        <Input 
+                          placeholder="76 00 00 00" 
+                          {...field} 
+                          type="tel"
+                          className="h-[55px] rounded-xl bg-muted/30 border-none pl-24 font-bold" 
+                        />
+                      )}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-black h-[55px] rounded-xl text-base mt-2 shadow-lg shadow-accent/20" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "S'inscrire"}
+              </Button>
+            </form>
+          </Form>
+        ) : (
+          <Form {...otpForm}>
+            <form onSubmit={otpForm.handleSubmit(onVerifyAndCreate)} className="grid gap-5">
+              <FormField
+                control={otpForm.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Code reçu par SMS</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                        <Input 
+                          placeholder="000000" 
+                          {...field} 
+                          className="h-14 rounded-2xl bg-muted/50 border-none px-12 text-center text-2xl font-black tracking-[0.5em]" 
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white font-black h-14 rounded-2xl text-lg shadow-xl shadow-accent/20" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Confirmer'}
+              </Button>
+            </form>
+          </Form>
+        )}
+
         <div className="relative my-2">
           <Separator />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 bg-card text-xs font-bold text-muted-foreground uppercase tracking-widest">
@@ -225,12 +248,17 @@ export function SignupForm() {
         </div>
         <div className="grid grid-cols-1">
           <Button variant="outline" className="h-[55px] rounded-xl border-border font-semibold text-base bg-white text-black hover:bg-gray-50 flex items-center justify-center gap-3" onClick={handleGoogleSignIn} disabled={isLoading}>
-             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon className="h-6 w-6" />}
-            Continuer avec Google
+             <svg className="h-6 w-6" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+            Google
           </Button>
         </div>
         <div className="text-center text-sm text-muted-foreground">
-          Vous avez déjà un compte ?{' '}
+          Déjà un compte ?{' '}
           <Link href="/login" className="font-bold text-accent hover:underline">
             Se connecter
           </Link>
