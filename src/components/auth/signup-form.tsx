@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -183,7 +182,7 @@ export function SignupForm() {
                 )}
               />
               <FormItem>
-                <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Numéro Malien</FormLabel>
+                <FormLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground ml-1">Numéro de téléphone</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r pr-3 border-border/50 h-6">
