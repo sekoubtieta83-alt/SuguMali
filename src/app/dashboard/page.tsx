@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation';
 import { Frown, ListFilter } from 'lucide-react';
 import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sidebar';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp, onSnapshot, query, where } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -190,6 +190,10 @@ export default function DashboardPage() {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="p-0 w-80">
+                            <SheetHeader className="sr-only">
+                                <SheetTitle>Filtres de recherche</SheetTitle>
+                                <SheetDescription>Ajustez vos critères pour trouver l'annonce parfaite sur SuguMali.</SheetDescription>
+                            </SheetHeader>
                             <FilterSidebar filters={filters} setFilters={setFilters} />
                         </SheetContent>
                     </Sheet>
