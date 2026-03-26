@@ -6,7 +6,7 @@ import { PostCard } from '@/components/dashboard/post-card';
 import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
-import { Frown, ListFilter } from 'lucide-react';
+import { Frown, ListFilter, Sparkles } from 'lucide-react';
 import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sidebar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -172,24 +172,33 @@ export default function DashboardPage() {
 
   const pageTitle = filters.searchQuery 
     ? `Résultats pour "${filters.searchQuery}"` 
-    : (filters.location ? `Annonces à ${filters.location}` : "Toutes les annonces");
+    : (filters.location ? `Annonces à ${filters.location}` : "Explorer SuguMali");
 
   return (
-     <div className="flex flex-1">
-        <div className="hidden lg:block lg:w-80 xl:w-96">
+     <div className="flex flex-1 bg-secondary/5">
+        <div className="hidden lg:block lg:w-80 xl:w-96 sticky top-20 h-[calc(100vh-5rem)]">
             <FilterSidebar filters={filters} setFilters={setFilters} />
         </div>
-        <main className="flex-1 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="font-black text-xl md:text-3xl tracking-tight">{pageTitle}</h1>
-                <div className="lg:hidden">
+        <main className="flex-1 p-4 md:p-8 lg:p-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+                <div className="space-y-1">
+                    <h1 className="font-black text-2xl md:text-4xl tracking-tight text-foreground flex items-center gap-3">
+                        {pageTitle}
+                        {!filters.searchQuery && !filters.location && <Sparkles className="h-6 w-6 text-accent animate-pulse" />}
+                    </h1>
+                    <p className="text-muted-foreground font-medium text-sm md:text-base">
+                        {isLoading ? "Chargement des pépites..." : `${filteredPosts.length} annonce${filteredPosts.length > 1 ? 's' : ''} trouvée${filteredPosts.length > 1 ? 's' : ''}`}
+                    </p>
+                </div>
+                <div className="lg:hidden flex justify-end">
                     <Sheet>
                         <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="rounded-xl border-2">
+                            <Button variant="outline" className="rounded-2xl border-2 font-bold px-6 h-12 flex items-center gap-2 bg-background shadow-sm hover:bg-accent hover:text-white transition-all">
                                 <ListFilter className="h-5 w-5" />
+                                Filtrer
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-80">
+                        <SheetContent side="left" className="p-0 w-full sm:w-80 border-none">
                             <SheetHeader className="sr-only">
                                 <SheetTitle>Filtres de recherche</SheetTitle>
                                 <SheetDescription>Ajustez vos critères pour trouver l'annonce parfaite sur SuguMali.</SheetDescription>
@@ -201,35 +210,45 @@ export default function DashboardPage() {
             </div>
             
              {isLoading ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {[...Array(8)].map((_, i) => (
-                    <div key={i} className="bg-card rounded-2xl shadow-sm border border-border/50 overflow-hidden flex flex-col p-4 space-y-4">
-                        <Skeleton className="h-48 w-full rounded-lg" />
-                        <Skeleton className="h-5 w-4/5" />
-                        <Skeleton className="h-7 w-3/5" />
+                    <div key={i} className="bg-card rounded-3xl shadow-sm border border-border/50 overflow-hidden flex flex-col p-4 space-y-4">
+                        <Skeleton className="h-56 w-full rounded-2xl" />
+                        <Skeleton className="h-6 w-4/5 rounded-full" />
+                        <Skeleton className="h-8 w-3/5 rounded-full" />
                     </div>
                 ))}
                 </div>
             ) : filteredPosts.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredPosts.map((post) => (
                     <PostCard key={post.id} post={post} />
                 ))}
                 </div>
             ) : (
-                <div className="flex flex-1 items-center justify-center rounded-3xl border-2 border-dashed py-32 mt-4 bg-muted/20">
-                <div className="flex flex-col items-center gap-2 text-center text-muted-foreground px-6">
-                    <Frown className="h-12 w-12 opacity-50" />
-                    <h3 className="text-2xl font-black text-foreground">Aucun résultat trouvé</h3>
-                    <p className="text-sm max-w-xs">Nous n'avons rien trouvé correspondant à vos critères. Essayez de modifier les filtres de prix ou de lieu.</p>
-                    <Button variant="link" className="text-accent font-bold mt-2" onClick={() => setFilters({
-                        searchQuery: '',
-                        category: null,
-                        minPrice: '',
-                        maxPrice: '',
-                        conditions: [],
-                        location: '',
-                    })}>Réinitialiser tous les filtres</Button>
+                <div className="flex flex-1 items-center justify-center rounded-[3rem] border-2 border-dashed border-border py-32 mt-4 bg-muted/10">
+                <div className="flex flex-col items-center gap-4 text-center text-muted-foreground px-6">
+                    <div className="bg-muted p-6 rounded-full">
+                        <Frown className="h-16 w-16 opacity-20" />
+                    </div>
+                    <div className="space-y-2">
+                        <h3 className="text-3xl font-black text-foreground">Oups ! Rien ici</h3>
+                        <p className="text-base max-w-sm font-medium">Nous n'avons rien trouvé correspondant à vos critères. Élargissez vos filtres pour voir plus d'annonces.</p>
+                    </div>
+                    <Button 
+                        variant="default" 
+                        className="bg-accent hover:bg-accent/90 text-white font-black px-8 h-12 rounded-2xl mt-4 shadow-xl shadow-accent/20" 
+                        onClick={() => setFilters({
+                            searchQuery: '',
+                            category: null,
+                            minPrice: '',
+                            maxPrice: '',
+                            conditions: [],
+                            location: '',
+                        })}
+                    >
+                        Réinitialiser tous les filtres
+                    </Button>
                 </div>
                 </div>
             )}
