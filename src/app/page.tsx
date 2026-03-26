@@ -115,7 +115,7 @@ function Header() {
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild className="font-bold text-foreground/80 hover:text-accent h-8 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-4">
+              <Button variant="ghost" asChild className="font-bold text-foreground/80 hover:bg-accent hover:text-white h-8 sm:h-10 text-[11px] sm:text-sm px-2 sm:px-4 transition-colors rounded-xl">
                 <Link href="/login">Se connecter</Link>
               </Button>
               <Button asChild className="rounded-full font-bold px-3 sm:px-5 bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/10 transition-all active:scale-95 border-none h-8 sm:h-10 text-[11px] sm:text-sm">
