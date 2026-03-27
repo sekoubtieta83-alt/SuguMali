@@ -4,13 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { type Post } from "@/lib/data";
-import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare } from "lucide-react";
+import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare, Info, Camera, Send, Rocket } from "lucide-react";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch } from "firebase/firestore";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Label } from "@/components/ui/label";
 
 export type UserProfile = {
     uid: string;
@@ -43,6 +45,7 @@ export type UserProfile = {
     verificationStatus?: 'none' | 'pending' | 'verified' | 'rejected';
     isVerificationPaid?: boolean;
     idDocumentUrl?: string;
+    paymentScreenshotUrl?: string;
     isBanned?: boolean;
     bio?: string;
     fcmTokens?: string[];
@@ -77,12 +80,14 @@ export default function ProfilePage() {
   
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [verificationStep, setVerificationStep] = useState<'payment' | 'upload'>('payment');
-  const [paymentMethod, setPaymentMethod] = useState<'orange' | 'moov' | 'card'>('orange');
   const [isPaying, setIsPaying] = useState(false);
   const [idPhoto, setIdPhoto] = useState<string | null>(null);
+  const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
   const [isSubmittingId, setIsSubmittingId] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const paymentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -97,6 +102,9 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
+          if (data.isVerificationPaid) {
+            setVerificationStep('upload');
+          }
         }
       }, async (serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -120,7 +128,7 @@ export default function ProfilePage() {
           id: doc.id,
           userId: data.vendeurId,
           content: data.description || '',
-          media: data.image ? [{ url: data.image, type: 'image' }] : [],
+          media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
           likes: 0,
           comments: 0,
@@ -230,25 +238,29 @@ export default function ProfilePage() {
   };
 
   const handleProcessPayment = async () => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !paymentScreenshot || !app) return;
     setIsPaying(true);
-    const userRef = doc(firestore, 'users', user.uid);
-    setTimeout(() => {
-        updateDoc(userRef, { isVerificationPaid: true })
-          .then(() => {
-            toast({ title: "Paiement réussi !" });
-            setVerificationStep('upload');
-          })
-          .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-              path: userRef.path,
-              operation: 'update',
-              requestResourceData: { isVerificationPaid: true },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-          })
-          .finally(() => setIsPaying(false));
-    }, 2000);
+    
+    try {
+      const storage = getStorage(app);
+      const fileName = `verification_payments/${user.uid}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      await uploadString(storageRef, paymentScreenshot, 'data_url');
+      const downloadURL = await getDownloadURL(storageRef);
+
+      const userRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userRef, { 
+        isVerificationPaid: true,
+        paymentScreenshotUrl: downloadURL
+      });
+      
+      toast({ title: "Paiement envoyé !" });
+      setVerificationStep('upload');
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur lors de l'envoi" });
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const handleIdFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,26 +272,41 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePaymentFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPaymentScreenshot(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmitVerification = async () => {
-    if (!user || !firestore || !idPhoto) return;
+    if (!user || !firestore || !idPhoto || !app) return;
     setIsSubmittingId(true);
-    const userRef = doc(firestore, 'users', user.uid);
-    const updateData = { verificationStatus: 'pending', idDocumentUrl: idPhoto };
-    updateDoc(userRef, updateData)
-      .then(() => {
-        toast({ title: "Demande envoyée" });
-        setIsVerifyDialogOpen(false);
-        setVerificationStep('payment');
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'update',
-          requestResourceData: updateData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => setIsSubmittingId(false));
+
+    try {
+      const storage = getStorage(app);
+      const fileName = `id_documents/${user.uid}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      await uploadString(storageRef, idPhoto, 'data_url');
+      const idUrl = await getDownloadURL(storageRef);
+
+      const userRef = doc(firestore, 'users', user.uid);
+      const updateData = { 
+        verificationStatus: 'pending', 
+        idDocumentUrl: idUrl 
+      };
+      
+      await updateDoc(userRef, updateData);
+      toast({ title: "Demande envoyée" });
+      setIsVerifyDialogOpen(false);
+      setVerificationStep('payment');
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur" });
+    } finally {
+      setIsSubmittingId(false);
+    }
   };
 
   const isVerified = checkIsVerified(userProfile);
@@ -356,27 +383,113 @@ export default function ProfilePage() {
                         <p className="text-xs sm:text-sm text-muted-foreground">Badge orange pour 5 000 FCFA/an.</p>
                         <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
                             <DialogTrigger asChild><Button className="w-full rounded-xl sm:rounded-2xl font-bold bg-accent hover:bg-accent/90 text-white h-10 sm:h-12 text-xs sm:text-sm">Certifier mon compte</Button></DialogTrigger>
-                            <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6 rounded-2xl">
-                                <DialogHeader><DialogTitle>Processus de certification</DialogTitle></DialogHeader>
+                            <DialogContent className="w-[95vw] sm:max-w-[450px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
+                                <div className="bg-accent p-6 text-white text-center relative overflow-hidden">
+                                  <ShieldCheck className="absolute -right-4 -bottom-4 h-24 w-24 text-white/10 rotate-12" />
+                                  <DialogHeader>
+                                    <DialogTitle className="text-2xl font-black mb-1">Certification SuguMali</DialogTitle>
+                                    <DialogDescription className="text-white/90 font-medium text-xs leading-relaxed">
+                                      Inspirez confiance et vendez plus vite avec le badge orange.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                </div>
+
                                 {verificationStep === 'payment' && !userProfile.isVerificationPaid ? (
-                                    <div className="py-4 space-y-4 sm:space-y-6">
-                                        <div className="bg-muted p-3 sm:p-4 rounded-xl border border-border flex justify-between items-center"><span className="text-sm font-bold">Frais</span><span className="text-lg sm:text-xl font-black text-accent">5 000 FCFA</span></div>
-                                        <RadioGroup value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)} className="grid grid-cols-1 gap-2 sm:gap-3">
-                                            {['orange', 'moov', 'card'].map(m => (
-                                                <div key={m} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === m ? 'border-accent bg-accent/5' : 'border-border'}`} onClick={() => setPaymentMethod(m as any)}>
-                                                    <div className="flex items-center gap-2 sm:gap-3"><Smartphone className="h-4 w-4 sm:h-5 sm:w-5" /> <span className="text-sm font-bold uppercase">{m}</span></div>
-                                                    <RadioGroupItem value={m} id={m} />
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
-                                        <Button className="w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg" onClick={handleProcessPayment} disabled={isPaying}>{isPaying ? <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6 mr-2" /> : "Payer 5 000 FCFA"}</Button>
+                                    <div className="p-6 space-y-6 bg-background">
+                                      <div className="space-y-4">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                          <Info className="h-3 w-3" /> Instructions de paiement
+                                        </h3>
+                                        <div className="grid gap-2">
+                                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50">
+                                            <div className="flex items-center gap-3">
+                                              <div className="h-8 w-8 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-[10px]">OM</div>
+                                              <div>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Orange Money</p>
+                                                <p className="text-sm font-black">76 00 00 00</p>
+                                              </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-accent font-black text-sm">5 000 FCFA</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50">
+                                            <div className="flex items-center gap-3">
+                                              <div className="h-8 w-8 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-[10px]">W</div>
+                                              <div>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Wave</p>
+                                                <p className="text-sm font-black">76 11 11 11</p>
+                                              </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-accent font-black text-sm">5 000 FCFA</p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-3">
+                                        <Label className="text-xs font-black flex items-center gap-2">
+                                            Preuve de paiement 
+                                            <span className="text-[10px] font-normal text-muted-foreground">(Capture d'écran)</span>
+                                        </Label>
+                                        {paymentScreenshot ? (
+                                          <div className="relative group rounded-2xl overflow-hidden border-2 border-accent/20 shadow-lg">
+                                            <img src={paymentScreenshot} alt="Screenshot" className="w-full aspect-video object-cover" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Button variant="secondary" size="sm" onClick={() => setPaymentScreenshot(null)} className="rounded-xl font-bold h-8">Modifier</Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <button 
+                                            onClick={() => paymentInputRef.current?.click()}
+                                            className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-muted/50 hover:border-accent/40 transition-all group"
+                                          >
+                                            <div className="bg-muted p-3 rounded-full group-hover:bg-accent/10 transition-colors">
+                                                <Camera className="h-6 w-6 text-muted-foreground group-hover:text-accent transition-colors" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ajouter la capture</span>
+                                          </button>
+                                        )}
+                                        <input type="file" ref={paymentInputRef} onChange={handlePaymentFileSelect} accept="image/*" className="hidden" />
+                                      </div>
+
+                                      <Button 
+                                        className="w-full h-12 rounded-xl font-black text-base bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
+                                        disabled={!paymentScreenshot || isPaying}
+                                        onClick={handleProcessPayment}
+                                      >
+                                        {isPaying ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Send className="mr-2 h-4 w-4" />}
+                                        Envoyer la preuve
+                                      </Button>
                                     </div>
                                 ) : (
-                                    <div className="py-4 space-y-4 sm:space-y-6">
-                                        <div className="bg-green-500/10 p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-3"><CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" /><span className="text-xs sm:text-sm font-bold text-green-600">Paiement validé.</span></div>
-                                        <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
-                                        {idPhoto ? <img src={idPhoto} className="w-full aspect-video object-cover rounded-xl" /> : <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/30"><Upload className="h-6 w-6" /> <span className="text-xs">Ajouter photo ID</span></button>}
-                                        <DialogFooter><Button onClick={handleSubmitVerification} className="w-full rounded-xl h-12 font-bold" disabled={!idPhoto || isSubmittingId}>Soumettre</Button></DialogFooter>
+                                    <div className="p-6 space-y-6 bg-background">
+                                        <div className="bg-green-500/10 p-3 rounded-xl flex items-center gap-3 border border-green-500/20">
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                            <span className="text-xs font-bold text-green-600">Paiement enregistré. Étape finale : Identité.</span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-black">Photo de votre pièce d'identité</Label>
+                                            <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
+                                            {idPhoto ? (
+                                                <div className="relative group rounded-2xl overflow-hidden border-2 border-accent/20 shadow-lg">
+                                                    <img src={idPhoto} className="w-full aspect-video object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Button variant="secondary" size="sm" onClick={() => setIdPhoto(null)} className="rounded-xl font-bold h-8">Changer</Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-2xl flex flex-col items-center justify-center gap-3 bg-muted/10 hover:bg-muted/20 transition-all">
+                                                    <Upload className="h-8 w-8 text-muted-foreground" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Télécharger ma pièce</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <Button onClick={handleSubmitVerification} className="w-full rounded-xl h-14 font-black text-lg shadow-xl shadow-accent/20" disabled={!idPhoto || isSubmittingId}>
+                                            {isSubmittingId ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
+                                            Finaliser ma demande
+                                        </Button>
                                     </div>
                                 )}
                             </DialogContent>
