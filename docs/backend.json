@@ -1,114 +1,297 @@
-
 {
   "entities": {
-    "user": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
-      "description": "A user of the application.",
       "type": "object",
+      "description": "Represents a user account in the ConnectSphere application, allowing for account creation and profile management.",
       "properties": {
-        "uid": { "type": "string" },
-        "displayName": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "photoURL": { "type": "string", "format": "uri" },
-        "isVerified": { "type": "boolean", "default": false },
-        "verifiedAt": { "type": "string", "format": "date-time" },
-        "verificationStatus": { "type": "string", "enum": ["none", "pending", "verified", "rejected"], "default": "none" },
-        "isVerificationPaid": { "type": "boolean", "default": false },
-        "idDocumentUrl": { "type": "string", "format": "uri" },
-        "isBanned": { "type": "boolean", "default": false },
-        "bio": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "fcmTokens": { "type": "array", "items": { "type": "string" } }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login and communication. (Relationship: User 1:N Post, User 1:N Product, User 1:N PromotionRequest)",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's phone number, optional for account creation or contact."
+        },
+        "username": {
+          "type": "string",
+          "description": "A unique username chosen by the user for identification within the app."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the user's profile picture, stored in cloud storage.",
+          "format": "uri"
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "Indicates if the user's profile has been verified by an administrator, enabling certain features."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["uid", "phoneNumber", "displayName"]
+      "required": [
+        "id",
+        "email",
+        "username",
+        "isVerified",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "annonce": {
-      "title": "Annonce",
-      "description": "An advertisement or listing on the platform.",
+    "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Post",
       "type": "object",
+      "description": "Represents a piece of media (photo or video) uploaded by a user to their profile or feed.",
       "properties": {
-        "titre": { "type": "string" },
-        "prix": { "type": "string" },
-        "image": { "type": "string", "format": "uri" },
-        "vendeurId": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "shadowed"], "default": "pending" },
-        "moderationReason": { "type": "string" },
-        "description": { "type": "string" },
-        "localisation": { "type": "string" },
-        "whatsapp": { "type": "string" },
-        "categorie": { "type": "string" },
-        "etat": { "type": "string" },
-        "manualReviewRequested": { "type": "boolean", "default": false },
-        "views": { "type": "number", "default": 0 },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Post entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created this post. (Relationship: User 1:N Post)"
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "URL to the photo or video content stored in cloud storage.",
+          "format": "uri"
+        },
+        "caption": {
+          "type": "string",
+          "description": "A descriptive text accompanying the post content, provided by the user."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of media, specifying if it's an 'image' or 'video'."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the post was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the post was last updated, e.g., caption edited.",
+          "format": "date-time"
+        }
       },
-      "required": ["titre", "prix", "image", "vendeurId"]
+      "required": [
+        "id",
+        "userId",
+        "mediaUrl",
+        "type",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "favorite": {
-      "title": "Favorite",
-      "description": "A mapping of a user's favorite ad.",
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
       "type": "object",
+      "description": "Represents a product listed by a user that can be promoted within the ConnectSphere app.",
       "properties": {
-        "annonceId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns and offers this product. (Relationship: User 1:N Product)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name or title of the product being offered."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description providing information about the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The monetary price of the product."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency in which the product is priced, e.g., 'XOF' (West African CFA franc)."
+        },
+        "productImageUrls": {
+          "type": "array",
+          "description": "An array of URLs to images showcasing the product, stored in cloud storage.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the product was listed.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the product details were last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["annonceId", "createdAt"]
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "description",
+        "price",
+        "currency",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "review": {
-      "title": "Review",
-      "description": "A review left for a seller.",
+    "PromotionRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PromotionRequest",
       "type": "object",
+      "description": "Records a user's request for product promotion, including payment proof for administrator review.",
       "properties": {
-        "rating": { "type": "number" },
-        "comment": { "type": "string" },
-        "reviewerId": { "type": "string" },
-        "reviewerName": { "type": "string" },
-        "reviewerPhotoURL": { "type": "string" },
-        "sellerId": { "type": "string" },
-        "annonceId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PromotionRequest entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who submitted this promotion request. (Relationship: User 1:N PromotionRequest)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the Product that the user wishes to promote. (Relationship: Product 1:N PromotionRequest)"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The payment method used for the promotion, e.g., 'Orange Money' or 'Wave'."
+        },
+        "paymentScreenshotUrl": {
+          "type": "string",
+          "description": "URL to the screenshot of the payment transaction, stored in Firebase Storage.",
+          "format": "uri"
+        },
+        "requestedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the promotion request was submitted.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the promotion request (e.g., 'pending', 'approved', 'rejected'), for administrative workflow."
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Optional notes or feedback added by an administrator during the review process."
+        },
+        "approvedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the promotion request was approved by an administrator.",
+          "format": "date-time"
+        }
       },
-      "required": ["rating", "reviewerId", "sellerId", "annonceId", "createdAt"]
-    },
-    "auditLog": {
-      "title": "Audit Log",
-      "description": "A record of an administrative or system action.",
-      "type": "object",
-      "properties": {
-        "action": { "type": "string" },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "targetId": { "type": "string" },
-        "targetName": { "type": "string" },
-        "details": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["action", "userId", "userName", "timestamp"]
+      "required": [
+        "id",
+        "userId",
+        "productId",
+        "paymentMethod",
+        "paymentScreenshotUrl",
+        "requestedAt",
+        "status"
+      ]
     }
   },
   "auth": {
-    "providers": ["phone", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/user" },
-      "description": "Stores public user profile information."
-    },
-    "/users/{userId}/favorites/{annonceId}": {
-      "schema": { "$ref": "#/entities/favorite" },
-      "description": "Stores ads favorited by a user."
-    },
-    "/annonces/{annonceId}": {
-      "schema": { "$ref": "#/entities/annonce" },
-      "description": "Stores all listings/advertisements on the platform."
-    },
-    "/reviews/{reviewId}": {
-      "schema": { "$ref": "#/entities/review" },
-      "description": "Stores reviews for sellers."
-    },
-    "/auditLogs/{logId}": {
-      "schema": { "$ref": "#/entities/auditLog" },
-      "description": "Stores system and moderation activity logs."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information, accessible by the user themselves or by administrators. This path forms the root for user-owned subcollections.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores details of products listed by users. This is a top-level collection to allow for global listing and browsing of products. Documents include the 'userId' of the product owner.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique identifier of the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/promotion_requests/{promotionRequestId}",
+        "definition": {
+          "entityName": "PromotionRequest",
+          "schema": {
+            "$ref": "#/backend/entities/PromotionRequest"
+          },
+          "description": "Stores individual promotion requests submitted by a user for their products. The 'userId' in the path must match the authenticated user's ID, ensuring authorization independence. The document includes 'userId' (requester) and 'productId' (product being promoted), with 'paymentScreenshotUrl' pointing to the image in Firebase Storage.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who submitted the promotion request, matching the authenticated user's UID."
+            },
+            {
+              "name": "promotionRequestId",
+              "description": "The unique identifier for this specific promotion request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A collection used for Database Access Control (DBAC). Documents in this collection represent user IDs that have administrator privileges. The presence of a document at `/roles_admin/{request.auth.uid}` grants admin access, simplifying rules without custom claims. Uses the User schema implicitly as it identifies a user with admin rights.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique identifier of a user who holds administrator privileges."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The proposed Firestore structure is designed to adhere strictly to the core design principles, focusing on secure, scalable, and debuggable authorization. Promotion requests, being user-specific, are nested under the user's profile path to ensure clear ownership and simplify access control for individual users. General entities like products are kept in top-level collections to facilitate broader queries and discovery.\n\n**Authorization Independence:**\nAuthorization for a `PromotionRequest` document is achieved independently. A `PromotionRequest` document is located at `/users/{userId}/promotion_requests/{promotionRequestId}`. The security rules for reading or writing to this document will primarily rely on verifying that `request.auth.uid` matches the `{userId}` wildcard in the path. The document itself also contains a `userId` field that serves as an internal consistency check. This design ensures that determining who can access a specific `PromotionRequest` document does not require a `get()` operation on a parent document (e.g., `/users/{userId}`) for authorization purposes. While the creation of a `PromotionRequest` does require a `get()` call to the `/products/{productId}` document to validate that the requesting user (`request.auth.uid`) is indeed the owner of the product being promoted, this is considered a data validation step for the *content* of the request, not an *authorization* check for the `PromotionRequest` document's access itself. This distinction allows us to maintain strict authorization independence for document access while ensuring data integrity.\n\n**QAPs (Query as Authorization Policies):**\n1.  **For Users:** By nesting `PromotionRequest` documents under `/users/{userId}/promotion_requests`, users can only perform `list` operations within their own specific subcollection (e.g., `/users/currentUserId/promotion_requests`). This inherently restricts users to view only their own promotion requests. Firestore security rules can easily enforce this by checking `request.auth.uid == userId` for list operations on this path, without the need for additional filtering clauses in the rules (QAPs are naturally supported by the path structure).\n2.  **For Admins:** Administrator access is managed via a dedicated top-level collection, `/roles_admin/{adminId}`. This collection uses the 'existence over content' model where an admin's UID simply needs to exist as a document ID to grant admin privileges. Admins can then be granted broad `read`/`write` access to any `PromotionRequest` document, potentially through collection group queries if they need to list all promotion requests globally, or by direct access if they know the user path. This segregation ensures admin access does not interfere with user-specific QAPs.\n\n**Structural Segregation:**\nEach collection is designed to hold documents with a uniform security posture. For example, all documents in `/users/{userId}/promotion_requests` are owned by the `userId` in the path and are subject to the same access rules. This prevents complex multi-role or multi-state logic within a single collection, simplifying security rule development and debugging."
   }
 }
