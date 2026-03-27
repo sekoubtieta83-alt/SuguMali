@@ -503,7 +503,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between p-3 sm:p-4 bg-background rounded-xl sm:rounded-2xl border border-border/50">
                     <div className="flex-1 mr-4">
                         <h3 className="text-xs sm:text-sm font-semibold">Notifications Push</h3>
-                        <p className="text-[10px] text-muted-foreground">Alertes prix et messages.</p>
+                        <p className="text-[10px] text-muted-foreground">Suivi de vos annonces et messages.</p>
                     </div>
                     {isNotificationSupported && (
                       <Button 
