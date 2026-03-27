@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,7 +20,7 @@ export function PromotionsView() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
-  const [duration, setDuration] = useState<string>('7');
+  const [duration, setDuration] = useState<string>('5');
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   
   const firestore = useFirestore();
@@ -184,7 +183,7 @@ export function PromotionsView() {
               Approuver le boost
             </DialogTitle>
             <CardDescription>
-              Choisissez la durée de visibilité prioritaire pour cette annonce.
+              Choisissez la durée de visibilité prioritaire pour cette annonce (min. 5 jours).
             </CardDescription>
           </DialogHeader>
           
@@ -196,8 +195,8 @@ export function PromotionsView() {
                   <SelectValue placeholder="Choisir une durée" />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl">
-                  <SelectItem value="3">3 Jours (Test)</SelectItem>
-                  <SelectItem value="7">7 Jours (Standard)</SelectItem>
+                  <SelectItem value="5">5 Jours (Découverte)</SelectItem>
+                  <SelectItem value="10">10 Jours (Standard)</SelectItem>
                   <SelectItem value="15">15 Jours (Premium)</SelectItem>
                   <SelectItem value="30">30 Jours (Mensuel)</SelectItem>
                   <SelectItem value="90">90 Jours (Pro)</SelectItem>
