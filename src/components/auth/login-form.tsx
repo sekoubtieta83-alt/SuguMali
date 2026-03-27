@@ -7,9 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  ConfirmationResult,
+  signInWithEmailAndPassword,
   GoogleAuthProvider, 
   signInWithRedirect, 
   getRedirectResult 
@@ -29,18 +27,14 @@ import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Loader2, AlertCircle, Phone, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, Lock } from 'lucide-react';
 
 const loginSchema = z.object({
-  phoneNumber: z.string().min(8, { message: 'Numéro invalide (ex: 76000000)' }),
-});
-
-const otpSchema = z.object({
-  code: z.string().length(6, { message: 'Le code doit contenir 6 chiffres.' }),
+  email: z.string().email({ message: 'Veuillez entrer une adresse e-mail valide.' }),
+  password: z.string().min(6, { message: 'Le mot de passe doit contenir au moins 6 caractères.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
-type OtpFormValues = z.infer<typeof otpSchema>;
 
 export function LoginForm() {
   const router = useRouter();
@@ -48,21 +42,10 @@ export function LoginForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (!auth) return;
     
-    // Initialize reCAPTCHA
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {
-        console.log('reCAPTCHA verified');
-      }
-    });
-    setRecaptchaVerifier(verifier);
-
     getRedirectResult(auth)
       .then((result) => {
         if (result && result.user) {
@@ -70,63 +53,35 @@ export function LoginForm() {
           router.push('/dashboard');
         }
       });
-
-    return () => {
-      verifier.clear();
-    };
   }, [auth, toast, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      phoneNumber: '',
+      email: '',
+      password: '',
     },
   });
 
-  const otpForm = useForm<OtpFormValues>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: {
-      code: '',
-    },
-  });
-
-  const onSendCode = async (data: LoginFormValues) => {
-    if (!auth || !recaptchaVerifier) return;
+  const onSubmit = async (data: LoginFormValues) => {
+    if (!auth) return;
     setIsLoading(true);
     setAuthError(null);
     
     try {
-      const fullNumber = `+223${data.phoneNumber.replace(/\s/g, '')}`;
-      const result = await signInWithPhoneNumber(auth, fullNumber, recaptchaVerifier);
-      setConfirmationResult(result);
-      toast({
-        title: 'Code envoyé !',
-        description: `Un code de validation a été envoyé au ${fullNumber}`,
-      });
-    } catch (error: any) {
-      console.error("Phone Auth Error:", error);
-      setAuthError("Impossible d'envoyer le code. Vérifiez le numéro.");
-      toast({ variant: 'destructive', title: 'Erreur', description: "Échec de l'envoi du SMS." });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onVerifyCode = async (data: OtpFormValues) => {
-    if (!confirmationResult) return;
-    setIsLoading(true);
-    setAuthError(null);
-
-    try {
-      await confirmationResult.confirm(data.code);
+      await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({
         title: 'Connexion réussie',
-        description: 'Bienvenue sur SuguMali !',
+        description: 'Heureux de vous revoir !',
       });
       router.push('/dashboard');
     } catch (error: any) {
-      setAuthError("Code incorrect. Veuillez réessayer.");
-      toast({ variant: 'destructive', title: 'Erreur', description: "Le code saisi est invalide." });
+      console.error("Auth Error:", error);
+      let message = "Identifiants incorrects.";
+      if (error.code === 'auth/user-not-found') message = "Aucun compte trouvé avec cet e-mail.";
+      if (error.code === 'auth/wrong-password') message = "Mot de passe incorrect.";
+      setAuthError(message);
+      toast({ variant: 'destructive', title: 'Erreur', description: message });
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +101,6 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md shadow-2xl rounded-[2.5rem] border-none bg-card/80 backdrop-blur-sm overflow-hidden">
-      <div id="recaptcha-container"></div>
       <div className="h-2 bg-[#FF8C00]" />
       <CardHeader className="space-y-2 text-center pt-10">
         <div className="flex justify-center items-center gap-3 mb-2">
@@ -154,7 +108,7 @@ export function LoginForm() {
           <CardTitle className="text-4xl font-black tracking-tighter text-foreground">Sugu<span className="text-[#FF8C00]">Mali</span></CardTitle>
         </div>
         <CardDescription className="text-base font-medium opacity-70">
-          {confirmationResult ? "Saisissez le code reçu par SMS" : "Connectez-vous avec votre numéro de téléphone"}
+          Connectez-vous à votre compte
         </CardDescription>
       </CardHeader>
       
@@ -166,81 +120,61 @@ export function LoginForm() {
           </div>
         )}
 
-        {!confirmationResult ? (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSendCode)} className="grid gap-5">
-              <FormItem>
-                <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Numéro de téléphone</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r pr-3 border-border/50 h-6">
-                      <span className="text-sm font-bold text-foreground">🇲🇱 +223</span>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-5">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">E-mail</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                      <Input 
+                        placeholder="votre@email.com" 
+                        {...field} 
+                        type="email"
+                        className="h-14 rounded-2xl bg-muted/50 border-none pl-12 focus-visible:ring-[#FF8C00]/50" 
+                      />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <Input 
-                          placeholder="76 00 00 00" 
-                          {...field} 
-                          type="tel"
-                          className="h-14 rounded-2xl bg-muted/50 border-none pl-24 focus-visible:ring-[#FF8C00]/50 text-base font-bold tracking-widest" 
-                        />
-                      )}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <Button 
-                type="submit" 
-                className="w-full bg-[#FF8C00] hover:bg-[#E67E00] text-white font-black h-14 rounded-2xl text-lg mt-2 shadow-xl shadow-[#FF8C00]/20 transition-all active:scale-[0.98]" 
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : 'Recevoir le code'}
-              </Button>
-            </form>
-          </Form>
-        ) : (
-          <Form {...otpForm}>
-            <form onSubmit={otpForm.handleSubmit(onVerifyCode)} className="grid gap-5">
-              <FormField
-                control={otpForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Code de validation (6 chiffres)</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
-                        <Input 
-                          placeholder="000000" 
-                          {...field} 
-                          className="h-14 rounded-2xl bg-muted/50 border-none px-12 focus-visible:ring-[#FF8C00]/50 text-center text-2xl font-black tracking-[0.5em]" 
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button 
-                type="submit" 
-                className="w-full bg-[#FF8C00] hover:bg-[#E67E00] text-white font-black h-14 rounded-2xl text-lg shadow-xl shadow-[#FF8C00]/20 transition-all active:scale-[0.98]" 
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : 'Valider le code'}
-              </Button>
-              <button 
-                type="button" 
-                onClick={() => setConfirmationResult(null)}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Modifier le numéro de téléphone
-              </button>
-            </form>
-          </Form>
-        )}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Mot de passe</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                      <Input 
+                        placeholder="••••••••" 
+                        {...field} 
+                        type="password"
+                        className="h-14 rounded-2xl bg-muted/50 border-none pl-12 focus-visible:ring-[#FF8C00]/50" 
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button 
+              type="submit" 
+              className="w-full bg-[#FF8C00] hover:bg-[#E67E00] text-white font-black h-14 rounded-2xl text-lg mt-2 shadow-xl shadow-[#FF8C00]/20 transition-all active:scale-[0.98]" 
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : 'Se connecter'}
+            </Button>
+          </form>
+        </Form>
 
         <div className="relative my-4">
           <Separator className="bg-border/50" />
