@@ -36,8 +36,10 @@ service cloud.firestore {
     match /annonces/{annonceId} {
       allow read: if true; // Public read access for the marketplace
       allow create: if isSignedIn() && request.resource.data.vendeurId == request.auth.uid;
-      allow update: if (isSignedIn() && resource.data.vendeurId == request.auth.uid) || isAdmin();
-      allow delete: if (isSignedIn() && resource.data.vendeurId == request.auth.uid) || isAdmin();
+      // Allow update if owner/admin OR if ONLY the 'views' field is being updated (for public view counting)
+      allow update: if (isSignedIn() && (resource.data.vendeurId == request.auth.uid || isAdmin()))
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']));
+      allow delete: if (isSignedIn() && (resource.data.vendeurId == request.auth.uid || isAdmin()));
     }
 
     match /promotion_requests/{requestId} {
