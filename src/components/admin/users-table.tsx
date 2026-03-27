@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, UserX, UserCheck, Shield, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { type UserProfile } from '@/app/dashboard/profile/page';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function UsersTable() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -21,10 +22,18 @@ export function UsersTable() {
 
   useEffect(() => {
     if (!firestore) return;
-    const q = query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       setUsers(data);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: usersRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -32,17 +41,22 @@ export function UsersTable() {
 
   const toggleBan = async (userId: string, currentStatus: boolean) => {
     if (!firestore) return;
-    try {
-      await updateDoc(doc(firestore, 'users', userId), {
-        isBanned: !currentStatus
+    const userDoc = doc(firestore, 'users', userId);
+    updateDoc(userDoc, { isBanned: !currentStatus })
+      .then(() => {
+        toast({
+          title: currentStatus ? "Utilisateur réhabilité" : "Utilisateur banni",
+          variant: currentStatus ? "default" : "destructive"
+        });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDoc.path,
+          operation: 'update',
+          requestResourceData: { isBanned: !currentStatus },
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({
-        title: currentStatus ? "Utilisateur réhabilité" : "Utilisateur banni",
-        variant: currentStatus ? "default" : "destructive"
-      });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur lors de l'action" });
-    }
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;

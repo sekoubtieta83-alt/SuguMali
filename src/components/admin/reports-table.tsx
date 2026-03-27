@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function ReportsTable() {
   const [reports, setReports] = useState<any[]>([]);
@@ -21,10 +22,18 @@ export function ReportsTable() {
 
   useEffect(() => {
     if (!firestore) return;
-    const q = query(collection(firestore, 'reports'), orderBy('createdAt', 'desc'));
+    const reportsRef = collection(firestore, 'reports');
+    const q = query(reportsRef, orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setReports(data);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: reportsRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -32,12 +41,18 @@ export function ReportsTable() {
 
   const handleDeleteReport = async (id: string) => {
     if (!firestore) return;
-    try {
-      await deleteDoc(doc(firestore, 'reports', id));
-      toast({ title: "Signalement traité" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur" });
-    }
+    const reportDoc = doc(firestore, 'reports', id);
+    deleteDoc(reportDoc)
+      .then(() => {
+        toast({ title: "Signalement traité" });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: reportDoc.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;

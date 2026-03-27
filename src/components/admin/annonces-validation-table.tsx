@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function AnnoncesValidationTable() {
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -20,10 +22,18 @@ export function AnnoncesValidationTable() {
   useEffect(() => {
     if (!firestore) return;
     // On surveille les annonces en attente ou celles qui ont demandé une revue manuelle
-    const q = query(collection(firestore, 'annonces'), where('status', 'in', ['pending', 'rejected']));
+    const annoncesRef = collection(firestore, 'annonces');
+    const q = query(annoncesRef, where('status', 'in', ['pending', 'rejected']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAnnonces(data);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: annoncesRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -31,31 +41,45 @@ export function AnnoncesValidationTable() {
 
   const handleApprove = async (id: string) => {
     if (!firestore) return;
-    try {
-      await updateDoc(doc(firestore, 'annonces', id), {
-        status: 'approved',
-        manualReviewRequested: false,
-        moderationReason: ""
+    const updateData = {
+      status: 'approved',
+      manualReviewRequested: false,
+      moderationReason: ""
+    };
+    updateDoc(doc(firestore, 'annonces', id), updateData)
+      .then(() => {
+        toast({ title: "Annonce approuvée" });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: `annonces/${id}`,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({ title: "Annonce approuvée" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur d'approbation" });
-    }
   };
 
   const handleReject = async (id: string) => {
     if (!firestore) return;
     const reason = prompt("Raison du rejet :");
     if (reason === null) return;
-    try {
-      await updateDoc(doc(firestore, 'annonces', id), {
-        status: 'rejected',
-        moderationReason: reason || "Non conforme aux règles."
+    const updateData = {
+      status: 'rejected',
+      moderationReason: reason || "Non conforme aux règles."
+    };
+    updateDoc(doc(firestore, 'annonces', id), updateData)
+      .then(() => {
+        toast({ title: "Annonce rejetée" });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: `annonces/${id}`,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({ title: "Annonce rejetée" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur de rejet" });
-    }
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;

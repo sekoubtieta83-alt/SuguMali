@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,6 +7,8 @@ import { type Post } from '@/lib/data';
 import { PostCard } from '@/components/dashboard/post-card';
 import { Heart, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function FavoritesPage() {
   const { user } = useUser();
@@ -66,6 +67,13 @@ export default function FavoritesPage() {
       );
 
       setFavorites(fetchedAnnonces.filter(a => a !== null && a.status === 'approved') as Post[]);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: favsRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 

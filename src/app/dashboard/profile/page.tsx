@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,6 +30,8 @@ import { ReviewStars } from "@/components/dashboard/review-stars";
 import { addYears, isAfter } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export type UserProfile = {
     uid: string;
@@ -97,6 +98,12 @@ export default function ProfilePage() {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
         }
+      }, async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
       return () => unsubscribe();
     }
@@ -134,6 +141,13 @@ export default function ProfilePage() {
       });
       setUserPosts(postsFromFirestore);
       setPostsLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: annoncesRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      setPostsLoading(false);
     });
     return () => unsubscribe();
   }, [firestore, user]);
@@ -153,6 +167,12 @@ export default function ProfilePage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
         setReviews(fetchedReviews);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: reviewsRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, user]);
@@ -166,6 +186,14 @@ export default function ProfilePage() {
           .then(() => {
             setNotificationsEnabled(false);
             toast({ title: "Notifications désactivées" });
+          })
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'update',
+              requestResourceData: { fcmTokens: [] },
+            });
+            errorEmitter.emit('permission-error', permissionError);
           })
           .finally(() => setIsNotificationLoading(false));
     } else {
@@ -191,6 +219,13 @@ export default function ProfilePage() {
     });
     batch.commit()
         .then(() => toast({ title: "Nettoyage réussi" }))
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: 'annonces',
+            operation: 'delete',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        })
         .finally(() => setIsDeletingAll(false));
   };
 
@@ -203,6 +238,14 @@ export default function ProfilePage() {
           .then(() => {
             toast({ title: "Paiement réussi !" });
             setVerificationStep('upload');
+          })
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'update',
+              requestResourceData: { isVerificationPaid: true },
+            });
+            errorEmitter.emit('permission-error', permissionError);
           })
           .finally(() => setIsPaying(false));
     }, 2000);
@@ -221,11 +264,20 @@ export default function ProfilePage() {
     if (!user || !firestore || !idPhoto) return;
     setIsSubmittingId(true);
     const userRef = doc(firestore, 'users', user.uid);
-    updateDoc(userRef, { verificationStatus: 'pending', idDocumentUrl: idPhoto })
+    const updateData = { verificationStatus: 'pending', idDocumentUrl: idPhoto };
+    updateDoc(userRef, updateData)
       .then(() => {
         toast({ title: "Demande envoyée" });
         setIsVerifyDialogOpen(false);
         setVerificationStep('payment');
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       })
       .finally(() => setIsSubmittingId(false));
   };

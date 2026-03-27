@@ -37,6 +37,8 @@ import { cn } from '@/lib/utils';
 import { AddReviewForm } from '@/components/dashboard/add-review-form';
 import { PromotionModal } from '@/components/dashboard/promotion-modal';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type Seller = {
     uid: string;
@@ -97,7 +99,17 @@ export default function AnnoncePage() {
   useEffect(() => {
     if (id && firestore) {
       const annonceRef = doc(firestore, 'annonces', id as string);
-      updateDoc(annonceRef, { views: increment(1) }).catch(() => {});
+      updateDoc(annonceRef, { views: increment(1) })
+        .catch(async (serverError) => {
+          if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+              path: annonceRef.path,
+              operation: 'update',
+              requestResourceData: { views: 'increment' },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          }
+        });
     }
   }, [id, firestore]);
 
@@ -107,6 +119,12 @@ export default function AnnoncePage() {
       const favRef = doc(firestore, 'users', user.uid, 'favorites', id as string);
       const unsubscribe = onSnapshot(favRef, (snap) => {
         setIsFavorited(snap.exists());
+      }, async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: favRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
       return () => unsubscribe();
     }
@@ -157,8 +175,12 @@ export default function AnnoncePage() {
           setPost(null);
         }
         setLoading(false);
-      }, (error) => {
-        console.error(error);
+      }, (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: annonceRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
         setLoading(false);
       });
       return () => unsubscribe();
@@ -174,6 +196,12 @@ export default function AnnoncePage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
         setReviews(fetchedReviews);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: reviewsRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, seller?.uid]);
@@ -185,12 +213,26 @@ export default function AnnoncePage() {
     }
     const favRef = doc(firestore, 'users', user.uid, 'favorites', id as string);
     if (isFavorited) {
-      await deleteDoc(favRef);
+      deleteDoc(favRef).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: favRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
       toast({ title: 'Retiré des favoris' });
     } else {
-      await setDoc(favRef, { 
+      const favData = { 
         annonceId: id,
         createdAt: serverTimestamp() 
+      };
+      setDoc(favRef, favData).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: favRef.path,
+          operation: 'create',
+          requestResourceData: favData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
       toast({ title: 'Ajouté aux favoris' });
     }
@@ -204,6 +246,14 @@ export default function AnnoncePage() {
       .then(() => {
         toast({ title: 'Demande envoyée' });
       })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: { manualReviewRequested: true },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
       .finally(() => setIsRequestingReview(false));
   };
 
@@ -214,6 +264,13 @@ export default function AnnoncePage() {
         .then(() => {
             toast({ title: 'Annonce supprimée' });
             router.push('/dashboard');
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete',
+          });
+          errorEmitter.emit('permission-error', permissionError);
         });
   };
 

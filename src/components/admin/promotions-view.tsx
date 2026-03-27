@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function PromotionsView() {
   const [requests, setRequests] = useState<any[]>([]);
@@ -21,10 +23,18 @@ export function PromotionsView() {
 
   useEffect(() => {
     if (!firestore) return;
-    const q = query(collection(firestore, 'promotion_requests'), orderBy('createdAt', 'desc'));
+    const reqRef = collection(firestore, 'promotion_requests');
+    const q = query(reqRef, orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRequests(data);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: reqRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
     return () => unsubscribe();

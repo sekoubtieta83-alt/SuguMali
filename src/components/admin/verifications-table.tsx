@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function VerificationsTable() {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -21,10 +22,18 @@ export function VerificationsTable() {
 
   useEffect(() => {
     if (!firestore) return;
-    const q = query(collection(firestore, 'users'), where('verificationStatus', '==', 'pending'));
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where('verificationStatus', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPendingUsers(data);
+      setLoading(false);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: usersRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -32,16 +41,24 @@ export function VerificationsTable() {
 
   const handleAction = async (userId: string, status: 'verified' | 'rejected') => {
     if (!firestore) return;
-    try {
-      await updateDoc(doc(firestore, 'users', userId), {
-        verificationStatus: status,
-        isVerified: status === 'verified',
-        verifiedAt: status === 'verified' ? serverTimestamp() : null
+    const userDoc = doc(firestore, 'users', userId);
+    const updateData = {
+      verificationStatus: status,
+      isVerified: status === 'verified',
+      verifiedAt: status === 'verified' ? serverTimestamp() : null
+    };
+    updateDoc(userDoc, updateData)
+      .then(() => {
+        toast({ title: status === 'verified' ? "Utilisateur certifié !" : "Certification refusée" });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDoc.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({ title: status === 'verified' ? "Utilisateur certifié !" : "Certification refusée" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur lors de la mise à jour" });
-    }
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
@@ -50,7 +67,7 @@ export function VerificationsTable() {
     <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
       <CardHeader className="bg-muted/30">
         <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-accent" />
+            < ShieldCheck className="h-5 w-5 text-accent" />
             Vérifications d'Identité
         </CardTitle>
         <CardDescription>
