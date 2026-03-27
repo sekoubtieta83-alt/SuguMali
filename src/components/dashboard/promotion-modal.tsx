@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Smartphone, Upload, CheckCircle2, Loader2, Info, Camera, Send, Rocket } from 'lucide-react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useFirebaseApp } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 
 interface PromotionModalProps {
@@ -19,6 +20,7 @@ interface PromotionModalProps {
 export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }: PromotionModalProps) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const app = useFirebaseApp();
   const { toast } = useToast();
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,17 +36,29 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
   };
 
   const handleSubmit = async () => {
-    if (!user || !firestore || !screenshot) return;
+    if (!user || !firestore || !screenshot || !app) return;
     setIsSubmitting(true);
 
     try {
+      // 1. Upload de l'image vers Firebase Storage
+      const storage = getStorage(app);
+      const fileName = `promotions/${user.uid}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      
+      // Upload de la chaîne base64
+      await uploadString(storageRef, screenshot, 'data_url');
+      
+      // Récupération de l'URL publique
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // 2. Enregistrement de la demande dans Firestore
       const requestsRef = collection(firestore, 'promotion_requests');
       await addDoc(requestsRef, {
         userId: user.uid,
         userName: user.displayName || 'Utilisateur',
         annonceId,
         annonceTitle,
-        screenshotUrl: screenshot, // Stockage base64 pour le prototype
+        screenshotUrl: downloadURL,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
@@ -56,7 +70,7 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
       onOpenChange(false);
       setScreenshot(null);
     } catch (error) {
-      console.error(error);
+      console.error("Promotion Error:", error);
       toast({
         variant: "destructive",
         title: "Erreur",
