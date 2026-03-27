@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -32,6 +33,7 @@
         "localisation": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "isPromoted": { "type": "boolean" },
+        "promotionExpiresAt": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["vendeurId", "titre", "prix", "status"]
@@ -47,6 +49,7 @@
         "annonceId": { "type": "string" },
         "screenshotUrl": { "type": "string", "format": "uri" },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "durationDays": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "annonceId", "screenshotUrl", "status"]
