@@ -16,10 +16,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // On autorise l'accès admin via la collection roles_admin ou par email spécifique pour le développeur
+      // On autorise l'accès admin par email spécifique pour le développeur en priorité
+      // Puis via la collection roles_admin
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
-        request.auth.token.email == 'sekoubtieta83@gmail.com'
+        request.auth.token.email == 'sekoubtieta83@gmail.com' ||
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
       );
     }
 
@@ -71,12 +72,12 @@ service cloud.firestore {
 
     match /auditLogs/{logId} {
       allow create: if isSignedIn();
-      allow list, get: if isSignedIn();
+      allow list, get: if isAdmin();
     }
     
     match /searchLogs/{logId} {
       allow create: if true;
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
     }
     
     match /rateLimits/{userId} {
