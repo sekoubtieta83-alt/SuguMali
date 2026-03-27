@@ -3,115 +3,78 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * ConnectSphere Security Rules
-     *
-     * Core Philosophy:
-     * This ruleset implements a robust User-Ownership model combined with Administrative 
-     * overrides. Access is primarily controlled by the hierarchical path structure 
-     * (e.g., /users/{userId}/...) or by explicit ownership fields within top-level 
-     * documents (e.g., product.userId).
-     *
-     * Data Structure:
-     * - /users/{userId}: Private user profiles and the root for user-owned data.
-     * - /products/{productId}: A public marketplace where users can browse all items.
-     * - /users/{userId}/promotion_requests/{id}: Private transaction proof for promotions.
-     * - /roles_admin/{adminId}: A restricted collection identifying users with elevated privileges.
-     *
-     * Key Security Decisions:
-     * - Structural Integrity: Subcollections under /users/{userId} strictly enforce 
-     *   that the internal 'userId' field matches the URL path to prevent data spoofing.
-     * - Admin Access: A dedicated 'roles_admin' collection allows for global read/write 
-     *   access across all collections without requiring custom JWT claims.
-     * - Public vs Private: Products are globally readable to support browsing, while 
-     *   PromotionRequests are strictly private to the owner and admins.
-     * - Prototyping Flexibility: Rules prioritize authorization (WHO can access) over 
-     *   strict schema validation (WHAT the data looks like).
+     * SuguMali Security Rules
      */
 
     // --- Helper Functions ---
-
-    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** Checks if the authenticated user has a document in the roles_admin collection. */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    /** Combines ownership check with existence check for destructive operations. */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    /** Validates that a field is not being changed during an update. */
     function isUnchanged(key) {
       return request.resource.data[key] == resource.data[key];
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the User profile. Users can manage their own profile; admins have full access.
-     * @path /users/{userId}
-     * @allow (get) Any signed-in user viewing their own or others' profiles (depending on app needs, here kept to owner/admin for privacy).
-     * @deny (list) Prevent crawling the entire user database.
-     * @principle Ownership-based access for profile management.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
+      allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Publicly viewable products. Only the owner who created the product can modify it.
-     * @path /products/{productId}
-     * @allow (list) Any user (including guests) can browse products.
-     * @allow (create) Authenticated user where data.userId matches their UID.
-     * @deny (update) Any user attempting to edit a product they do not own.
-     * @principle Public Read with Owner-Only Writes.
-     */
-    match /products/{productId} {
+    match /annonces/{annonceId} {
       allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.vendeurId == request.auth.uid;
+      allow update: if (isSignedIn() && resource.data.vendeurId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.vendeurId == request.auth.uid) || isAdmin();
+    }
+
+    match /promotion_requests/{requestId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.userId) && isUnchanged('userId');
-      allow delete: if isExistingOwner(resource.data.userId) || isAdmin();
+      allow update, delete: if isAdmin();
     }
 
-    /**
-     * @description Private promotion requests containing payment screenshots. Secured by user path and internal UID.
-     * @path /users/{userId}/promotion_requests/{promotionRequestId}
-     * @allow (list) Owner viewing their own submission history.
-     * @deny (create) User attempting to submit a request into another user's subcollection.
-     * @principle Relational integrity enforced between path and document data.
-     */
-    match /users/{userId}/promotion_requests/{promotionRequestId} {
-      allow get, list: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if (isExistingOwner(userId) || isAdmin()) && isUnchanged('userId');
-      allow delete: if isAdmin();
+    match /reviews/{reviewId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
-    /**
-     * @description Collection defining administrator privileges via UID document existence.
-     * @path /roles_admin/{adminId}
-     * @allow (get) Signed-in users can check if a specific ID is an admin.
-     * @deny (write) Only existing admins can promote other users to admin status.
-     * @principle Role-Based Access Control (RBAC) via existence check.
-     */
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow list, get, update, delete: if isAdmin();
+    }
+
     match /roles_admin/{adminId} {
       allow get: if isSignedIn();
       allow list, create, update, delete: if isAdmin();
     }
 
+    match /auditLogs/{logId} {
+      allow create: if isSignedIn();
+      allow list, get: if isAdmin();
+    }
+    
+    match /searchLogs/{logId} {
+      allow create: if true;
+      allow list: if isAdmin();
+    }
+    
+    match /rateLimits/{userId} {
+      allow get, write: if isOwner(userId);
+    }
   }
 }

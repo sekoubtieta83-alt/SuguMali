@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -36,6 +35,7 @@ import { ReviewStars } from '@/components/dashboard/review-stars';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { AddReviewForm } from '@/components/dashboard/add-review-form';
+import { PromotionModal } from '@/components/dashboard/promotion-modal';
 import Link from 'next/link';
 
 type Seller = {
@@ -69,6 +69,7 @@ export default function AnnoncePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   
   // Carousel API
@@ -204,15 +205,6 @@ export default function AnnoncePage() {
         toast({ title: 'Demande envoyée' });
       })
       .finally(() => setIsRequestingReview(false));
-  };
-
-  const handlePromote = () => {
-    if (!post || !id || !user || !firestore) return;
-    const docRef = doc(firestore, 'annonces', id as string);
-    updateDoc(docRef, { isPromoted: true })
-        .then(() => {
-            toast({ title: 'Article promu !' });
-        });
   };
 
   const handleDelete = () => {
@@ -417,13 +409,28 @@ export default function AnnoncePage() {
             <div className="mt-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-4">
               <h3 className="font-bold flex items-center gap-2"><Rocket className="h-5 w-5"/> Zone Vendeur</h3>
               <div className="grid grid-cols-1 gap-2">
-                {!post.isPromoted && <Button className="w-full bg-accent text-white font-bold" onClick={handlePromote}>Promouvoir l'annonce</Button>}
-                <Button variant="destructive" className="w-full font-bold" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>
+                {!post.isPromoted && (
+                    <Button 
+                        className="w-full bg-accent text-white font-bold h-12 rounded-xl" 
+                        onClick={() => setIsPromotionModalOpen(true)}
+                    >
+                        Promouvoir l'annonce
+                    </Button>
+                )}
+                <Button variant="destructive" className="w-full font-bold h-12 rounded-xl" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Promotion Modal */}
+      <PromotionModal 
+        isOpen={isPromotionModalOpen} 
+        onOpenChange={setIsPromotionModalOpen} 
+        annonceId={post.id} 
+        annonceTitle={post.product?.name || 'Sans titre'} 
+      />
 
       {/* Floating Action Bar (Sticky Footer) */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t p-4 pb-6 flex items-center gap-2 z-40 max-w-2xl mx-auto shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)]">
