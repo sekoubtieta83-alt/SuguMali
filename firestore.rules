@@ -83,5 +83,10 @@ service cloud.firestore {
     match /rateLimits/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
+
+    match /site_stats/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if true; // Autorise l'incrémentation des visites
+    }
   }
 }

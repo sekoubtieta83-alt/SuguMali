@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post, posts as mockPosts } from '@/lib/data';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, setDoc, increment } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -95,7 +94,7 @@ function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full ring-2 ring-white/10 ml-1 sm:ml-2">
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                    <Avatar className="h-8 w-8 sm:h-9 w-9">
                       <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
                       <AvatarFallback className="bg-muted text-accent font-bold">
                         {user.displayName?.charAt(0).toUpperCase() ?? 'U'}
@@ -138,6 +137,15 @@ export default function HomePage() {
   const [searchValue, setSearchValue] = useState('');
   const [featuredProducts, setFeaturedProducts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Incrémenter les visites totales
+  useEffect(() => {
+    if (firestore) {
+      const statsRef = doc(firestore, 'site_stats', 'counters');
+      setDoc(statsRef, { visits: increment(1) }, { merge: true })
+        .catch(() => {}); // Échec silencieux pour le tracking
+    }
+  }, [firestore]);
 
   useEffect(() => {
     if (!firestore) return;
