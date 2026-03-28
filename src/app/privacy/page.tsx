@@ -32,8 +32,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li>
-              <strong>Authentification Google :</strong> Lorsque vous vous connectez via Google, nous collectons 
-              votre adresse e-mail, votre nom et votre photo de profil publique.
+              <strong>Authentification :</strong> Nous collectons votre adresse e-mail, votre nom et votre photo de profil lorsque vous créez un compte ou utilisez l'authentification Google.
             </li>
             <li>
               <strong>Informations d'annonce :</strong> Les données relatives aux produits que vous publiez 

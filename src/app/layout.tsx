@@ -40,14 +40,16 @@ export default function RootLayout({
             <Toaster />
           </MamiProvider>
         </FirebaseClientProvider>
-        <footer className="w-full py-4 px-6 border-t border-border bg-background text-center text-xs text-muted-foreground flex items-center justify-center gap-4">
-          <span>© {new Date().getFullYear()} SuguMali</span>
-          <a href="/privacy" className="underline hover:text-foreground transition-colors">
-            Politique de confidentialité
-          </a>
-          <a href="/terms" className="underline hover:text-foreground transition-colors">
-            Conditions d&apos;utilisation
-          </a>
+        <footer className="w-full py-8 px-6 border-t border-border bg-background text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-6 font-bold">
+            <a href="/privacy" className="underline hover:text-foreground transition-colors">
+              Politique de confidentialité
+            </a>
+            <a href="/terms" className="underline hover:text-foreground transition-colors">
+              Conditions d&apos;utilisation
+            </a>
+          </div>
+          <span>© {new Date().getFullYear()} SuguMali — Bamako, Mali.</span>
         </footer>
       </body>
     </html>
