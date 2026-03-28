@@ -216,7 +216,7 @@ export function SupportChatWidget() {
   const [annoncesMap, setAnnoncesMap] = useState<Map<string, FirestoreAnnonce>>(new Map());
   const [sponsoredAnnonces, setSponsoredAnnonces] = useState<SponsoredAnnonce[]>([]);
   const [allAnnonces, setAllAnnonces] = useState<SponsoredAnnonce[]>([]);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null = chargement
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [showSignupModal, setShowSignupModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mami = useMemo(() => new MamiAssistant(), []);
@@ -285,8 +285,8 @@ export function SupportChatWidget() {
     // ── Compte le nombre de messages utilisateur déjà envoyés ─────────────
     const userMessageCount = messages.filter(m => m.role === 'user').length;
 
-    // ── Au 2ème message, si non connecté → afficher la modal ──────────────
-    if (userMessageCount >= 1 && !isLoggedIn) {
+    // ── Après 1 réponse gratuite, si non connecté → afficher la modal ──────
+    if (userMessageCount >= 2 && !isLoggedIn) {
       setShowSignupModal(true);
       return;
     }

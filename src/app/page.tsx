@@ -19,7 +19,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
-// ── Carte annonce avec badge sponsorisé ──────────────────────────────────────
+// ── Carte annonce plus compacte pour l'affichage multiple ──────────────────
 const FeaturedProductCard = ({
   id, title, price, location, image, condition, sponsored
 }: {
@@ -28,17 +28,17 @@ const FeaturedProductCard = ({
 }) => (
   <Link
     href={`/annonces/${id}`}
-    className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl sm:rounded-3xl p-3 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
+    className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl p-2.5 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
   >
     {/* Badge sponsorisé */}
     {sponsored && (
-      <div className="absolute top-5 right-5 z-10 flex items-center gap-1 bg-yellow-400/90 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-black shadow-lg">
-        <Star className="h-2.5 w-2.5 fill-yellow-900" />
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-yellow-400/90 text-yellow-900 px-1.5 py-0.5 rounded-full text-[8px] font-black shadow-lg">
+        <Star className="h-2 w-2 fill-yellow-900" />
         Sponsorisé
       </div>
     )}
 
-    <div className="relative h-48 sm:h-56 bg-muted rounded-xl sm:rounded-2xl overflow-hidden">
+    <div className="relative h-32 sm:h-44 bg-muted rounded-xl overflow-hidden">
       <img
         src={image || 'https://placehold.co/600x400/1a1a2e/ffffff?text=SuguMali'}
         alt={title}
@@ -46,16 +46,16 @@ const FeaturedProductCard = ({
         onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400/1a1a2e/ffffff?text=SuguMali'; }}
       />
       {condition && (
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-accent text-white px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold shadow-lg">
+        <div className="absolute top-2 left-2 bg-accent text-white px-2 py-0.5 rounded-md text-[9px] font-bold shadow-lg">
           {condition}
         </div>
       )}
     </div>
-    <div className="mt-3 sm:mt-4 px-1">
-      <h3 className="font-bold text-foreground truncate text-base sm:text-lg">{title}</h3>
-      <p className="text-accent font-black text-lg sm:text-xl mt-1">{price}</p>
-      <div className="flex items-center gap-1 text-muted-foreground text-[10px] sm:text-sm mt-1 sm:mt-2">
-        <span>📍 {location}</span>
+    <div className="mt-2.5 px-1">
+      <h3 className="font-bold text-foreground truncate text-sm sm:text-base leading-tight">{title}</h3>
+      <p className="text-accent font-black text-base sm:text-lg mt-0.5">{price}</p>
+      <div className="flex items-center gap-1 text-muted-foreground text-[9px] sm:text-xs mt-1">
+        <span className="truncate">📍 {location}</span>
       </div>
     </div>
   </Link>
@@ -192,8 +192,7 @@ export default function HomePage() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
-      // Augmentation du nombre de produits pour le carrousel
-      setFeaturedProducts(sorted.length > 0 ? sorted.slice(0, 12) : mockPosts.slice(0, 6));
+      setFeaturedProducts(sorted.length > 0 ? sorted.slice(0, 16) : mockPosts.slice(0, 8));
       setIsLoading(false);
     }, async () => {
       const permissionError = new FirestorePermissionError({
@@ -246,9 +245,9 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Annonces à la une avec Carrousel */}
-        <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-8 pb-12 sm:pt-12 sm:pb-20">
-          <div className="flex justify-between items-end mb-6 sm:mb-8">
+        {/* Annonces à la une avec 4 images visibles sur desktop et 2 sur mobile */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-10 pt-8 pb-12 sm:pt-12 sm:pb-20">
+          <div className="flex justify-between items-end mb-6 sm:mb-8 px-2">
             <div className="space-y-1 sm:space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground inline-block relative">
                 Annonces à la une
@@ -261,27 +260,26 @@ export default function HomePage() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-card/40 border border-white/5 rounded-2xl sm:rounded-3xl p-3">
-                  <Skeleton className="h-48 sm:h-56 w-full rounded-xl sm:rounded-2xl" />
-                  <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-7 w-1/2" />
-                    <Skeleton className="h-4 w-1/3" />
+                <div key={i} className="bg-card/40 border border-white/5 rounded-2xl p-3">
+                  <Skeleton className="h-32 sm:h-44 w-full rounded-xl" />
+                  <div className="p-2 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/2" />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="relative group/carousel">
+            <div className="relative group/carousel px-2">
               <Carousel 
                 opts={{ align: "start", loop: true }} 
                 className="w-full"
               >
-                <CarouselContent className="-ml-4">
+                <CarouselContent className="-ml-2 sm:-ml-4">
                   {featuredProducts.map((post: any) => (
-                    <CarouselItem key={post.id} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                    <CarouselItem key={post.id} className="pl-2 sm:pl-4 basis-1/2 sm:basis-1/3 lg:basis-1/4">
                       <FeaturedProductCard
                         id={post.id}
                         title={post.product?.name || post.content}
@@ -294,7 +292,7 @@ export default function HomePage() {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <div className="hidden sm:flex items-center justify-center gap-4 mt-8">
+                <div className="hidden lg:flex items-center justify-center gap-4 mt-8">
                   <CarouselPrevious className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
                   <CarouselNext className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
                 </div>
