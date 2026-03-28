@@ -8,11 +8,8 @@ import {
   LayoutGrid,
   LogOut,
   Shield,
-  ShoppingBag,
   User as UserIcon,
   PlusCircle,
-  Menu,
-  Search,
   Heart,
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
@@ -28,7 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from './logo';
 import { cn } from '@/lib/utils';
 import Footer from './footer';
@@ -37,7 +33,6 @@ const navItems = [
   { href: '/', icon: Home, label: 'Accueil' },
   { href: '/dashboard', icon: LayoutGrid, label: 'Explorer' },
   { href: '/dashboard/favorites', icon: Heart, label: 'Favoris' },
-  { href: '/dashboard/promotions', icon: ShoppingBag, label: 'Promos' },
   { href: '/dashboard/profile', icon: UserIcon, label: 'Profil' },
   { href: '/dashboard/admin', icon: Shield, label: 'Admin' },
 ];
