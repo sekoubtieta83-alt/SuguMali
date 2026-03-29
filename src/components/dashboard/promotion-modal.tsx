@@ -105,7 +105,7 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
                   <div className="h-10 w-10 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-xs">OM</div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase">Orange Money</p>
-                    <p className="text-base font-black">76 00 00 00</p>
+                    <p className="text-base font-black">79 05 28 86</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -118,7 +118,7 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
                   <div className="h-10 w-10 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-xs">W</div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase">Wave</p>
-                    <p className="text-base font-black">76 11 11 11</p>
+                    <p className="text-base font-black">79 05 28 86</p>
                   </div>
                 </div>
                 <div className="text-right">

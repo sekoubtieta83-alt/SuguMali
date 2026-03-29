@@ -406,7 +406,7 @@ export default function ProfilePage() {
                                               <div className="h-8 w-8 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-[10px]">OM</div>
                                               <div>
                                                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Orange Money</p>
-                                                <p className="text-sm font-black">76 00 00 00</p>
+                                                <p className="text-sm font-black">79 05 28 86</p>
                                               </div>
                                             </div>
                                             <div className="text-right">
@@ -418,7 +418,7 @@ export default function ProfilePage() {
                                               <div className="h-8 w-8 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-[10px]">W</div>
                                               <div>
                                                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Wave</p>
-                                                <p className="text-sm font-black">76 11 11 11</p>
+                                                <p className="text-sm font-black">79 05 28 86</p>
                                               </div>
                                             </div>
                                             <div className="text-right">
