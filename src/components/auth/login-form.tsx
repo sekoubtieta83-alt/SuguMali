@@ -2,15 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   signInWithEmailAndPassword,
   GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult 
+  signInWithPopup,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
@@ -42,18 +41,6 @@ export function LoginForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!auth) return;
-    
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result && result.user) {
-          toast({ title: 'Connexion Google réussie', description: 'Bienvenue sur SuguMali !' });
-          router.push('/dashboard');
-        }
-      });
-  }, [auth, toast, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -92,9 +79,15 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        toast({ title: 'Connexion Google réussie', description: 'Bienvenue sur SuguMali !' });
+        router.push('/dashboard');
+      }
     } catch (error: any) {
+      console.error("Google Auth Error:", error);
       toast({ variant: 'destructive', title: 'Erreur Google', description: "Impossible de se connecter avec Google." });
+    } finally {
       setIsLoading(false);
     }
   };
