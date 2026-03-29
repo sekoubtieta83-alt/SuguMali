@@ -383,26 +383,26 @@ export default function ProfilePage() {
                         <p className="text-xs sm:text-sm text-muted-foreground">Badge orange pour 5 000 FCFA/an.</p>
                         <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
                             <DialogTrigger asChild><Button className="w-full rounded-xl sm:rounded-2xl font-bold bg-accent hover:bg-accent/90 text-white h-10 sm:h-12 text-xs sm:text-sm">Certifier mon compte</Button></DialogTrigger>
-                            <DialogContent className="w-[95vw] sm:max-w-[420px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-                                <div className="bg-accent p-5 text-white text-center relative overflow-hidden">
-                                  <ShieldCheck className="absolute -right-4 -bottom-4 h-20 w-24 text-white/10 rotate-12" />
+                            <DialogContent className="w-[95vw] sm:max-w-[380px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
+                                <div className="bg-accent p-4 text-white text-center relative overflow-hidden">
+                                  <ShieldCheck className="absolute -right-4 -bottom-4 h-16 w-20 text-white/10 rotate-12" />
                                   <DialogHeader>
-                                    <DialogTitle className="text-xl font-black mb-1">Certification SuguMali</DialogTitle>
-                                    <DialogDescription className="text-white/90 font-medium text-[10px] leading-relaxed">
-                                      Inspirez confiance et vendez plus vite avec le badge orange.
+                                    <DialogTitle className="text-xl font-black mb-0.5">Certification SuguMali</DialogTitle>
+                                    <DialogDescription className="text-white/90 font-medium text-[9px] leading-relaxed">
+                                      Inspirez confiance et vendez plus vite.
                                     </DialogDescription>
                                   </DialogHeader>
                                 </div>
 
                                 {verificationStep === 'payment' && !userProfile.isVerificationPaid ? (
-                                    <div className="p-5 space-y-5 bg-background">
-                                      <div className="space-y-3">
-                                        <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                          <Info className="h-3 w-3" /> Instructions de paiement
+                                    <div className="p-4 space-y-4 bg-background">
+                                      <div className="space-y-2">
+                                        <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                          <Info className="h-2.5 w-2.5" /> Instructions de paiement
                                         </h3>
-                                        <div className="grid gap-2">
+                                        <div className="grid gap-1.5">
                                           <div className="flex items-center justify-between p-2.5 bg-muted/30 rounded-xl border border-border/50">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2.5">
                                               <div className="h-7 w-7 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-[9px]">OM</div>
                                               <div>
                                                 <p className="text-[8px] font-bold text-muted-foreground uppercase">Orange Money</p>
@@ -410,11 +410,11 @@ export default function ProfilePage() {
                                               </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-accent font-black text-xs">5 000 FCFA</p>
+                                                <p className="text-accent font-black text-[10px]">5 000 FCFA</p>
                                             </div>
                                           </div>
                                           <div className="flex items-center justify-between p-2.5 bg-muted/30 rounded-xl border border-border/50">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2.5">
                                               <div className="h-7 w-7 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-[9px]">W</div>
                                               <div>
                                                 <p className="text-[8px] font-bold text-muted-foreground uppercase">Wave</p>
@@ -422,14 +422,14 @@ export default function ProfilePage() {
                                               </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-accent font-black text-xs">5 000 FCFA</p>
+                                                <p className="text-accent font-black text-[10px]">5 000 FCFA</p>
                                             </div>
                                           </div>
                                         </div>
                                       </div>
 
                                       <div className="space-y-2">
-                                        <Label className="text-[11px] font-black flex items-center gap-2">
+                                        <Label className="text-[10px] font-black flex items-center gap-2">
                                             Preuve de paiement 
                                             <span className="text-[9px] font-normal text-muted-foreground">(Capture d'écran)</span>
                                         </Label>
@@ -445,17 +445,17 @@ export default function ProfilePage() {
                                             onClick={() => paymentInputRef.current?.click()}
                                             className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-muted/50 hover:border-accent/40 transition-all group"
                                           >
-                                            <div className="bg-muted p-2.5 rounded-full group-hover:bg-accent/10 transition-colors">
-                                                <Camera className="h-5 w-5 text-muted-foreground group-hover:text-accent transition-colors" />
+                                            <div className="bg-muted p-2 rounded-full group-hover:bg-accent/10 transition-colors">
+                                                <Camera className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
                                             </div>
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Ajouter la capture</span>
+                                            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Ajouter la capture</span>
                                           </button>
                                         )}
                                         <input type="file" ref={paymentInputRef} onChange={handlePaymentFileSelect} accept="image/*" className="hidden" />
                                       </div>
 
                                       <Button 
-                                        className="w-full h-11 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
+                                        className="w-full h-10 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
                                         disabled={!paymentScreenshot || isPaying}
                                         onClick={handleProcessPayment}
                                       >
@@ -464,13 +464,13 @@ export default function ProfilePage() {
                                       </Button>
                                     </div>
                                 ) : (
-                                    <div className="p-5 space-y-5 bg-background">
-                                        <div className="bg-green-500/10 p-2.5 rounded-xl flex items-center gap-2.5 border border-green-500/20">
-                                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                            <span className="text-[10px] font-bold text-green-600">Paiement reçu. Étape finale : Identité.</span>
+                                    <div className="p-4 space-y-4 bg-background">
+                                        <div className="bg-green-500/10 p-2 rounded-xl flex items-center gap-2 border border-green-500/20">
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                            <span className="text-[9px] font-bold text-green-600">Paiement reçu. Étape finale : Identité.</span>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[11px] font-black">Photo de votre pièce d'identité</Label>
+                                            <Label className="text-[10px] font-black">Photo de votre pièce d'identité</Label>
                                             <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
                                             {idPhoto ? (
                                                 <div className="relative group rounded-xl overflow-hidden border-2 border-accent/20 shadow-lg">
@@ -480,14 +480,14 @@ export default function ProfilePage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/10 hover:bg-muted/20 transition-all">
-                                                    <Upload className="h-6 w-6 text-muted-foreground" />
-                                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Télécharger ma pièce</span>
+                                                <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-muted/10 hover:bg-muted/20 transition-all">
+                                                    <Upload className="h-5 w-5 text-muted-foreground" />
+                                                    <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Télécharger ma pièce</span>
                                                 </button>
                                             )}
                                         </div>
-                                        <Button onClick={handleSubmitVerification} className="w-full rounded-xl h-12 font-black text-base shadow-xl shadow-accent/20" disabled={!idPhoto || isSubmittingId}>
-                                            {isSubmittingId ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                        <Button onClick={handleSubmitVerification} className="w-full rounded-xl h-11 font-black text-sm shadow-xl shadow-accent/20" disabled={!idPhoto || isSubmittingId}>
+                                            {isSubmittingId ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
                                             Finaliser ma demande
                                         </Button>
                                     </div>
