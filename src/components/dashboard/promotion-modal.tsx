@@ -40,18 +40,12 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
     setIsSubmitting(true);
 
     try {
-      // 1. Upload de l'image vers Firebase Storage
       const storage = getStorage(app);
       const fileName = `promotions/${user.uid}/${Date.now()}.jpg`;
       const storageRef = ref(storage, fileName);
-      
-      // Upload de la chaîne base64
       await uploadString(storageRef, screenshot, 'data_url');
-      
-      // Récupération de l'URL publique
       const downloadURL = await getDownloadURL(storageRef);
 
-      // 2. Enregistrement de la demande dans Firestore
       const requestsRef = collection(firestore, 'promotion_requests');
       await addDoc(requestsRef, {
         userId: user.uid,
@@ -83,98 +77,96 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-        <div className="bg-accent p-8 text-white text-center relative overflow-hidden">
-          <Rocket className="absolute -right-4 -bottom-4 h-24 w-24 text-white/10 rotate-12" />
+      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
+        <div className="bg-accent p-6 text-white text-center relative overflow-hidden">
+          <Rocket className="absolute -right-4 -bottom-4 h-20 w-24 text-white/10 rotate-12" />
           <DialogHeader>
-            <DialogTitle className="text-3xl font-black mb-2">Booster l'annonce</DialogTitle>
-            <DialogDescription className="text-white/90 font-medium text-sm leading-relaxed">
+            <DialogTitle className="text-2xl font-black mb-1">Booster l'annonce</DialogTitle>
+            <DialogDescription className="text-white/90 font-medium text-xs leading-relaxed">
               Devenez prioritaire sur SuguMali et vendez jusqu'à 5x plus vite !
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-8 bg-background">
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+        <div className="p-5 space-y-6 bg-background">
+          <div className="space-y-3">
+            <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
               <Info className="h-3 w-3" /> Instructions de paiement
             </h3>
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border/50 group hover:border-accent/30 transition-colors">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50 group hover:border-accent/30 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-xs">OM</div>
+                  <div className="h-8 w-8 bg-[#FF8C00] rounded-full flex items-center justify-center text-white font-black text-[10px]">OM</div>
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Orange Money</p>
-                    <p className="text-base font-black">79 05 28 86</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Orange Money</p>
+                    <p className="text-sm font-black">79 05 28 86</p>
                   </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-accent font-black">À partir de 5 000 FCFA</p>
-                    <p className="text-[9px] text-muted-foreground">Frais inclus</p>
+                    <p className="text-accent font-black text-xs">Dès 5 000 FCFA</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border/50 group hover:border-accent/30 transition-colors">
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50 group hover:border-accent/30 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-xs">W</div>
+                  <div className="h-8 w-8 bg-[#1cbcfc] rounded-full flex items-center justify-center text-white font-black text-[10px]">W</div>
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Wave</p>
-                    <p className="text-base font-black">79 05 28 86</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Wave</p>
+                    <p className="text-sm font-black">79 05 28 86</p>
                   </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-accent font-black">À partir de 5 000 FCFA</p>
-                    <p className="text-[9px] text-muted-foreground">Frais inclus</p>
+                    <p className="text-accent font-black text-xs">Dès 5 000 FCFA</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <Label className="text-sm font-black flex items-center gap-2">
+          <div className="space-y-3">
+            <Label className="text-xs font-black flex items-center gap-2">
                 Preuve de paiement 
                 <span className="text-[10px] font-normal text-muted-foreground">(Capture d'écran)</span>
             </Label>
             {screenshot ? (
-              <div className="relative group rounded-3xl overflow-hidden border-2 border-accent/20 shadow-lg">
+              <div className="relative group rounded-2xl overflow-hidden border-2 border-accent/20 shadow-lg">
                 <img src={screenshot} alt="Screenshot" className="w-full aspect-video object-cover" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button variant="secondary" size="sm" onClick={() => setScreenshot(null)} className="rounded-xl font-bold">Modifier</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setScreenshot(null)} className="rounded-xl font-bold h-8">Modifier</Button>
                 </div>
               </div>
             ) : (
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-3xl flex flex-col items-center justify-center gap-3 hover:bg-muted/50 hover:border-accent/40 transition-all group"
+                className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-muted/50 hover:border-accent/40 transition-all group"
               >
-                <div className="bg-muted p-4 rounded-full group-hover:bg-accent/10 transition-colors">
-                    <Camera className="h-8 w-8 text-muted-foreground group-hover:text-accent transition-colors" />
+                <div className="bg-muted p-3 rounded-full group-hover:bg-accent/10 transition-colors">
+                    <Camera className="h-6 w-6 text-muted-foreground group-hover:text-accent transition-colors" />
                 </div>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Ajouter la capture</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ajouter la capture</span>
               </button>
             )}
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
           </div>
         </div>
 
-        <div className="p-6 pt-0 bg-background">
+        <div className="p-5 pt-0 bg-background">
           <Button 
-            className="w-full h-16 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full h-12 rounded-xl font-black text-base bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
             disabled={!screenshot || isSubmitting}
             onClick={handleSubmit}
           >
             {isSubmitting ? (
                 <div className="flex items-center gap-2">
-                    <Loader2 className="animate-spin h-5 w-5" />
-                    <span>Envoi en cours...</span>
+                    <Loader2 className="animate-spin h-4 w-4" />
+                    <span>Envoi...</span>
                 </div>
             ) : (
                 <div className="flex items-center gap-2">
-                    <Send className="h-5 w-5" />
-                    <span>Soumettre ma preuve</span>
+                    <Send className="h-4 w-4" />
+                    <span>Envoyer ma preuve</span>
                 </div>
             )}
           </Button>
-          <p className="text-center text-[10px] text-muted-foreground mt-4 font-medium italic">
+          <p className="text-center text-[9px] text-muted-foreground mt-3 font-medium italic">
             Validation sous 2h par notre équipe.
           </p>
         </div>
