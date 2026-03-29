@@ -9,7 +9,7 @@ import { useFirestore, useAuth } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { categories } from '@/lib/categories';
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -69,7 +69,7 @@ export default function SellPage() {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=fr`);
+          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}_longitude=${longitude}&localityLanguage=fr`);
           const data = await response.json();
           if (data.locality || data.city) setLocation(data.locality || data.city);
         } catch (error) {
@@ -177,6 +177,12 @@ export default function SellPage() {
     setModerationMessage("Mami analyse votre annonce...");
 
     try {
+      // Fetch user profile to check verification status
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      const isVendeurVerified = userData?.isVerified || false;
+
       const moderateImageFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
       const modResult: any = await moderateImageFn({ titre: title, description: description, prix: `${price} FCFA` });
       const moderation = modResult.data;
@@ -194,6 +200,7 @@ export default function SellPage() {
         media: mediaPreviews,
         image: mediaPreviews[0]?.url || "",
         vendeurId: user.uid,
+        vendeurVerified: isVendeurVerified, // Enregistrement de la certification
         status: status,
         moderationReason: reason,
         description: description,

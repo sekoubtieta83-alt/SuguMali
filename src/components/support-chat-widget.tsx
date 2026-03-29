@@ -26,6 +26,7 @@ interface FirestoreAnnonce {
   localisation: string;
   categorie: string;
   sponsored?: boolean;
+  isVerified?: boolean;
   etat?: string;
 }
 
@@ -261,9 +262,17 @@ export function SupportChatWidget() {
             id: doc.id, titre: d.titre || '', prix: d.prix || '',
             image: d.image || '', imageUrl: d.imageUrl || '',
             localisation: d.localisation || '', categorie: d.categorie || '',
-            sponsored: d.sponsored || false, etat: d.etat || '',
+            sponsored: d.sponsored || false, isVerified: d.vendeurVerified || false,
+            etat: d.etat || '',
           });
-          const annonce = { id: doc.id, titre: d.titre || '', prix: d.prix || '', categorie: d.categorie || '', localisation: d.localisation || '' };
+          const annonce = { 
+            id: doc.id, 
+            titre: d.titre || '', 
+            prix: d.prix || '', 
+            categorie: d.categorie || '', 
+            localisation: d.localisation || '',
+            isVerified: d.vendeurVerified || false
+          };
           all.push(annonce);
           if (d.sponsored) sponsored.push(annonce);
         });

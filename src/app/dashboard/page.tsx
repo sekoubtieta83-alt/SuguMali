@@ -72,6 +72,7 @@ export default function DashboardPage() {
         return {
           id: doc.id,
           userId: data.vendeurId,
+          vendeurVerified: data.vendeurVerified || false,
           content: data.description || '',
           media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
@@ -90,7 +91,7 @@ export default function DashboardPage() {
             price: data.prix || '0 FCFA',
             url: `/annonces/${doc.id}`,
           }
-        } as Post;
+        } as Post & { vendeurVerified: boolean };
       });
 
       setAllPosts(postsFromFirestore);
@@ -141,13 +142,20 @@ export default function DashboardPage() {
         return matchesSearch && matchesLocation && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition;
     });
 
-    const finalResults = [...filteredResults].sort((a, b) => {
+    const finalResults = [...filteredResults].sort((a: any, b: any) => {
+        // 1. Promus
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
+
+        // 2. Vérifiés
+        if (a.vendeurVerified && !b.vendeurVerified) return -1;
+        if (!a.vendeurVerified && b.vendeurVerified) return 1;
+
+        // 3. Date
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
-    });
+      });
 
     setFilteredPosts(finalResults);
 

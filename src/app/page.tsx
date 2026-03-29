@@ -153,6 +153,7 @@ export default function HomePage() {
         return {
           id: doc.id,
           userId: data.vendeurId,
+          vendeurVerified: data.vendeurVerified || false, // Extraction de l'état certifié
           content: data.description || '',
           media: data.imageUrl ? [{ url: data.imageUrl, type: 'image' as const }] : data.image ? [{ url: data.image, type: 'image' as const }] : [],
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
@@ -169,14 +170,24 @@ export default function HomePage() {
             price: data.prix || '0 FCFA',
             url: `/annonces/${doc.id}`,
           },
-        } as Post & { sponsored: boolean };
+        } as Post & { sponsored: boolean; vendeurVerified: boolean };
       });
 
+      // Tri intelligent : Promus (Sponsored/Promoted) > Vérifiés > Date
       const sorted = [...posts].sort((a: any, b: any) => {
+        // 1. Sponsored
         if (a.sponsored && !b.sponsored) return -1;
         if (!a.sponsored && b.sponsored) return 1;
+        
+        // 2. Promoted (Boosted)
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
+
+        // 3. Vendeur Vérifié
+        if (a.vendeurVerified && !b.vendeurVerified) return -1;
+        if (!a.vendeurVerified && b.vendeurVerified) return 1;
+
+        // 4. Date de création (plus récent en premier)
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 

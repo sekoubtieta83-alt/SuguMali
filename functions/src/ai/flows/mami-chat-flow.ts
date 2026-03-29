@@ -1,8 +1,8 @@
 export async function mamiChatFlow(input: {
   messages: { role: 'user' | 'model'; content: string }[];
   mode?: 'acheter' | 'vendre';
-  sponsoredAnnonces?: Array<{ id: string; titre: string; prix: string; categorie: string; localisation: string }>;
-  allAnnonces?: Array<{ id: string; titre: string; prix: string; categorie: string; localisation: string }>;
+  sponsoredAnnonces?: Array<{ id: string; titre: string; prix: string; categorie: string; localisation: string; isVerified?: boolean }>;
+  allAnnonces?: Array<{ id: string; titre: string; prix: string; categorie: string; localisation: string; isVerified?: boolean }>;
 }, apiKey: string): Promise<string> {
   if (!apiKey) throw new Error('Clé API manquante');
 
@@ -26,7 +26,7 @@ export async function mamiChatFlow(input: {
   const sponsoredCtx = input.sponsoredAnnonces?.length
     ? `\n⭐ ANNONCES SPONSORISÉES (afficher EN PREMIER si pertinentes) :\n${
         input.sponsoredAnnonces.map(a =>
-          `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`
+          `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}${a.isVerified ? ' | [VENDEUR CERTIFIÉ]' : ''}`
         ).join('\n')
       }`
     : '';
@@ -34,9 +34,9 @@ export async function mamiChatFlow(input: {
   const allCtx = input.allAnnonces?.length
     ? `\nTOUTES LES ANNONCES DISPONIBLES SUR SUGUMALI :\n${
         input.allAnnonces.slice(0, 20).map(a =>
-          `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}`
+          `  - ID:${a.id} | ${a.titre} | ${a.prix} | ${a.categorie} | ${a.localisation}${a.isVerified ? ' | [VENDEUR CERTIFIÉ]' : ''}`
         ).join('\n')
-      }\n\nIMPORTANT : Suggère UNIQUEMENT des produits de cette liste. Si aucun ne correspond, dis-le honnêtement sans inventer.`
+      }\n\nIMPORTANT : Suggère UNIQUEMENT des produits de cette liste. Donne la PRIORITÉ ABSOLUE aux annonces de vendeurs certifiés (marqués [VENDEUR CERTIFIÉ]). Si aucun ne correspond, dis-le honnêtement sans inventer.`
     : "\nAucune annonce disponible sur SuguMali pour l'instant. Invite l'utilisateur à revenir bientôt ou à publier la sienne.";
 
   const greetingRule = isFirstMessage
@@ -52,6 +52,11 @@ RÈGLES ABSOLUES :
 - Écris toujours "SuguMali" en entier — JAMAIS "ML", "SG", "sm" ou toute abréviation
 - Tu parles UNIQUEMENT de ce qui se passe sur SuguMali. Ne mentionne JAMAIS de sites tiers.
 - N'utilise ABSOLUMENT JAMAIS d'emojis, symboles décoratifs ou fleurs dans tes réponses. Zéro emoji. Aucune exception.${greetingRule}
+
+HIÉRARCHIE DES RECOMMANDATIONS :
+1. Annonces Sponsorisées (⭐)
+2. Annonces de vendeurs CERTIFIÉS (Badge Orange de confiance)
+3. Autres annonces
 
 DÉTECTION D'INTENTION D'INSCRIPTION :
 Si l'utilisateur demande "comment créer un compte", "s'inscrire", "rejoindre SuguMali", "créer un profil", "comment démarrer" ou "comment utiliser SuguMali", explique ces étapes dans l'ordre :

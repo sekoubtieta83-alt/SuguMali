@@ -22,6 +22,7 @@ export interface SponsoredAnnonce {
   prix: string;
   categorie: string;
   localisation: string;
+  isVerified?: boolean;
 }
 
 class MamiAssistant {
