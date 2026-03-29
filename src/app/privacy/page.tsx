@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               (titre, prix, localisation, photos).
             </li>
             <li>
-              <strong>Communications :</strong> Les échanges via notre assistante Mami ou le support technique.
+              <strong>Communications :</strong> Les échanges via Mami ou le support technique.
             </li>
           </ul>
         </section>

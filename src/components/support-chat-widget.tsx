@@ -302,7 +302,8 @@ export function SupportChatWidget() {
 
     const userMessage: MamiMessage = { role: 'user', content: input };
     const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
+    const newMessages = [...currentMessages];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
@@ -340,7 +341,7 @@ export function SupportChatWidget() {
                     <AvatarFallback className="bg-white/20 text-white font-black">M</AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg font-black leading-none">Assistante Mami</CardTitle>
+                    <CardTitle className="text-lg font-black leading-none">Mami</CardTitle>
                     <p className="text-[10px] opacity-80 font-medium flex items-center gap-1 mt-0.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-green-300 inline-block" />
                       Spécialiste SuguMali
