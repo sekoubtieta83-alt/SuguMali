@@ -109,7 +109,7 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
                   </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-accent font-black">5 000 FCFA</p>
+                    <p className="text-accent font-black">À partir de 5 000 FCFA</p>
                     <p className="text-[9px] text-muted-foreground">Frais inclus</p>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export function PromotionModal({ isOpen, onOpenChange, annonceId, annonceTitle }
                   </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-accent font-black">5 000 FCFA</p>
+                    <p className="text-accent font-black">À partir de 5 000 FCFA</p>
                     <p className="text-[9px] text-muted-foreground">Frais inclus</p>
                 </div>
               </div>
