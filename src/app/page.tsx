@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Star, ChevronRight } from 'lucide-react';
+import { Search, PlusCircle, LogOut, LayoutGrid, User as UserIcon, Sparkles, Star } from 'lucide-react';
 import Footer from '@/components/footer';
 import ThemeToggle from '@/components/theme-toggle';
 import { useAuth, useUser, useFirestore } from '@/firebase';
@@ -17,9 +17,8 @@ import { type Post, posts as mockPosts } from '@/lib/data';
 import { collection, onSnapshot, query, where, doc, setDoc, increment } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
-// ── Carte annonce plus compacte pour l'affichage multiple ──────────────────
+// ── Carte annonce compacte ──────────────────────────────────────────────────
 const FeaturedProductCard = ({
   id, title, price, location, image, condition, sponsored
 }: {
@@ -30,7 +29,6 @@ const FeaturedProductCard = ({
     href={`/annonces/${id}`}
     className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl p-2.5 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
   >
-    {/* Badge sponsorisé */}
     {sponsored && (
       <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-yellow-400/90 text-yellow-900 px-1.5 py-0.5 rounded-full text-[8px] font-black shadow-lg">
         <Star className="h-2 w-2 fill-yellow-900" />
@@ -61,7 +59,6 @@ const FeaturedProductCard = ({
   </Link>
 );
 
-// ── Header ───────────────────────────────────────────────────────────────────
 function Header() {
   const router = useRouter();
   const { user, loading } = useUser();
@@ -130,7 +127,6 @@ function Header() {
   );
 }
 
-// ── Page principale ──────────────────────────────────────────────────────────
 export default function HomePage() {
   const router = useRouter();
   const firestore = useFirestore();
@@ -138,12 +134,10 @@ export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Incrémenter les visites totales
   useEffect(() => {
     if (firestore) {
       const statsRef = doc(firestore, 'site_stats', 'counters');
-      setDoc(statsRef, { visits: increment(1) }, { merge: true })
-        .catch(() => {}); // Échec silencieux pour le tracking
+      setDoc(statsRef, { visits: increment(1) }, { merge: true }).catch(() => {});
     }
   }, [firestore]);
 
@@ -160,14 +154,8 @@ export default function HomePage() {
           id: doc.id,
           userId: data.vendeurId,
           content: data.description || '',
-          media: data.imageUrl
-            ? [{ url: data.imageUrl, type: 'image' as const }]
-            : data.image
-              ? [{ url: data.image, type: 'image' as const }]
-              : [],
-          createdAt: data.createdAt?.toDate
-            ? data.createdAt.toDate().toISOString()
-            : new Date().toISOString(),
+          media: data.imageUrl ? [{ url: data.imageUrl, type: 'image' as const }] : data.image ? [{ url: data.image, type: 'image' as const }] : [],
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
           isProduct: true,
           isPromoted: data.isPromoted || false,
           sponsored: data.sponsored || false,
@@ -192,14 +180,9 @@ export default function HomePage() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
-      setFeaturedProducts(sorted.length > 0 ? sorted.slice(0, 16) : mockPosts.slice(0, 8));
+      setFeaturedProducts(sorted.length > 0 ? sorted : mockPosts);
       setIsLoading(false);
     }, async () => {
-      const permissionError = new FirestorePermissionError({
-        path: annoncesRef.path,
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
       setIsLoading(false);
     });
 
@@ -215,13 +198,11 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-accent/30 selection:text-white">
       <Header />
       <main className="flex-1">
-        {/* Hero + barre de recherche */}
         <section className="relative pt-32 sm:pt-48 pb-10 sm:pb-16 px-6 sm:px-10 text-center">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-            <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
+            <p className="text-muted-foreground font-medium text-sm sm:text-base md:text-lg max-w-xl mx-auto opacity-70">
               Rejoignez la plus grande communauté de commerce local au Mali.
             </p>
-
             <div className="mt-6 sm:mt-10 max-w-2xl mx-auto">
               <div className="flex items-center h-[50px] sm:h-[54px] pl-5 pr-1.5 rounded-full bg-white dark:bg-[#1A1D23] border border-[#E8E8E8] dark:border-white/10 shadow-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-accent/50">
                 <Sparkles className="h-5 w-5 text-accent/50 shrink-0 mr-3" />
@@ -245,7 +226,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Annonces à la une avec 4 images visibles sur desktop et 2 sur mobile */}
         <section className="max-w-7xl mx-auto px-4 sm:px-10 pt-8 pb-12 sm:pt-12 sm:pb-20">
           <div className="flex justify-between items-end mb-6 sm:mb-8 px-2">
             <div className="space-y-1 sm:space-y-2">
@@ -261,7 +241,7 @@ export default function HomePage() {
 
           {isLoading ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-card/40 border border-white/5 rounded-2xl p-3">
                   <Skeleton className="h-32 sm:h-44 w-full rounded-xl" />
                   <div className="p-2 space-y-2">
@@ -272,31 +252,19 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="relative group/carousel px-2">
-              <Carousel 
-                opts={{ align: "start", loop: true }} 
-                className="w-full"
-              >
-                <CarouselContent className="-ml-2 sm:-ml-4">
-                  {featuredProducts.map((post: any) => (
-                    <CarouselItem key={post.id} className="pl-2 sm:pl-4 basis-1/2 sm:basis-1/3 lg:basis-1/4">
-                      <FeaturedProductCard
-                        id={post.id}
-                        title={post.product?.name || post.content}
-                        price={post.product?.price || ''}
-                        location={post.location || 'N/A'}
-                        image={post.media?.[0]?.url || ''}
-                        condition={post.condition}
-                        sponsored={post.sponsored}
-                      />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="hidden lg:flex items-center justify-center gap-4 mt-8">
-                  <CarouselPrevious className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
-                  <CarouselNext className="static translate-y-0 h-12 w-12 rounded-full border-2 border-accent/20 bg-background hover:bg-accent hover:text-white transition-all" />
-                </div>
-              </Carousel>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
+              {featuredProducts.slice(0, 12).map((post: any) => (
+                <FeaturedProductCard
+                  key={post.id}
+                  id={post.id}
+                  title={post.product?.name || post.content}
+                  price={post.product?.price || ''}
+                  location={post.location || 'N/A'}
+                  image={post.media?.[0]?.url || ''}
+                  condition={post.condition}
+                  sponsored={post.sponsored}
+                />
+              ))}
             </div>
           )}
         </section>
