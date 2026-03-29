@@ -86,7 +86,7 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Pour toute question concernant vos données, contactez-nous à l'adresse : 
-            <a href="mailto:contact@sugumali.com" className="text-accent underline ml-1">contact@sugumali.com</a>
+            <a href="mailto:sekoubtieta83@gmail.com" className="text-accent underline ml-1">sekoubtieta83@gmail.com</a>
           </p>
         </section>
       </div>
