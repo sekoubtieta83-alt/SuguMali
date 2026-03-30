@@ -3,10 +3,10 @@
   "version": "0.1.4",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 9002 -H 0.0.0.0",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "npx next dev -p 9002 -H 0.0.0.0",
+    "build": "npx next build",
+    "start": "npx next start",
+    "lint": "npx next lint"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.29.0",
@@ -36,9 +36,9 @@
     "events": "^3.3.0",
     "firebase": "10.12.2",
     "lucide-react": "^0.475.0",
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "react-day-picker": "^8.10.1",
     "react-hook-form": "^7.54.2",
     "react-image-crop": "^11.0.7",

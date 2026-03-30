@@ -1,4 +1,3 @@
-
 'use client';
 
 import { StatsCards } from '@/components/admin/stats-cards';
@@ -26,73 +25,73 @@ export default function AdminPage() {
 
       <StatsCards />
 
-      <div className="mt-10">
+      <div className="mt-6 md:mt-10">
         <Tabs defaultValue="users" className="w-full">
-            <TabsList className="flex flex-wrap items-center justify-start w-full max-w-7xl mb-10 bg-muted/50 p-2 rounded-2xl h-auto gap-4 border border-border/50">
-                <TabsTrigger value="users" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <Users className="h-4 w-4 mr-2 hidden lg:inline" />
+            <TabsList className="flex flex-wrap items-center justify-start w-full max-w-7xl mb-6 md:mb-10 bg-muted/50 p-1.5 md:p-2 rounded-2xl h-auto gap-2 md:gap-4 border border-border/50">
+                <TabsTrigger value="users" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <Users className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Utilisateurs
                 </TabsTrigger>
-                <TabsTrigger value="verifications" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <ShieldCheck className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="verifications" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <ShieldCheck className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Certification
                 </TabsTrigger>
-                <TabsTrigger value="validation" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <CheckSquare className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="validation" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <CheckSquare className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Annonces
                 </TabsTrigger>
-                <TabsTrigger value="demands" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <Search className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="demands" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <Search className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Demande
                 </TabsTrigger>
-                <TabsTrigger value="stats" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <BarChart3 className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="stats" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Stats
                 </TabsTrigger>
-                <TabsTrigger value="reviews" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <MessageSquare className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="reviews" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Avis
                 </TabsTrigger>
-                <TabsTrigger value="reports" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <Flag className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="reports" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <Flag className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Signalement
                 </TabsTrigger>
-                <TabsTrigger value="promotions" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <Rocket className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="promotions" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <Rocket className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Promos
                 </TabsTrigger>
-                <TabsTrigger value="logs" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-xs md:text-sm px-6 py-3 transition-all">
-                    <History className="h-4 w-4 mr-2 hidden lg:inline" />
+                <TabsTrigger value="logs" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <History className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
                     Journal
                 </TabsTrigger>
             </TabsList>
             
-            <div className="mt-10">
-                <TabsContent value="users" className="mt-0 focus-visible:outline-none">
+            <div className="mt-4 md:mt-10">
+                <TabsContent value="users" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <UsersTable />
                 </TabsContent>
-                <TabsContent value="verifications" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="verifications" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <VerificationsTable />
                 </TabsContent>
-                <TabsContent value="validation" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="validation" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <AnnoncesValidationTable />
                 </TabsContent>
-                <TabsContent value="demands" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="demands" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <SearchMetricsView />
                 </TabsContent>
-                <TabsContent value="stats" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="stats" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <CategoryStats />
                 </TabsContent>
-                <TabsContent value="reviews" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="reviews" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <ReviewsModerationTable />
                 </TabsContent>
-                <TabsContent value="reports" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="reports" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <ReportsTable />
                 </TabsContent>
-                <TabsContent value="promotions" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="promotions" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <PromotionsView />
                 </TabsContent>
-                <TabsContent value="logs" className="mt-0 focus-visible:outline-none">
+                <TabsContent value="logs" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <AuditLogsView />
                 </TabsContent>
             </div>

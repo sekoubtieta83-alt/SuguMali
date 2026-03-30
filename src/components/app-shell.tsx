@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -43,6 +42,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const { user: currentUser } = useUser();
 
+  // Détection du rôle admin (basé sur l'email défini dans les règles de sécurité)
+  const isAdmin = currentUser?.email === 'sekoubtieta83@gmail.com';
+
   const handleLogout = async () => {
     if (!auth) return;
     await signOut(auth);
@@ -77,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1 overflow-y-auto py-2">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4 space-y-1">
-              {navItems.map((item) => (
+              {navItems.filter(item => isAdmin || item.href !== '/dashboard/admin').map((item) => (
                 <NavLink key={item.href} {...item} />
               ))}
             </nav>
@@ -125,21 +127,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="sr-only">Menu utilisateur</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-56 mt-2 rounded-2xl border-white/10">
                 <DropdownMenuLabel className="font-bold">{currentUser?.displayName}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/" className="cursor-pointer">
-                    <Home className="mr-2 h-4 w-4" />
+                    <Home className="mr-2 h-4 w-4 text-accent" />
                     <span>Accueil</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile" className="cursor-pointer">
-                    <UserIcon className="mr-2 h-4 w-4" />
+                    <UserIcon className="mr-2 h-4 w-4 text-accent" />
                     <span>Profil</span>
                   </Link>
                 </DropdownMenuItem>
+                
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/admin" className="cursor-pointer font-bold text-accent">
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Administration</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
