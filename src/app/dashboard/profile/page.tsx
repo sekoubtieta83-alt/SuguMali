@@ -10,7 +10,7 @@ import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch } from "firebase/firestore";
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { getStorage, refine, uploadString, getDownloadURL, ref } from 'firebase/storage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   AlertDialog,
@@ -79,7 +79,7 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
-  const [verificationStep, setVerificationStep] = useState<'payment' | 'upload'>('payment');
+  const [verificationStep, setVerificationStep] = useState<'id' | 'payment'>('id');
   const [isPaying, setIsPaying] = useState(false);
   const [idPhoto, setIdPhoto] = useState<string | null>(null);
   const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
@@ -102,8 +102,9 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
-          if (data.isVerificationPaid) {
-            setVerificationStep('upload');
+          // Si l'ID est déjà là mais pas le paiement, on peut suggérer l'étape paiement
+          if (data.idDocumentUrl && !data.isVerificationPaid) {
+            setVerificationStep('payment');
           }
         }
       }, async (serverError) => {
@@ -237,38 +238,37 @@ export default function ProfilePage() {
         .finally(() => setIsDeletingAll(false));
   };
 
-  const handleProcessPayment = async () => {
-    if (!user || !firestore || !paymentScreenshot || !app) return;
-    setIsPaying(true);
-    
-    try {
-      const storage = getStorage(app);
-      const fileName = `verification_payments/${user.uid}/${Date.now()}.jpg`;
-      const storageRef = ref(storage, fileName);
-      await uploadString(storageRef, paymentScreenshot, 'data_url');
-      const downloadURL = await getDownloadURL(storageRef);
-
-      const userRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userRef, { 
-        isVerificationPaid: true,
-        paymentScreenshotUrl: downloadURL
-      });
-      
-      toast({ title: "Paiement envoyé !" });
-      setVerificationStep('upload');
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur lors de l'envoi" });
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
   const handleIdFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => setIdPhoto(e.target?.result as string);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitId = async () => {
+    if (!user || !firestore || !idPhoto || !app) return;
+    setIsSubmittingId(true);
+
+    try {
+      const storage = getStorage(app);
+      const fileName = `id_documents/${user.uid}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, fileName);
+      await uploadString(storageRef, idPhoto, 'data_url');
+      const idUrl = await getDownloadURL(storageRef);
+
+      const userRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userRef, { 
+        idDocumentUrl: idUrl 
+      });
+      
+      toast({ title: "Pièce d'identité enregistrée !" });
+      setVerificationStep('payment');
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur lors de l'envoi" });
+    } finally {
+      setIsSubmittingId(false);
     }
   };
 
@@ -281,31 +281,34 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSubmitVerification = async () => {
-    if (!user || !firestore || !idPhoto || !app) return;
-    setIsSubmittingId(true);
+  const handleFinalizeVerification = async () => {
+    if (!user || !firestore || !paymentScreenshot || !app) return;
+    setIsPaying(true);
 
     try {
       const storage = getStorage(app);
-      const fileName = `id_documents/${user.uid}/${Date.now()}.jpg`;
+      const fileName = `verification_payments/${user.uid}/${Date.now()}.jpg`;
       const storageRef = ref(storage, fileName);
-      await uploadString(storageRef, idPhoto, 'data_url');
-      const idUrl = await getDownloadURL(storageRef);
+      await uploadString(storageRef, paymentScreenshot, 'data_url');
+      const downloadURL = await getDownloadURL(storageRef);
 
       const userRef = doc(firestore, 'users', user.uid);
       const updateData = { 
         verificationStatus: 'pending', 
-        idDocumentUrl: idUrl 
+        isVerificationPaid: true,
+        paymentScreenshotUrl: downloadURL 
       };
       
       await updateDoc(userRef, updateData);
-      toast({ title: "Demande envoyée" });
+      toast({ title: "Demande complète envoyée !" });
       setIsVerifyDialogOpen(false);
-      setVerificationStep('payment');
+      setVerificationStep('id');
+      setPaymentScreenshot(null);
+      setIdPhoto(null);
     } catch (e) {
       toast({ variant: 'destructive', title: "Erreur" });
     } finally {
-      setIsSubmittingId(false);
+      setIsPaying(false);
     }
   };
 
@@ -394,12 +397,38 @@ export default function ProfilePage() {
                                   </DialogHeader>
                                 </div>
 
-                                {verificationStep === 'payment' && !userProfile.isVerificationPaid ? (
+                                {verificationStep === 'id' ? (
+                                    <div className="p-4 space-y-4 bg-background">
+                                        <div className="space-y-2">
+                                            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Étape 1 : Identité</h3>
+                                            <Label className="text-[10px] font-black">Photo de votre pièce d'identité</Label>
+                                            <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
+                                            {idPhoto ? (
+                                                <div className="relative group rounded-xl overflow-hidden border-2 border-accent/20 shadow-lg">
+                                                    <img src={idPhoto} className="w-full aspect-video object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Button variant="secondary" size="sm" onClick={() => setIdPhoto(null)} className="rounded-xl font-bold h-7 text-[10px]">Changer</Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-muted/10 hover:bg-muted/20 transition-all">
+                                                    <Upload className="h-5 w-5 text-muted-foreground" />
+                                                    <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Télécharger ma pièce</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <Button onClick={handleSubmitId} className="w-full rounded-xl h-11 font-black text-sm shadow-xl shadow-accent/20" disabled={!idPhoto || isSubmittingId}>
+                                            {isSubmittingId ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
+                                            Suivant : Paiement
+                                        </Button>
+                                    </div>
+                                ) : (
                                     <div className="p-4 space-y-4 bg-background">
                                       <div className="space-y-2">
-                                        <h3 className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                          <Info className="h-2.5 w-2.5" /> Instructions de paiement
-                                        </h3>
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Étape 2 : Paiement</h3>
+                                            <Button variant="link" size="sm" className="h-auto p-0 text-[9px]" onClick={() => setVerificationStep('id')}>Retour à l'ID</Button>
+                                        </div>
                                         <div className="grid gap-1.5">
                                           <div className="flex items-center justify-between p-2.5 bg-muted/30 rounded-xl border border-border/50">
                                             <div className="flex items-center gap-2.5">
@@ -457,39 +486,11 @@ export default function ProfilePage() {
                                       <Button 
                                         className="w-full h-10 rounded-xl font-black text-sm bg-accent hover:bg-accent/90 shadow-xl shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
                                         disabled={!paymentScreenshot || isPaying}
-                                        onClick={handleProcessPayment}
+                                        onClick={handleFinalizeVerification}
                                       >
                                         {isPaying ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Send className="mr-2 h-3.5 w-3.5" />}
-                                        Envoyer la preuve
+                                        Finaliser ma demande
                                       </Button>
-                                    </div>
-                                ) : (
-                                    <div className="p-4 space-y-4 bg-background">
-                                        <div className="bg-green-500/10 p-2 rounded-xl flex items-center gap-2 border border-green-500/20">
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                            <span className="text-[9px] font-bold text-green-600">Paiement reçu. Étape finale : Identité.</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black">Photo de votre pièce d'identité</Label>
-                                            <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
-                                            {idPhoto ? (
-                                                <div className="relative group rounded-xl overflow-hidden border-2 border-accent/20 shadow-lg">
-                                                    <img src={idPhoto} className="w-full aspect-video object-cover" />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <Button variant="secondary" size="sm" onClick={() => setIdPhoto(null)} className="rounded-xl font-bold h-7 text-[10px]">Changer</Button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <button onClick={() => fileInputRef.current?.click()} className="w-full aspect-video border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-muted/10 hover:bg-muted/20 transition-all">
-                                                    <Upload className="h-5 w-5 text-muted-foreground" />
-                                                    <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Télécharger ma pièce</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                        <Button onClick={handleSubmitVerification} className="w-full rounded-xl h-11 font-black text-sm shadow-xl shadow-accent/20" disabled={!idPhoto || isSubmittingId}>
-                                            {isSubmittingId ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
-                                            Finaliser ma demande
-                                        </Button>
                                     </div>
                                 )}
                             </DialogContent>
