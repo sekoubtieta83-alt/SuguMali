@@ -12,7 +12,7 @@ export function FirebaseErrorListener() {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'An error occurred',
+        title: 'Une erreur est survenue',
         description: error.message,
       });
     };
@@ -20,7 +20,7 @@ export function FirebaseErrorListener() {
     errorEmitter.on('permission-error', handleError);
 
     return () => {
-      errorEmitter.removeListener('permission-error', handleError);
+      errorEmitter.off('permission-error', handleError);
     };
   }, [toast]);
 

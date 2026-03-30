@@ -21,6 +21,7 @@ import {
   Play,
   Star,
   ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Image from 'next/image';
@@ -73,6 +74,7 @@ export default function AnnoncePage() {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
+  const [isMarkingSold, setIsMarkingSold] = useState(false);
   
   // Carousel API
   const [api, setApi] = useState<CarouselApi>();
@@ -146,6 +148,7 @@ export default function AnnoncePage() {
             comments: 0,
             isProduct: true,
             isPromoted: data.isPromoted || false,
+            isSold: data.isSold || false,
             location: data.localisation || '',
             whatsappNumber: data.whatsapp || '',
             category: data.categorie || '',
@@ -257,6 +260,25 @@ export default function AnnoncePage() {
       .finally(() => setIsRequestingReview(false));
   };
 
+  const handleMarkAsSold = () => {
+    if (!post || !id || !firestore) return;
+    setIsMarkingSold(true);
+    const docRef = doc(firestore, 'annonces', id as string);
+    updateDoc(docRef, { isSold: true })
+      .then(() => {
+        toast({ title: 'Article marqué comme vendu' });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: { isSold: true },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setIsMarkingSold(false));
+  };
+
   const handleDelete = () => {
     if (!post || !id || !firestore) return;
     const docRef = doc(firestore, 'annonces', id as string);
@@ -332,6 +354,18 @@ export default function AnnoncePage() {
           <span className="text-foreground truncate max-w-[100px]">{post.product?.name}</span>
         </div>
 
+        {post.isSold && (
+          <div className="px-6 mb-4">
+            <div className="bg-destructive text-destructive-foreground px-4 py-3 rounded-2xl flex items-center gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
+              <CheckCircle2 className="h-6 w-6" />
+              <div className="flex flex-col">
+                <p className="font-black text-sm uppercase tracking-wider">Cet article est VENDU</p>
+                <p className="text-[10px] font-medium opacity-90">Il n'est plus disponible à l'achat.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isOwner && post.status !== 'approved' && (
             <div className="px-6 mb-4">
                 {post.status === 'rejected' ? (
@@ -350,10 +384,10 @@ export default function AnnoncePage() {
                     {post.media.map((media, index) => (
                       <CarouselItem key={index} className="relative aspect-[4/5] bg-muted cursor-zoom-in group" onClick={() => openLightbox(media.url, media.type)}>
                           {media.type === 'image' ? (
-                              <Image src={media.url} alt="" fill className="object-cover" />
+                              <Image src={media.url} alt="" fill className={cn("object-cover", post.isSold && "grayscale-[0.5] opacity-80")} />
                           ) : (
                               <div className="relative w-full h-full">
-                                  <video src={media.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                                  <video src={media.url} className={cn("w-full h-full object-cover", post.isSold && "grayscale-[0.5] opacity-80")} muted loop autoPlay playsInline />
                                   <div className="absolute inset-0 flex items-center justify-center">
                                       <Play className="h-12 w-12 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
@@ -422,12 +456,12 @@ export default function AnnoncePage() {
                 <MapPin className="h-4 w-4" /> {post.location}
               </p>
             </div>
-            <span className="bg-accent/20 text-accent px-3 py-1 rounded-full text-xs font-bold uppercase">
+            <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", post.isSold ? "bg-muted text-muted-foreground" : "bg-accent/20 text-accent")}>
               {post.condition}
             </span>
           </div>
 
-          <div className="text-3xl font-black text-accent">{post.product?.price}</div>
+          <div className={cn("text-3xl font-black", post.isSold ? "text-muted-foreground line-through" : "text-accent")}>{post.product?.price}</div>
           
           <div className="space-y-2">
             <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Description</h3>
@@ -466,13 +500,26 @@ export default function AnnoncePage() {
             <div className="mt-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-4">
               <h3 className="font-bold flex items-center gap-2"><Rocket className="h-5 w-5"/> Zone Vendeur</h3>
               <div className="grid grid-cols-1 gap-2">
-                {!post.isPromoted && (
+                {!post.isSold && (
+                  <>
+                    {!post.isPromoted && (
+                        <Button 
+                            className="w-full bg-accent text-white font-bold h-12 rounded-xl" 
+                            onClick={() => setIsPromotionModalOpen(true)}
+                        >
+                            Promouvoir l'annonce
+                        </Button>
+                    )}
                     <Button 
-                        className="w-full bg-accent text-white font-bold h-12 rounded-xl" 
-                        onClick={() => setIsPromotionModalOpen(true)}
+                      variant="outline" 
+                      className="w-full font-bold h-12 rounded-xl border-2 text-green-600 border-green-200 hover:bg-green-50" 
+                      onClick={handleMarkAsSold}
+                      disabled={isMarkingSold}
                     >
-                        Promouvoir l'annonce
+                      {isMarkingSold ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      Marquer comme vendu
                     </Button>
+                  </>
                 )}
                 <Button variant="destructive" className="w-full font-bold h-12 rounded-xl" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>
               </div>
@@ -490,40 +537,42 @@ export default function AnnoncePage() {
       />
 
       {/* Floating Action Bar (Sticky Footer) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t p-4 pb-6 flex items-center gap-2 z-40 max-w-2xl mx-auto shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)]">
-        {/* Favorite Button */}
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className={cn(
-            "rounded-full h-14 w-14 shrink-0 shadow-lg border-2",
-            isFavorited ? "text-[#e91e63] border-[#e91e63]/20 fill-[#e91e63]" : "text-muted-foreground"
-          )}
-          onClick={toggleFavorite}
-        >
-          <Heart className={cn("h-6 w-6", isFavorited && "fill-current")} />
-        </Button>
+      {!post.isSold && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t p-4 pb-6 flex items-center gap-2 z-40 max-w-2xl mx-auto shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)]">
+          {/* Favorite Button */}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className={cn(
+              "rounded-full h-14 w-14 shrink-0 shadow-lg border-2",
+              isFavorited ? "text-[#e91e63] border-[#e91e63]/20 fill-[#e91e63]" : "text-muted-foreground"
+            )}
+            onClick={toggleFavorite}
+          >
+            <Heart className={cn("h-6 w-6", isFavorited && "fill-current")} />
+          </Button>
 
-        {/* Action Buttons */}
-        <div className="flex-1 flex gap-2 h-14">
-          <a 
-            href={telLink} 
-            className="flex-1 bg-[#d32f2f] hover:bg-[#b71c1c] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-red-500/20"
-          >
-            <Phone size={20} />
-            Appel
-          </a>
-          <a 
-            href={whatsappLink} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex-1 bg-[#25D366] hover:bg-[#1ebe57] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-green-500/20"
-          >
-            <MessageCircle size={20} />
-            WhatsApp
-          </a>
+          {/* Action Buttons */}
+          <div className="flex-1 flex gap-2 h-14">
+            <a 
+              href={telLink} 
+              className="flex-1 bg-[#d32f2f] hover:bg-[#b71c1c] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-red-500/20"
+            >
+              <Phone size={20} />
+              Appel
+            </a>
+            <a 
+              href={whatsappLink} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex-1 bg-[#25D366] hover:bg-[#1ebe57] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-base transition-all active:scale-[0.98] shadow-lg shadow-green-500/20"
+            >
+              <MessageCircle size={20} />
+              WhatsApp
+            </a>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Lightbox Dialog */}
       <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>

@@ -17,6 +17,7 @@ export type Post = {
   comments: number;
   isProduct: boolean;
   isPromoted?: boolean;
+  isSold?: boolean;
   location?: string;
   whatsappNumber?: string;
   category?: string;

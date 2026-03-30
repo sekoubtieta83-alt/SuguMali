@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { PostCard } from '@/components/dashboard/post-card';
 import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +15,7 @@ import { collection, addDoc, serverTimestamp, onSnapshot, query, where } from "f
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-export default function DashboardPage() {
+function DashboardInner() {
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -260,5 +261,13 @@ export default function DashboardPage() {
             )}
         </main>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-20 text-center"><Skeleton className="h-12 w-12 mx-auto rounded-full" /></div>}>
+      <DashboardInner />
+    </Suspense>
   );
 }
