@@ -20,18 +20,15 @@ const MAX_MESSAGES_PAR_JOUR   = 100;
 export const mamiChat = onCall({
   cors: true,
   region: 'europe-west1',
-  enforceAppCheck: false, // ✅ CORRIGÉ : était true, bloquait toutes les requêtes
+  enforceAppCheck: false,
   secrets: [GOOGLE_GENAI_API_KEY],
   timeoutSeconds: 30,
   memory: '512MiB',
 }, async (request) => {
-
-  // ✅ CORRIGÉ : auth optionnelle — Mami répond à tous, connectés ou non
   const userId = request.auth?.uid || null;
   const now    = Date.now();
   const today  = new Date().toISOString().slice(0, 10);
 
-  // ✅ Rate limit uniquement pour les utilisateurs connectés
   if (userId) {
     const rateLimitRef = db.collection('rateLimits').doc(userId);
     await db.runTransaction(async (tx) => {
@@ -118,6 +115,81 @@ export const moderateAnnonce = onCall({
   } catch (error) {
     console.error('ModerateAnnonce Backend Error:', error);
     throw new HttpsError('internal', (error as Error).message || 'Erreur lors de la moderation.');
+  }
+});
+
+// --- GESTION DES MOTS DE PASSE (OTP) ---
+
+export const requestPasswordResetOTP = onCall({
+  cors: true,
+  region: 'europe-west1',
+}, async (request) => {
+  const { email } = request.data;
+  if (!email) throw new HttpsError('invalid-argument', 'Email requis.');
+
+  try {
+    // Vérifier si l'utilisateur existe
+    await admin.auth().getUserByEmail(email);
+    
+    // Générer un code à 6 chiffres
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    // Stocker le code dans Firestore
+    await db.collection('password_resets').doc(email).set({
+      otp,
+      expiresAt,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Note : Dans un cas réel, on enverrait l'e-mail ici.
+    // Pour le prototype, on simule l'envoi.
+    console.log(`CODE OTP POUR ${email} : ${otp}`);
+    
+    return { success: true };
+  } catch (error: any) {
+    if (error.code === 'auth/user-not-found') {
+      throw new HttpsError('not-found', 'Aucun compte associé à cet e-mail.');
+    }
+    throw new HttpsError('internal', 'Erreur lors de la génération du code.');
+  }
+});
+
+export const verifyOTPAndResetPassword = onCall({
+  cors: true,
+  region: 'europe-west1',
+}, async (request) => {
+  const { email, otp, newPassword } = request.data;
+  if (!email || !otp || !newPassword) {
+    throw new HttpsError('invalid-argument', 'Tous les champs sont requis.');
+  }
+
+  const resetRef = db.collection('password_resets').doc(email);
+  const resetDoc = await resetRef.get();
+
+  if (!resetDoc.exists) {
+    throw new HttpsError('not-found', 'Aucune demande de réinitialisation trouvée.');
+  }
+
+  const data = resetDoc.data();
+  if (data?.otp !== otp) {
+    throw new HttpsError('permission-denied', 'Code OTP incorrect.');
+  }
+
+  if (Date.now() > (data?.expiresAt || 0)) {
+    throw new HttpsError('deadline-exceeded', 'Le code a expiré.');
+  }
+
+  try {
+    const user = await admin.auth().getUserByEmail(email);
+    await admin.auth().updateUser(user.uid, { password: newPassword });
+    
+    // Supprimer le code utilisé
+    await resetRef.delete();
+    
+    return { success: true };
+  } catch (error: any) {
+    throw new HttpsError('internal', 'Erreur lors de la mise à jour du mot de passe.');
   }
 });
 
