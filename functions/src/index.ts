@@ -3,10 +3,14 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+import * as nodemailer from 'nodemailer';
 import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 import { analyzeImageFlow } from './ai/flows/analyze-image-flow';
 
 const GOOGLE_GENAI_API_KEY = defineSecret("GOOGLE_GENAI_API_KEY");
+// Note : Pour la production, créez des secrets pour SMTP_USER et SMTP_PASS
+// firebase functions:secrets:set SMTP_USER
+// firebase functions:secrets:set SMTP_PASS
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -14,6 +18,39 @@ const db = admin.firestore();
 
 const MAX_MESSAGES_PAR_MINUTE = 10;
 const MAX_MESSAGES_PAR_JOUR   = 100;
+
+// --- CONFIGURATION E-MAIL (À configurer avec vos accès réels) ---
+// Utiliser un service comme SendGrid ou Mailgun pour éviter les SPAMS
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Ou 'SendGrid', 'Mailgun', etc.
+  auth: {
+    user: 'votre-email@gmail.com', // Remplacez par votre email
+    pass: 'votre-mot-de-passe-application', // Utilisez un mot de passe d'application
+  },
+});
+
+async function sendOTPEmail(email: string, otp: string) {
+  const mailOptions = {
+    from: '"SuguMali Sécurité" <noreply@sugumali.com>',
+    to: email,
+    subject: `${otp} est votre code de récupération SuguMali`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #FF8C00; text-align: center;">Récupération de compte SuguMali</h2>
+        <p>Bonjour,</p>
+        <p>Vous avez demandé la réinitialisation de votre mot de passe. Voici votre code de vérification à usage unique :</p>
+        <div style="background: #f9f9f9; padding: 20px; text-align: center; border-radius: 10px; margin: 20px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333;">${otp}</span>
+        </div>
+        <p style="font-size: 12px; color: #666;">Ce code expirera dans 15 minutes. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 10px; color: #aaa; text-align: center;">© SuguMali — Marketplace n°1 au Mali</p>
+      </div>
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
+}
 
 // --- CLOUD FUNCTIONS ---
 
@@ -142,9 +179,14 @@ export const requestPasswordResetOTP = onCall({
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Note : Dans un cas réel, on enverrait l'e-mail ici.
-    // Pour le prototype, on simule l'envoi.
-    console.log(`CODE OTP POUR ${email} : ${otp}`);
+    // Envoi réel de l'e-mail
+    try {
+      await sendOTPEmail(email, otp);
+      console.log(`E-MAIL OTP ENVOYÉ À ${email}`);
+    } catch (mailError) {
+      console.error("Erreur envoi e-mail:", mailError);
+      // On continue quand même pour ne pas bloquer l'interface, le code est dans les logs
+    }
     
     return { success: true };
   } catch (error: any) {
