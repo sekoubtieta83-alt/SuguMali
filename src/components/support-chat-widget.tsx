@@ -419,14 +419,14 @@ export function SupportChatWidget() {
           <div className="flex items-center gap-3">
             {/* Bulle de texte animée */}
             <div className={cn(
-              "relative mb-2 bg-white dark:bg-zinc-900 border border-accent/20 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-500 max-w-[180px]",
+              "relative mb-2 bg-accent px-4 py-3 rounded-2xl shadow-2xl transition-all duration-500 max-w-[180px]",
               isTextFading ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"
             )}>
-              <p className="text-[11px] font-black text-foreground leading-tight">
+              <p className="text-[11px] font-black text-white leading-tight">
                 {messagesLoop[loopIndex]}
               </p>
               {/* Triangle pointeur vers le bouton */}
-              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-white dark:border-l-zinc-900 drop-shadow-sm" />
+              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-accent drop-shadow-sm" />
             </div>
 
             <Button onClick={() => setIsOpen(true)}

@@ -29,7 +29,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn(); // Autorisé pour permettre l'affichage des stats dans le dashboard
-      allow create, update: if isOwner(userId);
+      allow create, update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
       
       // Gestion des favoris par l'utilisateur propriétaire
