@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles, Video } from 'lucide-react';
+import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles, Video, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { countryCodes } from '@/lib/country-codes';
@@ -11,14 +11,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { categories } from '@/lib/categories';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
+import { cn } from '@/lib/utils';
 
 const MAX_VIDEO_DURATION = 30;
 const MAX_IMAGE_RES = 3840;
-const MAX_VIDEO_RES = 1920;
+
+// Cloudinary Config
+const CLOUDINARY_CLOUD_NAME = "dfunyyw6g";
+const CLOUDINARY_UPLOAD_PRESET = "video_upload_preset";
 
 const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MAX_IMAGE_RES): Promise<string> => {
   return new Promise((resolve) => {
@@ -42,6 +44,29 @@ const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MA
   });
 };
 
+const uploadVideoToCloudinary = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || "L'upload vers Cloudinary a échoué.");
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+};
+
 export default function SellPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -49,7 +74,7 @@ export default function SellPage() {
   const auth = useAuth();
   const db = useFirestore();
 
-  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video' }[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video'; uploading?: boolean }[]>([]);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [countryCode, setCountryCode] = useState('+223');
@@ -107,39 +132,57 @@ export default function SellPage() {
       });
     } catch (err: any) {
       console.error('Erreur analyse image:', err);
-      toast({
-        variant: "destructive",
-        title: "Analyse indisponible",
-        description: err.message || "Mami n'a pas pu analyser la photo."
-      });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+    
     let firstImageProcessed = false;
 
-    Array.from(files).forEach(file => {
+    for (const file of Array.from(files)) {
       if (file.type.startsWith('video/')) {
         const video = document.createElement('video');
         video.preload = 'metadata';
-        video.onloadedmetadata = function() {
-          window.URL.revokeObjectURL(video.src);
-          if (video.duration > MAX_VIDEO_DURATION) {
-            toast({ variant: "destructive", title: "Vidéo trop longue", description: `Max ${MAX_VIDEO_DURATION} secondes.` });
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const resultUrl = e.target?.result as string;
-            setMediaPreviews(prev => [...prev, { url: resultUrl, type: 'video' }]);
+        
+        const videoPromise = new Promise<void>((resolve, reject) => {
+          video.onloadedmetadata = function() {
+            window.URL.revokeObjectURL(video.src);
+            if (video.duration > MAX_VIDEO_DURATION) {
+              toast({ variant: "destructive", title: "Vidéo trop longue", description: `Max ${MAX_VIDEO_DURATION} secondes.` });
+              reject("too long");
+            } else {
+              resolve();
+            }
           };
-          reader.readAsDataURL(file);
-        };
-        video.src = URL.createObjectURL(file);
+          video.src = URL.createObjectURL(file);
+        });
+
+        try {
+          await videoPromise;
+          
+          // Placeholder temporel pour montrer l'upload
+          const tempId = Math.random().toString(36).substring(7);
+          setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true }]);
+
+          const videoUrl = await uploadVideoToCloudinary(file);
+          
+          setMediaPreviews(prev => {
+            const newPreviews = [...prev];
+            const uploadIndex = newPreviews.findIndex(p => p.uploading && p.type === 'video' && p.url === '');
+            if (uploadIndex !== -1) {
+              newPreviews[uploadIndex] = { url: videoUrl, type: 'video', uploading: false };
+            }
+            return newPreviews;
+          });
+        } catch (e) {
+          if (e !== "too long") {
+            toast({ variant: "destructive", title: "Erreur vidéo", description: "Impossible d'uploader la vidéo." });
+          }
+        }
       } else if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -156,7 +199,7 @@ export default function SellPage() {
         };
         reader.readAsDataURL(file);
       }
-    });
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -168,8 +211,14 @@ export default function SellPage() {
       toast({ variant: "destructive", title: "Non connecté", description: "Vous devez être connecté pour publier." });
       return;
     }
+
     if (mediaPreviews.length === 0) {
       toast({ variant: "destructive", title: "Media requis", description: "Veuillez ajouter au moins une photo ou vidéo." });
+      return;
+    }
+
+    if (mediaPreviews.some(m => m.uploading)) {
+      toast({ variant: "destructive", title: "Upload en cours", description: "Veuillez patienter pendant la fin de l'upload des vidéos." });
       return;
     }
 
@@ -177,7 +226,6 @@ export default function SellPage() {
     setModerationMessage("Mami analyse votre annonce...");
 
     try {
-      // Fetch user profile to check verification status
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       const userData = userSnap.data();
@@ -197,10 +245,10 @@ export default function SellPage() {
       const annonceData = {
         titre: title || "Sans titre",
         prix: price ? `${price} FCFA` : "0 FCFA",
-        media: mediaPreviews,
+        media: mediaPreviews.map(m => ({ url: m.url, type: m.type })),
         image: mediaPreviews[0]?.url || "",
         vendeurId: user.uid,
-        vendeurVerified: isVendeurVerified, // Enregistrement de la certification
+        vendeurVerified: isVendeurVerified,
         status: status,
         moderationReason: reason,
         description: description,
@@ -212,9 +260,7 @@ export default function SellPage() {
         views: 0
       };
 
-      const annoncesCollection = collection(db, "annonces");
-
-      await addDoc(annoncesCollection, annonceData);
+      await addDoc(collection(db, "annonces"), annonceData);
       
       logActivity(db, {
         action: isApproved ? 'AUTO_MODERATION' : 'REJECT_ANNONCE',
@@ -254,20 +300,18 @@ export default function SellPage() {
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-10">
         <section className="space-y-3 sm:space-y-4">
           <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            PHOTOS (4K) & VIDÉOS (1080p) <span className="normal-case font-normal">(Max 30s)</span>
+            PHOTOS & VIDÉOS <span className="normal-case font-normal">(Vidéo Cloudinary Max 30s)</span>
           </Label>
-
-          {isAnalyzing && (
-            <div className="flex items-center gap-3 bg-accent/10 border border-accent/20 rounded-2xl px-4 py-3 text-sm text-accent font-medium animate-in fade-in slide-in-from-top-2">
-              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-              Mami analyse votre photo et génère une description...
-            </div>
-          )}
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {mediaPreviews.map((m, i) => (
               <div key={i} className="relative aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden border border-border group shadow-sm bg-muted">
-                {m.type === 'image' ? (
+                {m.uploading ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                    <span className="text-[8px] font-bold text-accent uppercase">Upload en cours...</span>
+                  </div>
+                ) : m.type === 'image' ? (
                   <img src={m.url} className="w-full h-full object-cover" alt="Preview" />
                 ) : (
                   <div className="relative w-full h-full">
@@ -277,13 +321,15 @@ export default function SellPage() {
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
-                  className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/50 text-white rounded-full p-1 sm:p-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X size={12} />
-                </button>
+                {!m.uploading && (
+                  <button
+                    type="button"
+                    onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/50 text-white rounded-full p-1 sm:p-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
             ))}
 
@@ -419,7 +465,7 @@ export default function SellPage() {
 
         <button
           type="submit"
-          disabled={isLoading || isAnalyzing}
+          disabled={isLoading || isAnalyzing || mediaPreviews.some(m => m.uploading)}
           className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg min-h-[80px]"
         >
           {isLoading ? (
@@ -431,6 +477,11 @@ export default function SellPage() {
             <div className="flex flex-col items-center gap-1">
               <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
               <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Mami analyse votre photo...</span>
+            </div>
+          ) : mediaPreviews.some(m => m.uploading) ? (
+            <div className="flex flex-col items-center gap-1">
+              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Upload vidéo en cours...</span>
             </div>
           ) : (
             <div className="flex items-center gap-3">
