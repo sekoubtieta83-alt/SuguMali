@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from 'link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -142,7 +142,12 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Mot de passe</FormLabel>
+                  <div className="flex items-center justify-between ml-1">
+                    <FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Mot de passe</FormLabel>
+                    <Link href="/forgot-password" title="Mot de passe oublié ?" className="text-[10px] font-black text-[#FF8C00] hover:underline underline-offset-4">
+                      Oublié ?
+                    </Link>
+                  </div>
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
