@@ -115,7 +115,7 @@ export default function AnnoncePage() {
     }
   }, [id, firestore]);
 
-  // Check if favorited
+  // Check if favorited (Real-time)
   useEffect(() => {
     if (id && user && firestore) {
       const favRef = doc(firestore, 'users', user.uid, 'favorites', id as string);
@@ -132,6 +132,7 @@ export default function AnnoncePage() {
     }
   }, [id, user, firestore]);
 
+  // Main post listener (Real-time)
   useEffect(() => {
     if (id && firestore) {
       const annonceRef = doc(firestore, 'annonces', id as string);
@@ -164,16 +165,6 @@ export default function AnnoncePage() {
             }
           };
           setPost(mappedPost);
-
-          if (!seller || seller.uid !== data.vendeurId) {
-            const userRef = doc(firestore, 'users', data.vendeurId);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-              setSeller(userSnap.data() as Seller);
-            } else {
-              setSeller({ uid: data.vendeurId, displayName: 'Vendeur', email: '', photoURL: '', isVerified: false });
-            }
-          }
         } else {
           setPost(null);
         }
@@ -190,8 +181,25 @@ export default function AnnoncePage() {
     } else if (!firestore) {
         setLoading(false);
     }
-  }, [id, firestore, seller?.uid]);
+  }, [id, firestore]);
 
+  // Seller info listener (Real-time)
+  useEffect(() => {
+    if (!firestore || !post?.userId) return;
+    
+    const userRef = doc(firestore, 'users', post.userId);
+    const unsubscribe = onSnapshot(userRef, (userSnap) => {
+        if (userSnap.exists()) {
+            setSeller(userSnap.data() as Seller);
+        } else {
+            setSeller({ uid: post.userId, displayName: 'Vendeur SuguMali', email: '', photoURL: '', isVerified: false });
+        }
+    });
+    
+    return () => unsubscribe();
+  }, [firestore, post?.userId]);
+
+  // Reviews listener (Real-time)
   useEffect(() => {
     if (!firestore || !seller?.uid) return;
     const reviewsRef = collection(firestore, 'reviews');
@@ -409,7 +417,7 @@ export default function AnnoncePage() {
                         key={i} 
                         className={cn(
                           "h-2 w-2 rounded-full transition-all duration-300",
-                          current === i ? "bg-[#b71c1c] w-4" : "bg-muted-foreground/30"
+                          current === i ? "bg-[#FF8C00] w-4" : "bg-muted-foreground/30"
                         )}
                       />
                     ))}
@@ -425,7 +433,7 @@ export default function AnnoncePage() {
                         onClick={() => scrollTo(i)}
                         className={cn(
                           "relative h-20 aspect-square rounded-xl overflow-hidden border-2 transition-all shrink-0",
-                          current === i ? "border-[#b71c1c] scale-105" : "border-transparent opacity-60"
+                          current === i ? "border-[#FF8C00] scale-105" : "border-transparent opacity-60"
                         )}
                       >
                         {m.type === 'image' ? (
