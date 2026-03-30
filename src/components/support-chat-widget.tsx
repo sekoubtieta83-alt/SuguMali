@@ -229,11 +229,12 @@ export function SupportChatWidget() {
   const mami = useMemo(() => new MamiAssistant(), []);
   const { pendingQuestion, clearPendingQuestion } = useMami();
 
-  const isDashboard = pathname?.startsWith('/dashboard');
+  // Masquer Mami sur le tableau de bord et les pages de détails des annonces
+  const shouldHideMami = pathname?.startsWith('/dashboard') || pathname?.startsWith('/annonces/');
 
   // ── Animation du texte en boucle ──────────────────────────────────────────
   useEffect(() => {
-    if (isOpen) return;
+    if (isOpen || shouldHideMami) return;
     const interval = setInterval(() => {
       setIsTextFading(true);
       setTimeout(() => {
@@ -242,7 +243,7 @@ export function SupportChatWidget() {
       }, 500);
     }, 4000);
     return () => clearInterval(interval);
-  }, [isOpen]);
+  }, [isOpen, shouldHideMami]);
 
   // ── Ouvre Mami automatiquement si une question vient du footer ────────────
   useEffect(() => {
@@ -305,7 +306,7 @@ export function SupportChatWidget() {
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
 
-  if (isDashboard) return null;
+  if (shouldHideMami) return null;
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
