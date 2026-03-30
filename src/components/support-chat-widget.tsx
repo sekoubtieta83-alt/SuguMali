@@ -219,11 +219,30 @@ export function SupportChatWidget() {
   const [allAnnonces, setAllAnnonces] = useState<SponsoredAnnonce[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  
+  // Animation du texte de Mami
+  const messagesLoop = ["Bonjour ! Je suis Mami", "Je peux vous aider à acheter et à vendre"];
+  const [loopIndex, setLoopIndex] = useState(0);
+  const [isTextFading, setIsTextFading] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const mami = useMemo(() => new MamiAssistant(), []);
   const { pendingQuestion, clearPendingQuestion } = useMami();
 
   const isDashboard = pathname?.startsWith('/dashboard');
+
+  // ── Animation du texte en boucle ──────────────────────────────────────────
+  useEffect(() => {
+    if (isOpen) return;
+    const interval = setInterval(() => {
+      setIsTextFading(true);
+      setTimeout(() => {
+        setLoopIndex(prev => (prev + 1) % messagesLoop.length);
+        setIsTextFading(false);
+      }, 500);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   // ── Ouvre Mami automatiquement si une question vient du footer ────────────
   useEffect(() => {
@@ -396,18 +415,32 @@ export function SupportChatWidget() {
             </CardContent>
           </Card>
         ) : (
-          <Button onClick={() => setIsOpen(true)}
-            className="h-14 w-14 rounded-full bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 flex items-center justify-center p-0 transition-all hover:scale-110 active:scale-95 overflow-hidden relative">
-            {mamiImage ? (
-              <img src={mamiImage} alt="Mami" className="w-full h-full object-cover" />
-            ) : (
-              <MessageCircle className="h-7 w-7" />
-            )}
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
-            </span>
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Bulle de texte animée */}
+            <div className={cn(
+              "relative mb-2 bg-white dark:bg-zinc-900 border border-accent/20 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-500 max-w-[180px]",
+              isTextFading ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"
+            )}>
+              <p className="text-[11px] font-black text-foreground leading-tight">
+                {messagesLoop[loopIndex]}
+              </p>
+              {/* Triangle pointeur vers le bouton */}
+              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-white dark:border-l-zinc-900 drop-shadow-sm" />
+            </div>
+
+            <Button onClick={() => setIsOpen(true)}
+              className="h-14 w-14 rounded-full bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 flex items-center justify-center p-0 transition-all hover:scale-110 active:scale-95 overflow-hidden relative shrink-0">
+              {mamiImage ? (
+                <img src={mamiImage} alt="Mami" className="w-full h-full object-cover" />
+              ) : (
+                <MessageCircle className="h-7 w-7" />
+              )}
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+              </span>
+            </Button>
+          </div>
         )}
       </div>
     </>
