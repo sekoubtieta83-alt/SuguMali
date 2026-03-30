@@ -77,7 +77,7 @@ function SignupModal({ onClose, mamiImage }: { onClose: () => void; mamiImage?: 
 
           <Button
             className="w-full bg-accent hover:bg-accent/90 text-white font-black rounded-xl py-5 text-base"
-            onClick={() => { onClose(); router.push('/register'); }}
+            onClick={() => { onClose(); router.push('/signup'); }}
           >
             Créer mon compte gratuitement
           </Button>
@@ -224,6 +224,7 @@ export function SupportChatWidget() {
   const messagesLoop = ["Bonjour ! Je suis Mami", "Je peux vous aider à acheter et à vendre"];
   const [loopIndex, setLoopIndex] = useState(0);
   const [isTextFading, setIsTextFading] = useState(false);
+  const [isBubbleVisible, setIsBubbleVisible] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const mami = useMemo(() => new MamiAssistant(), []);
@@ -232,17 +233,61 @@ export function SupportChatWidget() {
   // Masquer Mami sur le tableau de bord et les pages de détails des annonces
   const shouldHideMami = pathname?.startsWith('/dashboard') || pathname?.startsWith('/annonces/');
 
-  // ── Animation du texte en boucle ──────────────────────────────────────────
+  // ── Animation du texte avec 5 minutes de pause ────────────────────────────
   useEffect(() => {
-    if (isOpen || shouldHideMami) return;
-    const interval = setInterval(() => {
+    if (isOpen || shouldHideMami) {
+      setIsBubbleVisible(false);
+      return;
+    }
+
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const startSequence = async () => {
+      if (!isMounted) return;
+
+      // 1. Montrer Phrase 1 (Index 0)
+      setLoopIndex(0);
+      setIsBubbleVisible(true);
+      setIsTextFading(false);
+      
+      // Garder affiché 5s
+      await new Promise(r => { timeoutId = setTimeout(r, 5000); });
+      if (!isMounted) return;
+
+      // 2. Transition vers Phrase 2
       setIsTextFading(true);
-      setTimeout(() => {
-        setLoopIndex(prev => (prev + 1) % messagesLoop.length);
-        setIsTextFading(false);
-      }, 500);
-    }, 4000);
-    return () => clearInterval(interval);
+      await new Promise(r => { timeoutId = setTimeout(r, 500); });
+      if (!isMounted) return;
+      
+      setLoopIndex(1);
+      setIsTextFading(false);
+
+      // Garder affiché 5s
+      await new Promise(r => { timeoutId = setTimeout(r, 5000); });
+      if (!isMounted) return;
+
+      // 3. Disparaître
+      setIsTextFading(true);
+      await new Promise(r => { timeoutId = setTimeout(r, 500); });
+      if (!isMounted) return;
+      
+      setIsBubbleVisible(false);
+
+      // 4. Attendre 5 minutes (300 000 ms)
+      await new Promise(r => { timeoutId = setTimeout(r, 300000); });
+      if (!isMounted) return;
+
+      // Recommencer
+      startSequence();
+    };
+
+    startSequence();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [isOpen, shouldHideMami]);
 
   // ── Ouvre Mami automatiquement si une question vient du footer ────────────
@@ -418,16 +463,18 @@ export function SupportChatWidget() {
         ) : (
           <div className="flex items-center gap-3">
             {/* Bulle de texte animée */}
-            <div className={cn(
-              "relative mb-2 bg-accent px-4 py-3 rounded-2xl shadow-2xl transition-all duration-500 max-w-[180px]",
-              isTextFading ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"
-            )}>
-              <p className="text-[11px] font-black text-white leading-tight">
-                {messagesLoop[loopIndex]}
-              </p>
-              {/* Triangle pointeur vers le bouton */}
-              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-accent drop-shadow-sm" />
-            </div>
+            {isBubbleVisible && (
+              <div className={cn(
+                "relative mb-2 bg-accent px-4 py-3 rounded-2xl shadow-2xl transition-all duration-500 max-w-[180px]",
+                isTextFading ? "opacity-0 translate-x-2" : "opacity-100 translate-x-0"
+              )}>
+                <p className="text-[11px] font-black text-white leading-tight">
+                  {messagesLoop[loopIndex]}
+                </p>
+                {/* Triangle pointeur vers le bouton */}
+                <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-accent drop-shadow-sm" />
+              </div>
+            )}
 
             <Button onClick={() => setIsOpen(true)}
               className="h-14 w-14 rounded-full bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 flex items-center justify-center p-0 transition-all hover:scale-110 active:scale-95 overflow-hidden relative shrink-0">
