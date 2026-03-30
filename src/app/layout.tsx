@@ -26,6 +26,11 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#FF8C00" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="SuguMali" />
       </head>
       <body className="antialiased">
         <SplashScreen />
