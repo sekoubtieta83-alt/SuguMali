@@ -8,9 +8,6 @@ import { mamiChatFlow } from './ai/flows/mami-chat-flow';
 import { analyzeImageFlow } from './ai/flows/analyze-image-flow';
 
 const GOOGLE_GENAI_API_KEY = defineSecret("GOOGLE_GENAI_API_KEY");
-// Note : Pour la production, créez des secrets pour SMTP_USER et SMTP_PASS
-// firebase functions:secrets:set SMTP_USER
-// firebase functions:secrets:set SMTP_PASS
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -19,13 +16,12 @@ const db = admin.firestore();
 const MAX_MESSAGES_PAR_MINUTE = 10;
 const MAX_MESSAGES_PAR_JOUR   = 100;
 
-// --- CONFIGURATION E-MAIL (À configurer avec vos accès réels) ---
-// Utiliser un service comme SendGrid ou Mailgun pour éviter les SPAMS
+// --- CONFIGURATION E-MAIL ---
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Ou 'SendGrid', 'Mailgun', etc.
+  service: 'gmail',
   auth: {
-    user: 'votre-email@gmail.com', // Remplacez par votre email
-    pass: 'votre-mot-de-passe-application', // Utilisez un mot de passe d'application
+    user: 'votre-email@gmail.com',
+    pass: 'votre-mot-de-passe-application',
   },
 });
 
@@ -165,27 +161,20 @@ export const requestPasswordResetOTP = onCall({
   if (!email) throw new HttpsError('invalid-argument', 'Email requis.');
 
   try {
-    // Vérifier si l'utilisateur existe
     await admin.auth().getUserByEmail(email);
-    
-    // Générer un code à 6 chiffres
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    const expiresAt = Date.now() + 15 * 60 * 1000;
 
-    // Stocker le code dans Firestore
     await db.collection('password_resets').doc(email).set({
       otp,
       expiresAt,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Envoi réel de l'e-mail
     try {
       await sendOTPEmail(email, otp);
-      console.log(`E-MAIL OTP ENVOYÉ À ${email}`);
     } catch (mailError) {
       console.error("Erreur envoi e-mail:", mailError);
-      // On continue quand même pour ne pas bloquer l'interface, le code est dans les logs
     }
     
     return { success: true };
@@ -225,18 +214,16 @@ export const verifyOTPAndResetPassword = onCall({
   try {
     const user = await admin.auth().getUserByEmail(email);
     await admin.auth().updateUser(user.uid, { password: newPassword });
-    
-    // Supprimer le code utilisé
     await resetRef.delete();
-    
     return { success: true };
   } catch (error: any) {
     throw new HttpsError('internal', 'Erreur lors de la mise à jour du mot de passe.');
   }
 });
 
-// --- NOTIFICATIONS DE PROMOTION ---
+// --- NOTIFICATIONS AUTOMATIQUES ---
 
+// 1. Notification quand une promotion est approuvée
 export const onPromotionApproved = onDocumentUpdated({
   document: 'promotion_requests/{requestId}',
   region: 'europe-west1'
@@ -268,6 +255,36 @@ export const onPromotionApproved = onDocumentUpdated({
   }
 });
 
+// 2. Notification quand la certification (badge orange) est approuvée
+export const onCertificationApproved = onDocumentUpdated({
+  document: 'users/{userId}',
+  region: 'europe-west1'
+}, async (event) => {
+  const newValue = event.data?.after.data();
+  const previousValue = event.data?.before.data();
+
+  // Si isVerified passe de false à true
+  if (newValue?.isVerified === true && previousValue?.isVerified !== true) {
+    const tokens = newValue?.fcmTokens || [];
+
+    if (tokens.length > 0) {
+      const message = {
+        notification: {
+          title: 'Félicitations ! 🍊',
+          body: 'Votre compte est désormais certifié SuguMali. Votre badge orange est visible par tous.',
+        },
+        tokens: tokens,
+      };
+      try {
+        await admin.messaging().sendEachForMulticast(message);
+        console.log(`Notification certification envoyée à ${event.params.userId}`);
+      } catch (e) {
+        console.error('Erreur envoi notification certification:', e);
+      }
+    }
+  }
+});
+
 export const checkExpiredPromotions = onSchedule({
   schedule: '0 9 * * *',
   region: 'europe-west1'
@@ -278,8 +295,6 @@ export const checkExpiredPromotions = onSchedule({
     .where('isPromoted', '==', true)
     .where('promotionExpiresAt', '<=', now)
     .get();
-
-  console.log(`Traitement de ${expiredAds.size} promotions expirées...`);
 
   for (const doc of expiredAds.docs) {
     const adData = doc.data();

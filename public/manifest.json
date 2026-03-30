@@ -1,7 +1,7 @@
 {
   "name": "SuguMali - Le Marché",
   "short_name": "SuguMali",
-  "description": "Votre marché en ligne",
+  "description": "Votre marché en ligne au Mali",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

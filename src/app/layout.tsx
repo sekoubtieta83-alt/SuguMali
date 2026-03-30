@@ -1,10 +1,10 @@
-import type { Metadata, Viewport } from 'next';
-import './globals.css';
-import { LayoutClientWrapper } from '@/components/layout-client-wrapper';
+import type { Metadata } from "next";
+import "./globals.css";
+import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 
 export const metadata: Metadata = {
   title: "SuguMali",
-  description: "La plateforme de confiance n°1 au Mali pour acheter et vendre localement.",
+  description: "Le Marché - Votre plateforme e-commerce",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -12,29 +12,19 @@ export const metadata: Metadata = {
     title: "SuguMali",
   },
   icons: {
-    apple: "/icon-192.png",
+    apple: "/apple-icon.png",
+    icon: "/icon-192.png",
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#FF8C00",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="fr" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      </head>
-      <body className="antialiased">
+    <html lang="fr">
+      <body>
         <LayoutClientWrapper>
           {children}
         </LayoutClientWrapper>
