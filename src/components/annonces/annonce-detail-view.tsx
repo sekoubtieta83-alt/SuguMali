@@ -434,14 +434,19 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
           
           {seller && (
             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl border border-border/50">
-              <Avatar className="h-12 w-12"><AvatarImage src={seller.photoURL} /><AvatarFallback>{seller.displayName.charAt(0)}</AvatarFallback></Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-bold">{seller.displayName}</p>
-                  {seller.isVerified && <BadgeCheck className="h-5 w-5 fill-accent text-white" />}
+              <Link href={`/profile/${seller.uid}`} className="flex items-center gap-3 flex-1 group">
+                <Avatar className="h-12 w-12 group-hover:ring-2 ring-accent transition-all">
+                  <AvatarImage src={seller.photoURL} />
+                  <AvatarFallback>{seller.displayName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-bold group-hover:text-accent transition-colors">{seller.displayName}</p>
+                    {seller.isVerified && <BadgeCheck className="h-5 w-5 fill-accent text-white" />}
+                  </div>
+                  <ReviewStars rating={averageRating} size={14} />
                 </div>
-                <ReviewStars rating={averageRating} size={14} />
-              </div>
+              </Link>
               {!isOwner && user && (
                   <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
                       <DialogTrigger asChild>
