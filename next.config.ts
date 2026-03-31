@@ -3,7 +3,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {},
+  experimental: { optimizeCss: false },
   async headers() {
     return [
       {
