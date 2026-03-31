@@ -51,13 +51,12 @@ function DashboardInner() {
   }, [searchParams]);
 
   // 2. Définition de la requête Firestore avec LIMITE
-  // On limite à 20 pour compenser le poids des images Base64
   const annoncesQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
       collection(firestore, 'annonces'), 
       where('status', '==', 'approved'),
-      limit(20) 
+      limit(40) 
     );
   }, [firestore]);
 
@@ -69,7 +68,6 @@ function DashboardInner() {
       const postsFromFirestore = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => {
         const data = doc.data();
         
-        // Mapping sécurisé pour alléger le traitement
         const postImage = data.image || (data.media && data.media[0]?.url) || null;
 
         const post: Post = {
@@ -82,7 +80,7 @@ function DashboardInner() {
           etat: data.etat || 'Occasion',
           prix: data.prix || 0,
           localisation: data.localisation || 'Mali',
-          vendeurVerified: data.vendeurVerified || false,
+          vendeurVerified: Boolean(data.vendeurVerified),
           status: data.status || 'approved',
           views: data.views || 0,
           likes: data.likes || 0,
@@ -116,7 +114,7 @@ function DashboardInner() {
     return () => unsubscribe();
   }, [annoncesQuery]);
 
-  // 4. Filtrage local
+  // 4. Filtrage local et TRI HIERARCHIQUE
   useEffect(() => {
     const filteredResults = allPosts.filter((post: Post) => {
         const { searchQuery, category, minPrice, maxPrice, conditions, location } = filters;
@@ -138,10 +136,20 @@ function DashboardInner() {
         return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition && matchesLocation;
     });
 
+    // --- LOGIQUE DE TRI ---
     const finalResults = [...filteredResults].sort((a, b) => {
+        // Priorité 1: isPromoted
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
-        return (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0);
+
+        // Priorité 2: vendeurVerified
+        if (a.vendeurVerified && !b.vendeurVerified) return -1;
+        if (!a.vendeurVerified && b.vendeurVerified) return 1;
+
+        // Priorité 3: Date de création (décroissante)
+        const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+        const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+        return timeB - timeA;
     });
 
     setFilteredPosts(finalResults);
