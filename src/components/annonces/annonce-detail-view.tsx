@@ -26,7 +26,7 @@ import {
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase/index';
 import { collection, doc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
