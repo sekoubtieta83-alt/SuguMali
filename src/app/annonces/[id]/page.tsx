@@ -42,7 +42,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 
   const seller: any = await getSeller(ad.vendeurId);
-  const sellerName = seller?.displayName || 'Vendeur SuguMali';
+  // On récupère le nom réel avec fallback
+  const sellerName = seller?.displayName || seller?.username || 'Vendeur SuguMali';
   const titre = ad.titre || 'Produit sans titre';
   const localisation = ad.localisation || 'Mali';
   const price = ad.prix || 'Prix sur demande';
@@ -74,7 +75,8 @@ export default async function AnnoncePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const ad: any = await getAnnonce(id);
   const seller: any = ad ? await getSeller(ad.vendeurId) : null;
-  const sellerName = seller?.displayName || 'Vendeur Certifié SuguMali';
+  // Fallback sécurisé pour le nom du vendeur
+  const sellerName = seller?.displayName || seller?.username || 'Vendeur SuguMali';
 
   // Script de données structurées pour Google (Rich Snippets)
   const jsonLd = ad ? {

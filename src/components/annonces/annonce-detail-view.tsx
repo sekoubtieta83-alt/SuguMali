@@ -39,6 +39,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type Seller = {
     uid: string;
@@ -179,10 +181,23 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
     const userRef = doc(firestore, 'users', post.vendeurId);
     const unsubscribe = onSnapshot(userRef, (userSnap) => {
         if (userSnap.exists()) {
-            setSeller(userSnap.data() as Seller);
+            const data = userSnap.data();
+            setSeller({ 
+              uid: userSnap.id, 
+              displayName: data.displayName || data.username || 'Vendeur SuguMali', 
+              email: data.email || '', 
+              photoURL: data.photoURL || '', 
+              isVerified: !!data.isVerified 
+            });
         } else {
-            setSeller({ uid: post.vendeurId, displayName: 'Utilisateur SuguMali', email: '', photoURL: '', isVerified: false });
+            setSeller({ uid: post.vendeurId, displayName: 'Vendeur SuguMali', email: '', photoURL: '', isVerified: false });
         }
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'get',
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, post?.vendeurId]);
@@ -194,6 +209,12 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
         setReviews(fetchedReviews);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: reviewsRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, seller?.uid]);
