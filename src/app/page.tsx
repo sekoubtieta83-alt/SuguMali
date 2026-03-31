@@ -194,14 +194,25 @@ export default function HomePage() {
       });
 
       const sorted = [...posts].sort((a, b) => {
-        const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
-        const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
-        if (priorityA !== priorityB) return priorityB - priorityA;
+        // Tiers Premium : Sponsorisé, Boosté ou Vendeur Certifié
+        const isPremiumA = a.sponsored || a.isPromoted || a.vendeurVerified;
+        const isPremiumB = b.sponsored || b.isPromoted || b.vendeurVerified;
 
-        const certA = a.vendeurVerified ? 1 : 0;
-        const certB = b.vendeurVerified ? 1 : 0;
-        if (certA !== certB) return certB - certA;
+        // Si l'un est Premium et pas l'autre, le Premium passe devant
+        if (isPremiumA && !isPremiumB) return -1;
+        if (!isPremiumA && isPremiumB) return 1;
 
+        // Si les deux sont Premium, on définit des sous-niveaux mais on n'applique pas le filtre date
+        if (isPremiumA && isPremiumB) {
+          const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
+          const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
+          if (priorityA !== priorityB) return priorityB - priorityA;
+          
+          // Si même niveau de priorité premium, on garde l'ordre original (pas de date)
+          return 0;
+        }
+
+        // Si aucun n'est Premium, on applique le filtre date classique (plus récent en premier)
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -276,7 +287,7 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          ) : featuredProducts.length > 0 ? (
+          ) : (featuredProducts && featuredProducts.length > 0) ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
               {featuredProducts.slice(0, 24).map((post: Post) => (
                 <FeaturedProductCard

@@ -5,7 +5,7 @@ import { PostCard } from '@/components/dashboard/post-card';
 import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
-import { Frown, Sparkles, Star } from 'lucide-react';
+import { Frown, Sparkles } from 'lucide-react';
 import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sidebar';
 import { useFirestore } from '@/firebase';
 import { collection, onSnapshot, query, where, limit, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
@@ -130,14 +130,22 @@ function DashboardInner() {
     });
 
     const finalResults = [...filteredResults].sort((a, b) => {
-        const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
-        const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
-        if (priorityA !== priorityB) return priorityB - priorityA;
+        // Tiers Premium
+        const isPremiumA = a.sponsored || a.isPromoted || a.vendeurVerified;
+        const isPremiumB = b.sponsored || b.isPromoted || b.vendeurVerified;
 
-        const certA = a.vendeurVerified ? 1 : 0;
-        const certB = b.vendeurVerified ? 1 : 0;
-        if (certA !== certB) return certB - certA;
+        if (isPremiumA && !isPremiumB) return -1;
+        if (!isPremiumA && isPremiumB) return 1;
 
+        if (isPremiumA && isPremiumB) {
+            // Entre premiums : Boosté > Certifié, pas de date.
+            const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
+            const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
+            if (priorityA !== priorityB) return priorityB - priorityA;
+            return 0; // Pas de tri par date pour les premiums
+        }
+
+        // Tiers Standard : Tri par date décroissante
         const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
         const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
         return timeB - timeA;
