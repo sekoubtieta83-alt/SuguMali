@@ -10,7 +10,7 @@ import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sideb
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, where, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { collection, onSnapshot, query, where, limit, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -18,9 +18,7 @@ function DashboardInner() {
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const firestore = useFirestore();
-  const { user } = useUser();
   const searchParams = useSearchParams();
 
   const [filters, setFilters] = useState<Filters>({
@@ -31,8 +29,6 @@ function DashboardInner() {
     conditions: [],
     location: '',
   });
-
-  const lastLoggedSearch = useRef<string>('');
 
   // 1. Synchronisation des filtres avec l'URL
   useEffect(() => {
@@ -54,12 +50,14 @@ function DashboardInner() {
     });
   }, [searchParams]);
 
-  // 2. Définition de la requête Firestore
+  // 2. Définition de la requête Firestore avec LIMITE
+  // On limite à 20 pour compenser le poids des images Base64
   const annoncesQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
       collection(firestore, 'annonces'), 
-      where('status', '==', 'approved')
+      where('status', '==', 'approved'),
+      limit(20) 
     );
   }, [firestore]);
 
@@ -67,38 +65,34 @@ function DashboardInner() {
   useEffect(() => {
     if (!annoncesQuery) return;
 
-    const unsubscribe = onSnapshot(annoncesQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(annoncesQuery, { includeMetadataChanges: true }, (snapshot) => {
       const postsFromFirestore = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => {
         const data = doc.data();
         
-        const rawPrice = data.prix ? String(data.prix).replace(/[^0-9]/g, '') : '0';
-        const numericPrice = parseFloat(rawPrice) || 0;
-
-        // ✅ Mapping robuste pour l'image (Base64 ou URL)
+        // Mapping sécurisé pour alléger le traitement
         const postImage = data.image || (data.media && data.media[0]?.url) || null;
 
         const post: Post = {
           id: doc.id,
-          vendeurId: data.vendeurId || data.userId || '',
+          vendeurId: data.vendeurId || '',
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-          titre: data.titre || data.title || 'Sans titre',
-          description: data.description || data.content || '',
-          categorie: data.categorie || data.category || '',
-          etat: data.etat || data.condition || 'Neuf',
+          titre: data.titre || 'Sans titre',
+          description: data.description || '',
+          categorie: data.categorie || 'Autre',
+          etat: data.etat || 'Occasion',
           prix: data.prix || 0,
-          localisation: data.localisation || data.location || 'Mali',
+          localisation: data.localisation || 'Mali',
           vendeurVerified: data.vendeurVerified || false,
           status: data.status || 'approved',
           views: data.views || 0,
           likes: data.likes || 0,
           comments: data.comments || 0,
-          whatsapp: data.whatsapp || '',
           isPromoted: Boolean(data.isPromoted),
           isSold: Boolean(data.isSold),
           image: postImage,
-          media: data.media || (data.image ? [{ url: data.image, type: 'image' }] : []),
+          media: data.media || (postImage ? [{ url: postImage, type: 'image' }] : []),
           product: {
-            name: data.titre || data.title || 'Sans titre',
+            name: data.titre || 'Sans titre',
             price: data.prix || '0 FCFA',
             url: `/annonces/${doc.id}`,
           }
@@ -122,7 +116,7 @@ function DashboardInner() {
     return () => unsubscribe();
   }, [annoncesQuery]);
 
-  // 4. Filtrage local des résultats
+  // 4. Filtrage local
   useEffect(() => {
     const filteredResults = allPosts.filter((post: Post) => {
         const { searchQuery, category, minPrice, maxPrice, conditions, location } = filters;
@@ -147,10 +141,7 @@ function DashboardInner() {
     const finalResults = [...filteredResults].sort((a, b) => {
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
-        
-        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
-        return dateB - dateA;
+        return (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0);
     });
 
     setFilteredPosts(finalResults);

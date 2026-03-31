@@ -1,20 +1,34 @@
 'use client';
 
-import { firebaseConfig } from './config'; // Assure-toi que le fichier config.ts existe dans le même dossier
+import { firebaseConfig } from './config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  Firestore
+} from 'firebase/firestore';
 
 // 1. Initialisation de l'application Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// 2. EXPORTATION DE DB (C'est ce qui règle l'erreur dans data.ts)
-export const db = getFirestore(app);
+/**
+ * 2. INITIALISATION OPTIMISÉE DE FIRESTORE
+ * - persistence: active le cache local pour un chargement instantané (hors ligne supporté)
+ * - autoDetectLongPolling: améliore la stabilité sur les réseaux instables
+ */
+export const db: Firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  }),
+  experimentalAutoDetectLongPolling: true, // Meilleure stabilité de connexion
+});
 
-// 3. Exportation de Auth (utile pour la connexion)
+// 3. Exportation de Auth
 export const auth = getAuth(app);
 
-// 4. Fonctions utilitaires pour tes providers
+// 4. Fonctions utilitaires pour les providers
 export function initializeFirebase() {
   return getSdks(app);
 }
@@ -23,11 +37,11 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore: db
   };
 }
 
-// 5. Ré-exportation de tes modules existants
+// 5. Ré-exportation des modules
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
