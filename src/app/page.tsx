@@ -193,22 +193,19 @@ export default function HomePage() {
         } as Post;
       });
 
-      // --- FILTRAGE STRICT : SEULEMENT LES CERTIFIÉS / PROMUS SUR L'ACCUEIL ---
-      const highQualityPosts = posts.filter(p => p.sponsored || p.isPromoted || p.vendeurVerified);
-
-      // --- TRI HIÉRARCHIQUE ---
-      const sorted = [...highQualityPosts].sort((a, b) => {
-        // 1. Sponsorisés ou Promus d'abord
+      // --- TRI HIÉRARCHIQUE : BOOSTÉS > CERTIFIÉS > RESTE ---
+      const sorted = [...posts].sort((a, b) => {
+        // 1. Sponsorisés ou Promus d'abord (Priorité Haute)
         const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
         const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
         if (priorityA !== priorityB) return priorityB - priorityA;
 
-        // 2. Vendeurs certifiés ensuite
+        // 2. Vendeurs certifiés ensuite (Priorité Moyenne)
         const certA = a.vendeurVerified ? 1 : 0;
         const certB = b.vendeurVerified ? 1 : 0;
         if (certA !== certB) return certB - certA;
 
-        // 3. Date la plus récente
+        // 3. Date la plus récente pour tout le reste
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -267,7 +264,7 @@ export default function HomePage() {
               </h2>
               <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-2">
                 <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                Exclusivité vendeurs certifiés
+                Vendeurs certifiés & Annonces boostées en priorité
               </p>
             </div>
             <Link href="/dashboard" className="group flex items-center gap-1 sm:gap-2 text-accent font-black py-2 hover:opacity-80 transition-all text-sm sm:text-base">
@@ -289,7 +286,7 @@ export default function HomePage() {
             </div>
           ) : featuredProducts.length > 0 ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
-              {featuredProducts.slice(0, 12).map((post: Post) => (
+              {featuredProducts.slice(0, 24).map((post: Post) => (
                 <FeaturedProductCard
                   key={post.id}
                   id={post.id}
@@ -305,7 +302,7 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-20 bg-muted/5 rounded-[2.5rem] border-2 border-dashed mx-2">
                 <Sparkles className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-muted-foreground font-bold">Aucune annonce certifiée pour le moment.</p>
+                <p className="text-muted-foreground font-bold">Aucune annonce disponible pour le moment.</p>
             </div>
           )}
         </section>

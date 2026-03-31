@@ -52,7 +52,7 @@ function DashboardInner() {
     return query(
       collection(firestore, 'annonces'), 
       where('status', '==', 'approved'),
-      limit(60) 
+      limit(100) // Augmenté pour montrer plus d'annonces incluant les non-certifiées
     );
   }, [firestore]);
 
@@ -92,10 +92,7 @@ function DashboardInner() {
         } as Post;
       });
 
-      // --- FILTRAGE STRICT : SEULEMENT LES CERTIFIÉS / PROMUS ---
-      const verifiedOnly = postsFromFirestore.filter(p => p.sponsored || p.isPromoted || p.vendeurVerified);
-
-      setAllPosts(verifiedOnly);
+      setAllPosts(postsFromFirestore);
       setIsLoading(false);
     }, (serverError) => {
       if (serverError.code === 'permission-denied') {
@@ -132,7 +129,7 @@ function DashboardInner() {
         return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition && matchesLocation;
     });
 
-    // --- LOGIQUE DE TRI HIÉRARCHIQUE ---
+    // --- LOGIQUE DE TRI HIÉRARCHIQUE : BOOSTÉS > CERTIFIÉS > RESTE ---
     const finalResults = [...filteredResults].sort((a, b) => {
         // Priorité 1: Sponsorisé ou Promu
         const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
@@ -144,7 +141,7 @@ function DashboardInner() {
         const certB = b.vendeurVerified ? 1 : 0;
         if (certA !== certB) return certB - certA;
 
-        // Priorité 3: Date de création (décroissante)
+        // Priorité 3: Date de création (décroissante) pour tout le reste
         const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
         const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
         return timeB - timeA;
@@ -171,10 +168,10 @@ function DashboardInner() {
                     </h1>
                     <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">
                         <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        Affichage exclusif : Vendeurs certifiés
+                        Priorité aux vendeurs certifiés et annonces boostées
                     </div>
                     <p className="text-muted-foreground font-medium text-sm md:text-base mt-2">
-                        {isLoading ? "Chargement..." : `${filteredPosts.length} annonce(s) certifiée(s) trouvée(s)`}
+                        {isLoading ? "Chargement..." : `${filteredPosts.length} annonce(s) trouvée(s)`}
                     </p>
                 </div>
             </div>
@@ -190,8 +187,8 @@ function DashboardInner() {
             ) : (
                 <div className="text-center py-20 bg-card rounded-[2rem] border-2 border-dashed">
                     <Frown className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-                    <h3 className="text-lg font-bold text-muted-foreground">Aucune annonce certifiée ici</h3>
-                    <p className="text-sm text-muted-foreground/60 mt-1">Seuls les vendeurs avec le badge orange apparaissent.</p>
+                    <h3 className="text-lg font-bold text-muted-foreground">Aucune annonce trouvée</h3>
+                    <p className="text-sm text-muted-foreground/60 mt-1">Essayez de modifier vos filtres de recherche.</p>
                 </div>
             )}
         </main>
