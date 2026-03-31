@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -13,14 +14,6 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  // ✅ DEBUG - Affiche les données dans la Console pour vérification
-  console.log('Post data:', {
-    id: post.id,
-    titre: post.titre,
-    image: post.image ? `${post.image.substring(0, 50)}...` : 'N/A',
-    mediaCount: post.media?.length || 0,
-  });
-
   // Gestion du prix
   const formattedPrice = post.prix 
     ? `${post.prix.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`
@@ -28,10 +21,11 @@ export function PostCard({ post }: PostCardProps) {
 
   const title = post.titre || "Annonce sans titre";
 
-  // ✅ LOGIQUE DE RÉCUPÉRATION D'IMAGE AMÉLIORÉE
+  // LOGIQUE DE RÉCUPÉRATION D'IMAGE AMÉLIORÉE
   let imageUrl = null;
   let isVideo = false;
 
+  // Priorité au champ image (qui contient souvent le base64 optimisé)
   if (post.image) {
     imageUrl = post.image;
   } else if (post.media && post.media.length > 0) {
@@ -58,8 +52,8 @@ export function PostCard({ post }: PostCardProps) {
               alt={title}
               fill 
               className={cn("w-full h-full object-cover group-hover:scale-105 transition-transform duration-300", post.status === 'sold' && "grayscale-[0.5]")} 
-              // ✅ Unoptimized est crucial pour les longues chaînes Base64
-              unoptimized={imageUrl.startsWith('data:') || imageUrl.includes('firebase')} 
+              // Unoptimized est crucial pour les chaînes Base64
+              unoptimized={imageUrl.startsWith('data:')} 
               priority={false}
               loading="lazy"
             />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -72,7 +73,7 @@ const REPORT_REASONS = [
 export default function AnnoncePage() {
   const router = useRouter();
   const params = useParams();
-  const { id } = params;
+  const id = params.id as string;
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
@@ -114,17 +115,10 @@ export default function AnnoncePage() {
   // Increment views
   useEffect(() => {
     if (id && firestore) {
-      const annonceRef = doc(firestore, 'annonces', id as string);
+      const annonceRef = doc(firestore, 'annonces', id);
       updateDoc(annonceRef, { views: increment(1) })
-        .catch(async (serverError) => {
-          if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-              path: annonceRef.path,
-              operation: 'update',
-              requestResourceData: { views: 'increment' },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-          }
+        .catch(() => {
+          // Ignorer les erreurs de permissions sur l'incrémentation silencieuse
         });
     }
   }, [id, firestore]);
@@ -132,15 +126,11 @@ export default function AnnoncePage() {
   // Check if favorited (Real-time)
   useEffect(() => {
     if (id && user && firestore) {
-      const favRef = doc(firestore, 'users', user.uid, 'favorites', id as string);
+      const favRef = doc(firestore, 'users', user.uid, 'favorites', id);
       const unsubscribe = onSnapshot(favRef, (snap) => {
         setIsFavorited(snap.exists());
-      }, async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: favRef.path,
-          operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      }, () => {
+        setIsFavorited(false);
       });
       return () => unsubscribe();
     }
@@ -148,70 +138,75 @@ export default function AnnoncePage() {
 
   // Main post listener (Real-time)
   useEffect(() => {
-    if (id && firestore) {
-      const annonceRef = doc(firestore, 'annonces', id as string);
-      const unsubscribe = onSnapshot(annonceRef, async (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const mappedPost: Post = {
-            id: docSnap.id,
-            userId: data.vendeurId,
-            content: data.description || '',
-            media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-            likes: 0,
-            comments: 0,
-            isProduct: true,
-            isPromoted: data.isPromoted || false,
-            isSold: data.isSold || false,
-            location: data.localisation || '',
-            whatsappNumber: data.whatsapp || '',
-            category: data.categorie || '',
-            condition: data.etat || 'Occasion',
-            status: data.status || 'approved',
-            views: data.views || 0,
-            manualReviewRequested: data.manualReviewRequested || false,
-            moderationReason: data.moderationReason || '',
-            product: {
-              name: data.titre || 'Sans titre',
-              price: data.prix || '0 FCFA',
-              url: `/annonces/${docSnap.id}`,
-            }
-          };
-          setPost(mappedPost);
-        } else {
-          setPost(null);
-        }
-        setLoading(false);
-      }, (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: annonceRef.path,
-          operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setLoading(false);
-      });
-      return () => unsubscribe();
-    } else if (!firestore) {
-        setLoading(false);
-    }
+    if (!id || !firestore) return;
+
+    setLoading(true);
+    const annonceRef = doc(firestore, 'annonces', id);
+    
+    const unsubscribe = onSnapshot(annonceRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // Robust image extraction (handles Base64 and media array)
+        const base64Image = data.image || (data.media && data.media[0]?.url) || data.imageUrl || null;
+        const media = data.media && data.media.length > 0 
+          ? data.media 
+          : (base64Image ? [{ url: base64Image, type: 'image' }] : []);
+
+        const mappedPost: Post = {
+          id: docSnap.id,
+          vendeurId: data.vendeurId || '',
+          content: data.description || '',
+          media: media,
+          image: base64Image,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          likes: 0,
+          comments: 0,
+          isProduct: true,
+          isPromoted: data.isPromoted || false,
+          isSold: data.isSold || data.status === 'sold' || false,
+          location: data.localisation || 'Mali',
+          whatsappNumber: data.whatsapp || '',
+          category: data.categorie || 'Autre',
+          condition: data.etat || 'Occasion',
+          status: data.status || 'approved',
+          views: data.views || 0,
+          manualReviewRequested: data.manualReviewRequested || false,
+          moderationReason: data.moderationReason || '',
+          product: {
+            name: data.titre || 'Sans titre',
+            price: data.prix || '0 FCFA',
+            url: `/annonces/${docSnap.id}`,
+          }
+        };
+        setPost(mappedPost);
+      } else {
+        setPost(null);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching annonce:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [id, firestore]);
 
   // Seller info listener (Real-time)
   useEffect(() => {
-    if (!firestore || !post?.userId) return;
+    if (!firestore || !post?.vendeurId) return;
     
-    const userRef = doc(firestore, 'users', post.userId);
+    const userRef = doc(firestore, 'users', post.vendeurId);
     const unsubscribe = onSnapshot(userRef, (userSnap) => {
         if (userSnap.exists()) {
             setSeller(userSnap.data() as Seller);
         } else {
-            setSeller({ uid: post.userId, displayName: 'Vendeur SuguMali', email: '', photoURL: '', isVerified: false });
+            setSeller({ uid: post.vendeurId, displayName: 'Vendeur SuguMali', email: '', photoURL: '', isVerified: false });
         }
     });
     
     return () => unsubscribe();
-  }, [firestore, post?.userId]);
+  }, [firestore, post?.vendeurId]);
 
   // Reviews listener (Real-time)
   useEffect(() => {
@@ -221,12 +216,6 @@ export default function AnnoncePage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
         setReviews(fetchedReviews);
-    }, async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: reviewsRef.path,
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [firestore, seller?.uid]);
@@ -236,28 +225,14 @@ export default function AnnoncePage() {
       router.push('/login');
       return;
     }
-    const favRef = doc(firestore, 'users', user.uid, 'favorites', id as string);
+    const favRef = doc(firestore, 'users', user.uid, 'favorites', id);
     if (isFavorited) {
-      deleteDoc(favRef).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: favRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      await deleteDoc(favRef);
       toast({ title: 'Retiré des favoris' });
     } else {
-      const favData = { 
+      await setDoc(favRef, { 
         annonceId: id,
         createdAt: serverTimestamp() 
-      };
-      setDoc(favRef, favData).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: favRef.path,
-          operation: 'create',
-          requestResourceData: favData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
       });
       toast({ title: 'Ajouté aux favoris' });
     }
@@ -267,14 +242,13 @@ export default function AnnoncePage() {
     if (!id || !user || !firestore || !reportReason) return;
     setIsReporting(true);
     try {
-      const reportData = {
+      await addDoc(collection(firestore, 'reports'), {
         annonceId: id,
         reason: reportReason,
         reporterId: user.uid,
         createdAt: serverTimestamp(),
         status: 'pending'
-      };
-      await addDoc(collection(firestore, 'reports'), reportData);
+      });
       toast({ title: "Signalement envoyé", description: "Merci de nous aider à garder SuguMali sûr." });
       setIsReportDialogOpen(false);
       setReportReason("");
@@ -285,59 +259,45 @@ export default function AnnoncePage() {
     }
   };
 
-  const handleRequestManualReview = () => {
-    if (!post || !id || !user || !firestore) return;
+  const handleRequestManualReview = async () => {
+    if (!id || !firestore) return;
     setIsRequestingReview(true);
-    const docRef = doc(firestore, 'annonces', id as string);
-    updateDoc(docRef, { manualReviewRequested: true })
-      .then(() => {
-        toast({ title: 'Demande envoyée' });
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: { manualReviewRequested: true },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => setIsRequestingReview(false));
+    const docRef = doc(firestore, 'annonces', id);
+    try {
+      await updateDoc(docRef, { manualReviewRequested: true });
+      toast({ title: 'Demande envoyée' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur" });
+    } finally {
+      setIsRequestingReview(false);
+    }
   };
 
-  const handleMarkAsSold = () => {
-    if (!post || !id || !firestore) return;
+  const handleMarkAsSold = async () => {
+    if (!id || !firestore) return;
     setIsMarkingSold(true);
-    const docRef = doc(firestore, 'annonces', id as string);
-    updateDoc(docRef, { isSold: true })
-      .then(() => {
-        toast({ title: 'Article marqué comme vendu' });
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: { isSold: true },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => setIsMarkingSold(false));
+    const docRef = doc(firestore, 'annonces', id);
+    try {
+      await updateDoc(docRef, { status: 'sold' });
+      toast({ title: 'Article marqué comme vendu' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur" });
+    } finally {
+      setIsMarkingSold(false);
+    }
   };
 
-  const handleDelete = () => {
-    if (!post || !id || !firestore) return;
-    const docRef = doc(firestore, 'annonces', id as string);
-    deleteDoc(docRef)
-        .then(() => {
-            toast({ title: 'Annonce supprimée' });
-            router.push('/dashboard');
-        })
-        .catch(async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'delete',
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        });
+  const handleDelete = async () => {
+    if (!id || !firestore) return;
+    if (!confirm("Supprimer cette annonce ?")) return;
+    const docRef = doc(firestore, 'annonces', id);
+    try {
+      await deleteDoc(docRef);
+      toast({ title: 'Annonce supprimée' });
+      router.push('/dashboard');
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur lors de la suppression" });
+    }
   };
 
   const openLightbox = (url: string, type: 'image' | 'video') => {
@@ -346,17 +306,34 @@ export default function AnnoncePage() {
   };
 
   if (loading) {
-    return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-accent" /></div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
+        <Loader2 className="animate-spin h-10 w-10 text-accent" />
+        <p className="text-muted-foreground font-medium animate-pulse">Chargement de l'annonce...</p>
+      </div>
+    );
   }
   
-  if (!post || !seller) {
-    return <div className="p-20 text-center"><h1 className="text-2xl font-bold">Annonce non trouvée</h1><Button onClick={() => router.push('/')} className="mt-4">Retour</Button></div>;
+  if (!post) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center space-y-6">
+        <div className="bg-muted p-6 rounded-full">
+          <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black">Annonce non trouvée</h1>
+          <p className="text-muted-foreground max-w-xs">Cette annonce a peut-être été supprimée ou n'existe plus.</p>
+        </div>
+        <Button onClick={() => router.push('/dashboard')} className="rounded-xl px-8 h-12 font-bold bg-accent">
+          Retour aux annonces
+        </Button>
+      </div>
+    );
   }
 
-  const isOwner = user && user.uid === post.userId;
+  const isOwner = user && user.uid === post.vendeurId;
   const averageRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
 
-  // WhatsApp automatic message
   const whatsappMessage = encodeURIComponent(`Bonjour, je vous contacte depuis SuguMali à propos de votre annonce : ${post.product?.name}`);
   const whatsappLink = post.whatsappNumber ? `https://wa.me/${post.whatsappNumber.replace(/\D/g, '')}?text=${whatsappMessage}` : '#';
   const telLink = post.whatsappNumber ? `tel:${post.whatsappNumber.replace(/\D/g, '')}` : '#';
@@ -398,7 +375,7 @@ export default function AnnoncePage() {
           <span className="text-foreground truncate max-w-[100px]">{post.product?.name}</span>
         </div>
 
-        {post.isSold && (
+        {post.status === 'sold' && (
           <div className="px-6 mb-4">
             <div className="bg-destructive text-destructive-foreground px-4 py-3 rounded-2xl flex items-center gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
               <CheckCircle2 className="h-6 w-6" />
@@ -410,11 +387,22 @@ export default function AnnoncePage() {
           </div>
         )}
 
-        {isOwner && post.status !== 'approved' && (
+        {isOwner && post.status !== 'approved' && post.status !== 'sold' && (
             <div className="px-6 mb-4">
                 {post.status === 'rejected' ? (
-                    <Alert variant="destructive"><ShieldAlert /><AlertTitle>Rejetée</AlertTitle><AlertDescription>{post.moderationReason}<br/><Button size="sm" variant="outline" onClick={handleRequestManualReview} disabled={isRequestingReview || post.manualReviewRequested}>{post.manualReviewRequested ? 'Demande envoyée' : 'Analyse manuelle'}</Button></AlertDescription></Alert>
-                ) : <Alert><Loader2 className="animate-spin" /><AlertTitle>Validation...</AlertTitle><AlertDescription>En cours d'analyse automatique.</AlertDescription></Alert>}
+                    <Alert variant="destructive">
+                      <ShieldAlert className="h-4 w-4" />
+                      <AlertTitle>Annonce rejetée</AlertTitle>
+                      <AlertDescription>
+                        {post.moderationReason || "Cette annonce n'a pas été validée."}
+                        <div className="mt-3">
+                          <Button size="sm" variant="outline" onClick={handleRequestManualReview} disabled={isRequestingReview || post.manualReviewRequested}>
+                            {post.manualReviewRequested ? 'Demande envoyée' : 'Analyse manuelle'}
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                ) : <Alert><Loader2 className="animate-spin h-4 w-4" /><AlertTitle>Validation...</AlertTitle><AlertDescription>En cours d'analyse automatique par Mami.</AlertDescription></Alert>}
             </div>
         )}
 
@@ -428,10 +416,16 @@ export default function AnnoncePage() {
                     {post.media.map((media, index) => (
                       <CarouselItem key={index} className="relative aspect-[4/5] bg-muted cursor-zoom-in group" onClick={() => openLightbox(media.url, media.type)}>
                           {media.type === 'image' ? (
-                              <Image src={media.url} alt="" fill className={cn("object-cover", post.isSold && "grayscale-[0.5] opacity-80")} />
+                              <Image 
+                                src={media.url} 
+                                alt="" 
+                                fill 
+                                className={cn("object-cover", post.status === 'sold' && "grayscale-[0.5] opacity-80")} 
+                                unoptimized={media.url.startsWith('data:')}
+                              />
                           ) : (
                               <div className="relative w-full h-full">
-                                  <video src={media.url} className={cn("w-full h-full object-cover", post.isSold && "grayscale-[0.5] opacity-80")} muted loop autoPlay playsInline />
+                                  <video src={media.url} className={cn("w-full h-full object-cover", post.status === 'sold' && "grayscale-[0.5] opacity-80")} muted loop autoPlay playsInline />
                                   <div className="absolute inset-0 flex items-center justify-center">
                                       <Play className="h-12 w-12 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
@@ -487,7 +481,11 @@ export default function AnnoncePage() {
                   </div>
                 )}
               </>
-            ) : <div className="w-full aspect-[4/5] bg-muted" />}
+            ) : (
+              <div className="w-full aspect-[4/5] bg-muted flex items-center justify-center">
+                <ShieldAlert className="h-12 w-12 text-muted-foreground/20" />
+              </div>
+            )}
           </div>
         </div>
         
@@ -500,12 +498,12 @@ export default function AnnoncePage() {
                 <MapPin className="h-4 w-4" /> {post.location}
               </p>
             </div>
-            <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", post.isSold ? "bg-muted text-muted-foreground" : "bg-accent/20 text-accent")}>
+            <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", post.status === 'sold' ? "bg-muted text-muted-foreground" : "bg-accent/20 text-accent")}>
               {post.condition}
             </span>
           </div>
 
-          <div className={cn("text-3xl font-black", post.isSold ? "text-muted-foreground line-through" : "text-accent")}>{post.product?.price}</div>
+          <div className={cn("text-3xl font-black", post.status === 'sold' ? "text-muted-foreground line-through" : "text-accent")}>{post.product?.price}</div>
           
           <div className="space-y-2">
             <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Description</h3>
@@ -513,38 +511,40 @@ export default function AnnoncePage() {
           </div>
           
           {/* Seller Card */}
-          <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl border border-border/50">
-             <Avatar className="h-12 w-12"><AvatarImage src={seller.photoURL} /><AvatarFallback>{seller.displayName.charAt(0)}</AvatarFallback></Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold">{seller.displayName}</p>
-                {seller.isVerified && <BadgeCheck className="h-5 w-5 fill-accent text-white" />}
+          {seller && (
+            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl border border-border/50">
+              <Avatar className="h-12 w-12"><AvatarImage src={seller.photoURL} /><AvatarFallback>{seller.displayName.charAt(0)}</AvatarFallback></Avatar>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-bold">{seller.displayName}</p>
+                  {seller.isVerified && <BadgeCheck className="h-5 w-5 fill-accent text-white" />}
+                </div>
+                <ReviewStars rating={averageRating} size={14} />
               </div>
-              <ReviewStars rating={averageRating} size={14} />
+              {!isOwner && user && (
+                  <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+                      <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="rounded-xl font-bold">
+                              Laisser un avis
+                          </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                          <DialogHeader>
+                              <DialogTitle>Évaluer le vendeur</DialogTitle>
+                              <DialogDescription>Partagez votre expérience avec {seller.displayName}.</DialogDescription>
+                          </DialogHeader>
+                          <AddReviewForm sellerId={seller.uid} annonceId={post.id} onFinished={() => setIsReviewDialogOpen(false)} />
+                      </DialogContent>
+                  </Dialog>
+              )}
             </div>
-            {!isOwner && user && (
-                <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold">
-                            Laisser un avis
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Évaluer le vendeur</DialogTitle>
-                            <DialogDescription>Partagez votre expérience avec {seller.displayName}.</DialogDescription>
-                        </DialogHeader>
-                        <AddReviewForm sellerId={seller.uid} annonceId={post.id} onFinished={() => setIsReviewDialogOpen(false)} />
-                    </DialogContent>
-                </Dialog>
-            )}
-          </div>
+          )}
 
           {isOwner && (
             <div className="mt-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-4">
               <h3 className="font-bold flex items-center gap-2"><Rocket className="h-5 w-5"/> Zone Vendeur</h3>
               <div className="grid grid-cols-1 gap-2">
-                {!post.isSold && (
+                {post.status !== 'sold' && (
                   <>
                     {!post.isPromoted && (
                         <Button 
@@ -565,7 +565,7 @@ export default function AnnoncePage() {
                     </Button>
                   </>
                 )}
-                <Button variant="destructive" className="w-full font-bold h-12 rounded-xl" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>
+                <Button variant="destructive" className="w-full font-bold h-12 rounded-xl" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer l'annonce</Button>
               </div>
             </div>
           )}
@@ -617,7 +617,7 @@ export default function AnnoncePage() {
       </Dialog>
 
       {/* Floating Action Bar (Sticky Footer) */}
-      {!post.isSold && (
+      {post.status !== 'sold' && (
         <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t p-4 pb-6 flex items-center gap-2 z-40 max-w-2xl mx-auto shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)]">
           {/* Favorite Button */}
           <Button 
