@@ -27,19 +27,18 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/com
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase/index';
 import { collection, doc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ReviewStars } from '@/components/dashboard/review-stars';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
 import { AddReviewForm } from '@/components/dashboard/add-review-form';
 import { PromotionModal } from '@/components/dashboard/promotion-modal';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type Seller = {
     uid: string;
@@ -86,7 +85,6 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
   const [isReporting, setIsReporting] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
-  const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [isMarkingSold, setIsMarkingSold] = useState(false);
   
   const [api, setApi] = useState<CarouselApi>();
@@ -150,15 +148,13 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
           comments: 0,
           isProduct: true,
           isPromoted: data.isPromoted || false,
-          isSold: data.isSold || data.status === 'sold' || false,
+          isSold: data.status === 'sold' || data.isSold || false,
           location: data.localisation || 'Mali',
           whatsappNumber: data.whatsapp || '',
           category: data.categorie || 'Autre',
           condition: data.etat || 'Occasion',
           status: data.status || 'approved',
           views: data.views || 0,
-          manualReviewRequested: data.manualReviewRequested || false,
-          moderationReason: data.moderationReason || '',
           product: {
             name: data.titre || 'Sans titre',
             price: data.prix || '0 FCFA',
@@ -185,7 +181,7 @@ export default function AnnonceDetailView({ id }: AnnonceDetailViewProps) {
         if (userSnap.exists()) {
             setSeller(userSnap.data() as Seller);
         } else {
-            setSeller({ uid: post.vendeurId, displayName: 'Vendeur SuguMali', email: '', photoURL: '', isVerified: false });
+            setSeller({ uid: post.vendeurId, displayName: 'Utilisateur SuguMali', email: '', photoURL: '', isVerified: false });
         }
     });
     return () => unsubscribe();

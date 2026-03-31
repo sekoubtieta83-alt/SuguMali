@@ -4,7 +4,7 @@ import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 import AnnonceDetailView from '@/components/annonces/annonce-detail-view';
 
-// Initialisation de Firebase côté serveur pour la récupération des métadonnées
+// Initialisation de Firebase côté serveur
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const db = getFirestore(app);
 
@@ -14,7 +14,18 @@ async function getAnnonce(id: string) {
     const snap = await getDoc(docRef);
     if (snap.exists()) return { id: snap.id, ...snap.data() };
   } catch (e) {
-    console.error("SEO Fetch Error:", e);
+    console.error("SEO Annonce Fetch Error:", e);
+  }
+  return null;
+}
+
+async function getSeller(uid: string) {
+  try {
+    const docRef = doc(db, 'users', uid);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) return snap.data();
+  } catch (e) {
+    console.error("SEO Seller Fetch Error:", e);
   }
   return null;
 }
@@ -30,20 +41,22 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
   }
 
+  const seller: any = await getSeller(ad.vendeurId);
+  const sellerName = seller?.displayName || 'Vendeur SuguMali';
   const titre = ad.titre || 'Produit sans titre';
   const localisation = ad.localisation || 'Mali';
   const price = ad.prix || 'Prix sur demande';
   const description = (ad.description || '').substring(0, 160);
   const imageUrl = ad.image || (ad.media && ad.media[0]?.url) || '';
 
-  const fullTitle = `${titre} à ${localisation} | SuguMali`;
+  const fullTitle = `${titre} à ${localisation} | Par ${sellerName} | SuguMali`;
 
   return {
     title: fullTitle,
     description: description,
     openGraph: {
       title: `${titre} - ${price}`,
-      description: `${description} | Situé à ${localisation}`,
+      description: `${description} | Vendu par ${sellerName} à ${localisation}`,
       images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: titre }] : [],
       type: 'article',
       siteName: 'SuguMali',
@@ -60,6 +73,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function AnnoncePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ad: any = await getAnnonce(id);
+  const seller: any = ad ? await getSeller(ad.vendeurId) : null;
+  const sellerName = seller?.displayName || 'Vendeur Certifié SuguMali';
 
   // Script de données structurées pour Google (Rich Snippets)
   const jsonLd = ad ? {
@@ -81,7 +96,7 @@ export default async function AnnoncePage({ params }: { params: Promise<{ id: st
       "availability": "https://schema.org/InStock",
       "seller": {
         "@type": "Person",
-        "name": "Vendeur Certifié SuguMali"
+        "name": sellerName
       }
     }
   } : null;
