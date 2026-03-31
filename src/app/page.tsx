@@ -36,13 +36,28 @@ const FeaturedProductCard = ({
       </div>
     )}
 
-    <div className="relative h-32 sm:h-44 bg-muted rounded-xl overflow-hidden">
-      <img
-        src={image || 'https://placehold.co/600x400/1a1a2e/ffffff?text=SuguMali'}
-        alt={title}
-        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400/1a1a2e/ffffff?text=SuguMali'; }}
-      />
+    <div className="relative h-32 sm:h-44 bg-muted rounded-xl overflow-hidden flex items-center justify-center">
+      {image ? (
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+          onError={(e) => { 
+            (e.target as HTMLImageElement).style.display = 'none';
+            const parent = (e.target as HTMLImageElement).parentElement;
+            if (parent) {
+              const logoDiv = parent.querySelector('.logo-fallback');
+              if (logoDiv) (logoDiv as HTMLElement).style.display = 'flex';
+            }
+          }}
+        />
+      ) : null}
+      
+      <div className={`logo-fallback absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-muted to-muted/50 ${image ? 'hidden' : 'flex'}`}>
+        <Logo className="h-12 w-12 opacity-40 mb-2" />
+        <span className="text-[10px] font-black text-muted-foreground/40 tracking-widest uppercase">SuguMali</span>
+      </div>
+
       {condition && (
         <div className="absolute top-2 left-2 bg-accent text-white px-2 py-0.5 rounded-md text-[9px] font-bold shadow-lg">
           {condition}
