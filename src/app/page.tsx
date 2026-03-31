@@ -13,7 +13,7 @@ import { signOut } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { type Post, posts as mockPosts } from '@/lib/data';
+import { type Post } from '@/lib/data';
 import { collection, onSnapshot, query, where, doc, setDoc, increment } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -204,7 +204,7 @@ export default function HomePage() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
-      setFeaturedProducts(sorted.length > 0 ? sorted : mockPosts);
+      setFeaturedProducts(sorted);
       setIsLoading(false);
     }, async () => {
       setIsLoading(false);
@@ -277,7 +277,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
-              {featuredProducts.slice(0, 12).map((post: any) => (
+              {(featuredProducts || []).slice(0, 12).map((post: any) => (
                 <FeaturedProductCard
                   key={post.id}
                   id={post.id}
