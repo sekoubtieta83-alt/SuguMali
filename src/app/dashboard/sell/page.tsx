@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ChevronLeft, X, Loader2, MapPin, Sparkles, Video, CheckCircle2 } from 'lucide-react';
+import { Camera, ChevronLeft, X, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { countryCodes } from '@/lib/country-codes';
@@ -9,18 +9,92 @@ import { useFirestore, useAuth } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { categories } from '@/lib/categories';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
-import { cn } from '@/lib/utils';
 
-const MAX_VIDEO_DURATION = 30;
-const MAX_IMAGE_RES = 3840;
-
-// Cloudinary Config
 const CLOUDINARY_CLOUD_NAME = "dfunyyw6g";
 const CLOUDINARY_UPLOAD_PRESET = "video_upload_preset";
+const MAX_IMAGE_RES = 3840;
+const MAX_VIDEO_DURATION = 60; // secondes
+
+// ✅ Tronque la vidéo à 60s côté navigateur (sans dépendance externe)
+const trimVideoTo60s = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+
+    video.onloadedmetadata = () => {
+      // Si la vidéo fait moins de 60s, on la retourne telle quelle
+      if (video.duration <= MAX_VIDEO_DURATION) {
+        URL.revokeObjectURL(url);
+        resolve(file);
+        return;
+      }
+
+      // Sinon, on enregistre les 60 premières secondes via MediaRecorder
+      const stream = (video as any).captureStream();
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        URL.revokeObjectURL(url);
+        const trimmedBlob = new Blob(chunks, { type: 'video/webm' });
+        const trimmedFile = new File([trimmedBlob], file.name.replace(/\.[^.]+$/, '.webm'), {
+          type: 'video/webm',
+        });
+        resolve(trimmedFile);
+      };
+
+      recorder.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Erreur lors du découpage de la vidéo."));
+      };
+
+      video.play();
+      recorder.start();
+
+      // Arrête l'enregistrement après 60 secondes
+      setTimeout(() => {
+        recorder.stop();
+        video.pause();
+      }, MAX_VIDEO_DURATION * 1000);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Impossible de lire la vidéo."));
+    };
+  });
+};
+
+// Upload vers Cloudinary (simple, sans eager)
+const uploadVideoToCloudinary = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+    { method: "POST", body: formData }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Cloudinary error:", errorData);
+    throw new Error(errorData.error?.message || "Upload échoué.");
+  }
+
+  const data = await response.json();
+  return data.secure_url;
+};
 
 const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MAX_IMAGE_RES): Promise<string> => {
   return new Promise((resolve) => {
@@ -44,29 +118,6 @@ const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MA
   });
 };
 
-const uploadVideoToCloudinary = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-  formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || "L'upload vers Cloudinary a échoué.");
-  }
-
-  const data = await response.json();
-  return data.secure_url;
-};
-
 export default function SellPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -74,7 +125,7 @@ export default function SellPage() {
   const auth = useAuth();
   const db = useFirestore();
 
-  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video'; uploading?: boolean }[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video'; uploading?: boolean; uploadLabel?: string }[]>([]);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [countryCode, setCountryCode] = useState('+223');
@@ -94,7 +145,7 @@ export default function SellPage() {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}_longitude=${longitude}&localityLanguage=fr`);
+          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=fr`);
           const data = await response.json();
           if (data.locality || data.city) setLocation(data.locality || data.city);
         } catch (error) {
@@ -113,25 +164,11 @@ export default function SellPage() {
       const analyzeImage = httpsCallable(functions, 'analyzeImage');
       const result: any = await analyzeImage({ imageBase64 });
       const data = result.data;
-
       if (data.titre && !title) setTitle(data.titre);
       if (data.description && !description) setDescription(data.description);
-      if (data.categorie && !category) {
-        for (const cat of categories) {
-          const found = cat.subcategories.find(s =>
-            s.toLowerCase().includes(data.categorie.toLowerCase()) ||
-            data.categorie.toLowerCase().includes(s.toLowerCase())
-          );
-          if (found) { setCategory(found); break; }
-        }
-      }
-
-      toast({
-        title: "Mami a analysé votre photo",
-        description: "Titre et description générés. Vous pouvez les modifier.",
-      });
-    } catch (err: any) {
-      console.error('Erreur analyse image:', err);
+      toast({ title: "Mami a analysé votre photo", description: "Titre et description générés." });
+    } catch (err) {
+      console.error('Erreur Mami:', err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -140,55 +177,56 @@ export default function SellPage() {
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
-    
+
     let firstImageProcessed = false;
 
     for (const file of Array.from(files)) {
       if (file.type.startsWith('video/')) {
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        
-        const videoPromise = new Promise<void>((resolve, reject) => {
-          video.onloadedmetadata = function() {
-            window.URL.revokeObjectURL(video.src);
-            if (video.duration > MAX_VIDEO_DURATION) {
-              toast({ variant: "destructive", title: "Vidéo trop longue", description: `Max ${MAX_VIDEO_DURATION} secondes.` });
-              reject("too long");
-            } else {
-              resolve();
-            }
-          };
-          video.src = URL.createObjectURL(file);
-        });
+        setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true, uploadLabel: 'Préparation...' }]);
 
         try {
-          await videoPromise;
-          
-          // Placeholder temporel pour montrer l'upload
-          const tempId = Math.random().toString(36).substring(7);
-          setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true }]);
-
-          const videoUrl = await uploadVideoToCloudinary(file);
-          
+          // Étape 1 : tronquer à 60s si nécessaire
           setMediaPreviews(prev => {
-            const newPreviews = [...prev];
-            const uploadIndex = newPreviews.findIndex(p => p.uploading && p.type === 'video' && p.url === '');
-            if (uploadIndex !== -1) {
-              newPreviews[uploadIndex] = { url: videoUrl, type: 'video', uploading: false };
-            }
-            return newPreviews;
+            const updated = [...prev];
+            const idx = updated.findIndex(p => p.uploading && p.url === '');
+            if (idx !== -1) updated[idx] = { ...updated[idx], uploadLabel: 'Découpage à 1 min...' };
+            return updated;
           });
-        } catch (e) {
-          if (e !== "too long") {
-            toast({ variant: "destructive", title: "Erreur vidéo", description: "Impossible d'uploader la vidéo." });
-          }
+
+          const trimmedFile = await trimVideoTo60s(file);
+
+          // Étape 2 : upload vers Cloudinary
+          setMediaPreviews(prev => {
+            const updated = [...prev];
+            const idx = updated.findIndex(p => p.uploading && p.url === '');
+            if (idx !== -1) updated[idx] = { ...updated[idx], uploadLabel: 'Upload en cours...' };
+            return updated;
+          });
+
+          const videoUrl = await uploadVideoToCloudinary(trimmedFile);
+
+          setMediaPreviews(prev => {
+            const updated = [...prev];
+            const idx = updated.findIndex(p => p.uploading && p.url === '');
+            if (idx !== -1) updated[idx] = { url: videoUrl, type: 'video', uploading: false };
+            return updated;
+          });
+
+          toast({ title: "Vidéo ajoutée ✅", description: "Limitée à la première minute." });
+
+        } catch (e: any) {
+          console.error("Erreur upload video:", e.message);
+          setMediaPreviews(prev => prev.filter(p => !(p.uploading && p.url === '')));
+          toast({
+            variant: "destructive",
+            title: "Erreur vidéo",
+            description: e.message || "Impossible d'uploader la vidéo.",
+          });
         }
       } else if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = async (e) => {
-          let resultUrl = e.target?.result as string;
-          resultUrl = await resizeImage(resultUrl);
-          
+          let resultUrl = await resizeImage(e.target?.result as string);
           setMediaPreviews(prev => {
             if (prev.length === 0 && !firstImageProcessed) {
               firstImageProcessed = true;
@@ -204,258 +242,139 @@ export default function SellPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!db) return;
-
-    const user = auth?.currentUser;
-    if (!user) {
-      toast({ variant: "destructive", title: "Non connecté", description: "Vous devez être connecté pour publier." });
-      return;
-    }
-
-    if (mediaPreviews.length === 0) {
-      toast({ variant: "destructive", title: "Media requis", description: "Veuillez ajouter au moins une photo ou vidéo." });
-      return;
-    }
-
-    if (mediaPreviews.some(m => m.uploading)) {
-      toast({ variant: "destructive", title: "Upload en cours", description: "Veuillez patienter pendant la fin de l'upload des vidéos." });
-      return;
-    }
+    if (!db || !auth.currentUser) return;
 
     setIsLoading(true);
-    setModerationMessage("Mami analyse votre annonce...");
+    setModerationMessage("Mami vérifie l'annonce...");
 
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      const userData = userSnap.data();
-      const isVendeurVerified = userData?.isVerified || false;
-
       const moderateImageFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
-      const modResult: any = await moderateImageFn({ titre: title, description: description, prix: `${price} FCFA` });
-      const moderation = modResult.data;
-      const isApproved = moderation.approved;
-      const status = isApproved ? 'approved' : 'rejected';
-      const reason = moderation.reason;
+      const modResult: any = await moderateImageFn({ titre: title, description, prix: `${price} FCFA` });
 
-      setModerationMessage(isApproved ? "Validation réussie..." : "Sécurité : Analyse terminée...");
-
+      const isApproved = modResult.data.approved;
       const cleanWhatsapp = `${countryCode}${whatsappNumber.replace(/\D/g, '')}`;
 
-      const annonceData = {
-        titre: title || "Sans titre",
-        prix: price ? `${price} FCFA` : "0 FCFA",
+      await addDoc(collection(db, "annonces"), {
+        titre: title,
+        prix: `${price} FCFA`,
         media: mediaPreviews.map(m => ({ url: m.url, type: m.type })),
-        image: mediaPreviews[0]?.url || "",
-        vendeurId: user.uid,
-        vendeurVerified: isVendeurVerified,
-        status: status,
-        moderationReason: reason,
-        description: description,
+        vendeurId: auth.currentUser.uid,
+        status: isApproved ? 'approved' : 'rejected',
+        description,
         localisation: location,
         whatsapp: cleanWhatsapp,
         categorie: category || "Autre",
         etat: condition,
         createdAt: serverTimestamp(),
         views: 0
-      };
-
-      await addDoc(collection(db, "annonces"), annonceData);
-      
-      logActivity(db, {
-        action: isApproved ? 'AUTO_MODERATION' : 'REJECT_ANNONCE',
-        userId: user.uid,
-        userName: user.displayName || 'Utilisateur',
-        targetName: title,
-        details: isApproved ? 'Annonce validée par Mami' : `Rejeté par Mami : ${reason}`
       });
 
-      if (isApproved) {
-        toast({ title: "Annonce publiée !", description: "Mami a validé votre annonce. Elle est maintenant en ligne." });
-      } else {
-        toast({ variant: "destructive", title: "Annonce en attente", description: "Mami a détecté un problème. Un modérateur va vérifier votre annonce." });
-      }
+      toast({ title: "Succès !", description: "Votre annonce est enregistrée." });
       router.push('/dashboard');
-      
-    } catch (error: any) {
-      console.error("Submit error:", error);
-      toast({ variant: "destructive", title: "Erreur", description: "Une erreur est survenue lors de la publication." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erreur", description: "Échec de la publication." });
     } finally {
       setIsLoading(false);
-      setModerationMessage("");
     }
   };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="bg-background border-b p-3 sm:p-4 sticky top-0 z-30">
-        <div className="max-w-4xl mx-auto flex items-center gap-4 sm:gap-6">
-          <button type="button" onClick={() => router.back()} className="p-2 hover:bg-muted rounded-full transition-colors">
-            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-          <h1 className="text-xl sm:text-2xl font-black text-foreground">Vendre un article</h1>
-        </div>
+      <div className="bg-background border-b p-4 sticky top-0 z-30 flex items-center gap-4">
+        <button type="button" onClick={() => router.back()} className="p-2"><ChevronLeft /></button>
+        <h1 className="text-xl font-bold">Vendre sur SuguMali</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-10">
-        <section className="space-y-3 sm:space-y-4">
-          <Label className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            PHOTOS & VIDÉOS <span className="normal-case font-normal">(Vidéo Cloudinary Max 30s)</span>
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 space-y-6">
+        <section className="space-y-4">
+          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Photos & Vidéos (Max 1 min)
           </Label>
-
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
             {mediaPreviews.map((m, i) => (
-              <div key={i} className="relative aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden border border-border group shadow-sm bg-muted">
+              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border bg-muted">
                 {m.uploading ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
-                    <span className="text-[8px] font-bold text-accent uppercase">Upload en cours...</span>
+                  <div className="flex h-full items-center justify-center flex-col gap-2 p-2 text-center">
+                    <Loader2 className="animate-spin text-orange-500" />
+                    <span className="text-xs text-muted-foreground">{m.uploadLabel || 'Chargement...'}</span>
                   </div>
                 ) : m.type === 'image' ? (
-                  <img src={m.url} className="w-full h-full object-cover" alt="Preview" />
+                  <img src={m.url} className="h-full w-full object-cover" alt="" />
                 ) : (
-                  <div className="relative w-full h-full">
-                    <video src={m.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
-                    <div className="absolute top-1 left-1 bg-black/50 p-1 rounded-full">
-                      <Video size={10} className="text-white" />
-                    </div>
-                  </div>
+                  <video src={m.url} className="h-full w-full object-cover" muted autoPlay loop />
                 )}
                 {!m.uploading && (
                   <button
                     type="button"
                     onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/50 text-white rounded-full p-1 sm:p-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
                   >
                     <X size={12} />
                   </button>
                 )}
               </div>
             ))}
-
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="aspect-square border-2 border-dashed border-muted-foreground/20 rounded-2xl sm:rounded-[2rem] flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-muted/50 hover:border-accent/40 transition-all group"
+              className="aspect-square border-2 border-dashed rounded-xl flex items-center justify-center hover:border-orange-400 transition-colors"
             >
-              <div className="bg-muted p-2 sm:p-3 rounded-full group-hover:bg-accent/10 transition-colors">
-                <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground group-hover:text-accent transition-colors" />
-              </div>
-              <span className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase group-hover:text-accent text-center px-1">Ajouter</span>
+              <Camera className="text-muted-foreground" />
             </button>
           </div>
-          <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,video/*" className="hidden" />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            multiple
+            accept="image/*,video/*"
+            className="hidden"
+          />
         </section>
 
-        <div className="bg-card p-5 sm:p-8 rounded-2xl sm:rounded-[3rem] border border-border/50 shadow-sm space-y-6 sm:space-y-8">
-          <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
-              Titre de l'annonce
-              {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
+        <div className="bg-card p-6 rounded-2xl border shadow-sm space-y-4">
+          <div className="space-y-2">
+            <Label>
+              Titre{' '}
+              {isAnalyzing && <span className="text-orange-500 text-xs">Mami analyse...</span>}
             </Label>
             <input
               type="text"
-              placeholder="ex: iPhone 13 Pro Max"
-              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-foreground text-base sm:text-lg"
+              className="w-full bg-muted/40 p-4 rounded-xl outline-none"
               value={title}
               onChange={e => setTitle(e.target.value)}
               required
             />
           </div>
 
-          <div className="space-y-3 sm:space-y-4">
-            <Label className="text-sm font-bold ml-1 sm:ml-2">État</Label>
-            <RadioGroup value={condition} onValueChange={(v: any) => setCondition(v)} className="flex flex-wrap gap-3 sm:gap-4 ml-1 sm:ml-2">
-              {['Neuf', 'Comme neuf', 'Occasion'].map(c => (
-                <div key={c} className="flex items-center space-x-2">
-                  <RadioGroupItem value={c} id={c} className="border-muted-foreground/30 text-accent h-4 w-4" />
-                  <Label htmlFor={c} className="text-xs sm:text-sm font-medium cursor-pointer">{c}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-bold ml-1 sm:ml-2">Localisation</Label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Bamako"
-                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 pl-10 sm:pl-12 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base"
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  required
-                />
-                <MapPin className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                {isFetchingLocation && <Loader2 className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 animate-spin text-accent" />}
-              </div>
-            </div>
-
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-bold ml-1 sm:ml-2">WhatsApp</Label>
-              <div className="flex gap-2">
-                <select
-                  value={countryCode}
-                  onChange={e => setCountryCode(e.target.value)}
-                  className="bg-muted/30 border-none rounded-xl sm:rounded-2xl px-2 sm:px-4 py-4 sm:py-5 outline-none focus:ring-2 focus:ring-accent/50 text-xs sm:text-sm"
-                >
-                  {countryCodes.map(c => <option key={c.code} value={c.dial_code}>{c.flag} {c.dial_code}</option>)}
-                </select>
-                <input
-                  type="tel"
-                  placeholder="76 00 00 00"
-                  className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 transition-all text-sm sm:text-base"
-                  value={whatsappNumber}
-                  onChange={e => setWhatsappNumber(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
-                Catégorie
-                {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
-              </Label>
-              <select
-                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                required
-              >
-                <option value="">Choisir...</option>
-                {categories.map(c => (
-                  <optgroup label={c.name} key={c.name}>
-                    {c.subcategories.map(s => <option key={s} value={s}>{s}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="text-sm font-bold ml-1 sm:ml-2">Prix (FCFA)</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Prix (FCFA)</Label>
               <input
                 type="number"
-                placeholder="0"
-                className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
+                className="w-full bg-muted/40 p-4 rounded-xl outline-none"
                 value={price}
                 onChange={e => setPrice(e.target.value)}
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label>WhatsApp</Label>
+              <input
+                type="tel"
+                className="w-full bg-muted/40 p-4 rounded-xl outline-none"
+                value={whatsappNumber}
+                onChange={e => setWhatsappNumber(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <Label className="text-sm font-bold ml-1 sm:ml-2 flex items-center gap-2">
-              Description
-              {isAnalyzing && <span className="text-[10px] text-accent font-normal animate-pulse">Mami génère...</span>}
-            </Label>
+          <div className="space-y-2">
+            <Label>Description</Label>
             <textarea
               rows={4}
-              placeholder="Décrivez votre article..."
-              className="w-full bg-muted/30 border-none rounded-xl sm:rounded-2xl p-4 sm:p-5 outline-none resize-none focus:ring-2 focus:ring-accent/50 text-sm sm:text-base"
+              className="w-full bg-muted/40 p-4 rounded-xl outline-none resize-none"
               value={description}
               onChange={e => setDescription(e.target.value)}
               required
@@ -465,30 +384,13 @@ export default function SellPage() {
 
         <button
           type="submit"
-          disabled={isLoading || isAnalyzing || mediaPreviews.some(m => m.uploading)}
-          className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-3xl shadow-xl shadow-accent/20 flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98] text-base sm:text-lg min-h-[80px]"
+          disabled={isLoading || mediaPreviews.some(m => m.uploading)}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? (
-            <div className="flex flex-col items-center gap-1">
-              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">{moderationMessage}</span>
-            </div>
-          ) : isAnalyzing ? (
-            <div className="flex flex-col items-center gap-1">
-              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Mami analyse votre photo...</span>
-            </div>
-          ) : mediaPreviews.some(m => m.uploading) ? (
-            <div className="flex flex-col items-center gap-1">
-              <Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-[10px] sm:text-xs font-bold animate-pulse uppercase tracking-wider">Upload vidéo en cours...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span>Publier l'annonce</span>
-            </div>
-          )}
+          {isLoading
+            ? <><Loader2 className="animate-spin" /><span>{moderationMessage}</span></>
+            : <><Sparkles size={20} /><span>Publier l'annonce</span></>
+          }
         </button>
       </form>
     </div>
