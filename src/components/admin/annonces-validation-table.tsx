@@ -7,7 +7,7 @@ import { collection, onSnapshot, query, where, updateDoc, doc, deleteDoc } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -82,6 +82,13 @@ export function AnnoncesValidationTable() {
       });
   };
 
+  const handleDelete = async (id: string) => {
+    if (!firestore || !confirm("Supprimer définitivement cette annonce ?")) return;
+    deleteDoc(doc(firestore, 'annonces', id))
+      .then(() => toast({ title: "Annonce supprimée" }))
+      .catch(() => toast({ variant: 'destructive', title: "Erreur lors de la suppression" }));
+  };
+
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
 
   return (
@@ -110,7 +117,13 @@ export function AnnoncesValidationTable() {
               <TableRow key={ad.id}>
                 <TableCell className="pl-6">
                   <div className="flex items-center gap-3">
-                    <img src={ad.image} alt="" className="h-10 w-10 object-cover rounded-lg border" />
+                    {ad.media && ad.media[0] ? (
+                      <img src={ad.media[0].url} alt="" className="h-10 w-10 object-cover rounded-lg border" />
+                    ) : ad.image ? (
+                      <img src={ad.image} alt="" className="h-10 w-10 object-cover rounded-lg border" />
+                    ) : (
+                      <div className="h-10 w-10 bg-muted rounded-lg border flex items-center justify-center text-[8px]">NO IMG</div>
+                    )}
                     <div className="flex flex-col">
                         <span className="font-bold text-sm truncate max-w-[200px]">{ad.titre}</span>
                         <Link href={`/annonces/${ad.id}`} target="_blank" className="text-[10px] text-accent flex items-center gap-1">Voir l'annonce <ExternalLink className="h-2 w-2" /></Link>
@@ -131,6 +144,9 @@ export function AnnoncesValidationTable() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleReject(ad.id)} className="text-destructive border-destructive/20 hover:bg-destructive/5 rounded-xl">
                         <XCircle className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(ad.id)} className="text-muted-foreground hover:text-destructive rounded-xl">
+                        <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

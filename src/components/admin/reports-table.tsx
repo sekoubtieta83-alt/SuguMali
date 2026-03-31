@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Flag, Loader2, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Flag, Loader2, Trash2, ExternalLink, AlertTriangle, ShieldX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -44,7 +44,7 @@ export function ReportsTable() {
     const reportDoc = doc(firestore, 'reports', id);
     deleteDoc(reportDoc)
       .then(() => {
-        toast({ title: "Signalement traité" });
+        toast({ title: "Signalement supprimé (le log uniquement)" });
       })
       .catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -53,6 +53,21 @@ export function ReportsTable() {
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+  };
+
+  const handleDeleteAnnonce = async (reportId: string, annonceId: string) => {
+    if (!firestore || !confirm("Voulez-vous vraiment supprimer définitivement cette annonce ?")) return;
+    
+    try {
+      // 1. Supprimer l'annonce
+      await deleteDoc(doc(firestore, 'annonces', annonceId));
+      // 2. Supprimer le signalement
+      await deleteDoc(doc(firestore, 'reports', reportId));
+      
+      toast({ title: "Annonce et signalement supprimés avec succès." });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur lors de la suppression" });
+    }
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
@@ -98,9 +113,19 @@ export function ReportsTable() {
                     {r.createdAt?.toDate ? format(r.createdAt.toDate(), 'dd MMM HH:mm', { locale: fr }) : 'Inconnue'}
                 </TableCell>
                 <TableCell className="text-right pr-6">
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteReport(r.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDeleteAnnonce(r.id, r.annonceId)} 
+                      className="text-destructive border-destructive/20 hover:bg-destructive/5 rounded-xl font-bold"
+                    >
+                      <ShieldX className="h-4 w-4 mr-1" /> Supprimer l'annonce
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteReport(r.id)} className="text-muted-foreground hover:bg-muted rounded-xl">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

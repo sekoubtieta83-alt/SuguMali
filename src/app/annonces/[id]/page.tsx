@@ -22,13 +22,14 @@ import {
   Star,
   ChevronRight,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, where, deleteDoc, updateDoc, increment, setDoc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -37,6 +38,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { AddReviewForm } from '@/components/dashboard/add-review-form';
 import { PromotionModal } from '@/components/dashboard/promotion-modal';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -57,6 +60,15 @@ type Review = {
     sellerId: string;
 };
 
+const REPORT_REASONS = [
+  "Arnaque / Fraude",
+  "Produit interdit",
+  "Contenu offensant",
+  "Déjà vendu / Indisponible",
+  "Catégorie incorrecte",
+  "Autre"
+];
+
 export default function AnnoncePage() {
   const router = useRouter();
   const params = useParams();
@@ -71,6 +83,8 @@ export default function AnnoncePage() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
@@ -246,6 +260,28 @@ export default function AnnoncePage() {
         errorEmitter.emit('permission-error', permissionError);
       });
       toast({ title: 'Ajouté aux favoris' });
+    }
+  };
+
+  const handleReport = async () => {
+    if (!id || !user || !firestore || !reportReason) return;
+    setIsReporting(true);
+    try {
+      const reportData = {
+        annonceId: id,
+        reason: reportReason,
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        status: 'pending'
+      };
+      await addDoc(collection(firestore, 'reports'), reportData);
+      toast({ title: "Signalement envoyé", description: "Merci de nous aider à garder SuguMali sûr." });
+      setIsReportDialogOpen(false);
+      setReportReason("");
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erreur lors de l'envoi" });
+    } finally {
+      setIsReporting(false);
     }
   };
 
@@ -543,6 +579,42 @@ export default function AnnoncePage() {
         annonceId={post.id} 
         annonceTitle={post.product?.name || 'Sans titre'} 
       />
+
+      {/* Signalement Modal */}
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Signaler l'annonce
+            </DialogTitle>
+            <DialogDescription>
+              Pourquoi souhaitez-vous signaler cette annonce ?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <RadioGroup value={reportReason} onValueChange={setReportReason} className="gap-3">
+              {REPORT_REASONS.map((reason) => (
+                <div key={reason} className="flex items-center space-x-2 p-2 rounded-xl hover:bg-muted transition-colors cursor-pointer">
+                  <RadioGroupItem value={reason} id={reason} />
+                  <Label htmlFor={reason} className="flex-1 cursor-pointer font-medium text-sm">{reason}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsReportDialogOpen(false)} className="rounded-xl">Annuler</Button>
+            <Button 
+              onClick={handleReport} 
+              disabled={!reportReason || isReporting} 
+              className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-bold px-6"
+            >
+              {isReporting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Flag className="h-4 w-4 mr-2" />}
+              Envoyer le signalement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Action Bar (Sticky Footer) */}
       {!post.isSold && (

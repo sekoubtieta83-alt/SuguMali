@@ -6,11 +6,12 @@ import { ReportsTable } from '@/components/admin/reports-table';
 import { PromotionsView } from '@/components/admin/promotions-view';
 import { AuditLogsView } from '@/components/admin/audit-logs-view';
 import { AnnoncesValidationTable } from '@/components/admin/annonces-validation-table';
+import { AllAnnoncesTable } from '@/components/admin/all-annonces-table';
 import { VerificationsTable } from '@/components/admin/verifications-table';
 import { ReviewsModerationTable } from '@/components/admin/reviews-moderation-table';
 import { CategoryStats } from '@/components/admin/category-stats';
 import { SearchMetricsView } from '@/components/admin/search-metrics-view';
-import { Shield, Users, Flag, Rocket, History, CheckSquare, ShieldCheck, MessageSquare, BarChart3, Search } from 'lucide-react';
+import { Shield, Users, Flag, Rocket, History, CheckSquare, ShieldCheck, MessageSquare, BarChart3, Search, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminPage() {
@@ -38,7 +39,11 @@ export default function AdminPage() {
                 </TabsTrigger>
                 <TabsTrigger value="validation" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
                     <CheckSquare className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
-                    Annonces
+                    Validation
+                </TabsTrigger>
+                <TabsTrigger value="gestion" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
+                    <Settings className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
+                    Gestion
                 </TabsTrigger>
                 <TabsTrigger value="demands" className="rounded-xl font-bold data-[state=active]:shadow-md data-[state=active]:bg-background text-[10px] md:text-sm px-3 md:px-6 py-2 md:py-3 transition-all">
                     <Search className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 md:mr-2 hidden sm:inline" />
@@ -75,6 +80,9 @@ export default function AdminPage() {
                 </TabsContent>
                 <TabsContent value="validation" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <AnnoncesValidationTable />
+                </TabsContent>
+                <TabsContent value="gestion" className="mt-0 focus-visible:outline-none overflow-hidden">
+                    <AllAnnoncesTable />
                 </TabsContent>
                 <TabsContent value="demands" className="mt-0 focus-visible:outline-none overflow-hidden">
                     <SearchMetricsView />
