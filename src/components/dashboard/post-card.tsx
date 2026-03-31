@@ -1,11 +1,9 @@
-
 'use client';
 
 import Image from 'next/image';
 import type { Post } from '@/lib/data';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ImageIcon, MapPin, Rocket, Play, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Play, MapPin } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 
@@ -14,18 +12,18 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  // Gestion du prix
+  // Gestion du prix formaté
   const formattedPrice = post.prix 
     ? `${post.prix.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`
     : null;
 
   const title = post.titre || "Annonce sans titre";
+  const location = post.localisation || "Mali";
 
-  // LOGIQUE DE RÉCUPÉRATION D'IMAGE AMÉLIORÉE
+  // Logique de récupération d'image améliorée
   let imageUrl = null;
   let isVideo = false;
 
-  // Priorité au champ image (qui contient souvent le base64 optimisé)
   if (post.image) {
     imageUrl = post.image;
   } else if (post.media && post.media.length > 0) {
@@ -34,7 +32,11 @@ export function PostCard({ post }: PostCardProps) {
   }
 
   return (
-    <Link href={`/annonces/${post.id}`} className="group block bg-[#12141c] rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border border-white/5 overflow-hidden flex flex-col h-full">
+    <Link 
+      href={`/annonces/${post.id}`} 
+      className="group block bg-[#12141c] rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border border-white/5 overflow-hidden flex flex-col h-full"
+      title={`${title} à ${location}`}
+    >
       <div className="relative h-48 bg-muted overflow-hidden flex items-center justify-center">
         {post.status === 'sold' && (
           <div className="absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
@@ -49,10 +51,9 @@ export function PostCard({ post }: PostCardProps) {
           !isVideo ? (
             <Image 
               src={imageUrl} 
-              alt={title}
+              alt={`${title} - ${location} | SuguMali`}
               fill 
               className={cn("w-full h-full object-cover group-hover:scale-105 transition-transform duration-300", post.status === 'sold' && "grayscale-[0.5]")} 
-              // Unoptimized est crucial pour les chaînes Base64
               unoptimized={imageUrl.startsWith('data:')} 
               priority={false}
               loading="lazy"
@@ -84,7 +85,7 @@ export function PostCard({ post }: PostCardProps) {
         
         <div className="flex items-center gap-1 mt-auto pt-3 text-xs text-muted-foreground">
           <MapPin className="h-3 w-3" />
-          <span>{post.localisation || "Mali"}</span>
+          <span>{location}</span>
         </div>
       </div>
     </Link>
