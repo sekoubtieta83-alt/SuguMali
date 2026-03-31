@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
@@ -222,6 +222,68 @@ export const verifyOTPAndResetPassword = onCall({
 });
 
 // --- NOTIFICATIONS AUTOMATIQUES ---
+
+// Trigger quand une annonce est rejetée (création ou mise à jour)
+export const onAnnonceModerated = onDocumentUpdated({
+  document: 'annonces/{annonceId}',
+  region: 'europe-west1'
+}, async (event) => {
+  const newValue = event.data?.after.data();
+  const previousValue = event.data?.before.data();
+
+  // Si le statut passe à 'rejected'
+  if (newValue?.status === 'rejected' && previousValue?.status !== 'rejected') {
+    const userId = newValue.vendeurId;
+    const userSnap = await db.collection('users').doc(userId).get();
+    const userData = userSnap.data();
+    const tokens = userData?.fcmTokens || [];
+
+    if (tokens.length > 0) {
+      const message = {
+        notification: {
+          title: 'Annonce rejetée ⚠️',
+          body: `Votre annonce "${newValue.titre}" a été rejetée. Raison : ${newValue.moderationReason || 'Non respect des règles'}`,
+        },
+        tokens: tokens,
+      };
+      try {
+        await admin.messaging().sendEachForMulticast(message);
+      } catch (e) {
+        console.error('Erreur envoi notification rejet:', e);
+      }
+    }
+  }
+});
+
+// Trigger à la création pour les annonces directement rejetées par l'IA
+export const onAnnonceCreated = onDocumentCreated({
+  document: 'annonces/{annonceId}',
+  region: 'europe-west1'
+}, async (event) => {
+  const data = event.data?.data();
+
+  if (data?.status === 'rejected') {
+    const userId = data.vendeurId;
+    const userSnap = await db.collection('users').doc(userId).get();
+    const userData = userSnap.data();
+    const tokens = userData?.fcmTokens || [];
+
+    if (tokens.length > 0) {
+      const message = {
+        notification: {
+          title: 'Annonce refusée ⚠️',
+          body: `Mami n'a pas pu valider votre annonce "${data.titre}". Raison : ${data.moderationReason || 'Non conforme'}`,
+        },
+        tokens: tokens,
+      };
+      try {
+        await admin.messaging().sendEachForMulticast(message);
+      } catch (e) {
+        console.error('Erreur envoi notification création rejet:', e);
+      }
+    }
+  }
+});
 
 // 1. Notification quand une promotion est approuvée
 export const onPromotionApproved = onDocumentUpdated({

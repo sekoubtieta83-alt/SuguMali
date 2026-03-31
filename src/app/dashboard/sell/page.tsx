@@ -260,6 +260,7 @@ export default function SellPage() {
         media: mediaPreviews.map(m => ({ url: m.url, type: m.type })),
         vendeurId: auth.currentUser.uid,
         status: isApproved ? 'approved' : 'rejected',
+        moderationReason: modResult.data.reason || '',
         description,
         localisation: location,
         whatsapp: cleanWhatsapp,
@@ -269,7 +270,15 @@ export default function SellPage() {
         views: 0
       });
 
-      toast({ title: "Succès !", description: "Votre annonce est enregistrée." });
+      if (!isApproved) {
+        toast({ 
+          variant: "destructive", 
+          title: "Annonce en attente", 
+          description: "Mami a détecté un problème. Un admin va vérifier." 
+        });
+      } else {
+        toast({ title: "Succès !", description: "Votre annonce est enregistrée." });
+      }
       router.push('/dashboard');
     } catch (error) {
       toast({ variant: "destructive", title: "Erreur", description: "Échec de la publication." });

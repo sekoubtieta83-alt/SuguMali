@@ -7,11 +7,12 @@ import { collection, onSnapshot, query, where, updateDoc, doc, deleteDoc } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ExternalLink, Loader2, AlertCircle, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, Loader2, AlertCircle, Trash2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function AnnoncesValidationTable() {
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -21,7 +22,7 @@ export function AnnoncesValidationTable() {
 
   useEffect(() => {
     if (!firestore) return;
-    // On surveille les annonces en attente ou celles qui ont demandé une revue manuelle
+    // On surveille les annonces en attente ou rejetées
     const annoncesRef = collection(firestore, 'annonces');
     const q = query(annoncesRef, where('status', 'in', ['pending', 'rejected']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -89,14 +90,14 @@ export function AnnoncesValidationTable() {
       .catch(() => toast({ variant: 'destructive', title: "Erreur lors de la suppression" }));
   };
 
-  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
+  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-accent" /></div>;
 
   return (
     <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
       <CardHeader className="bg-muted/30">
         <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-primary" />
-            Modération des Annonces
+            Validation & Rejets
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -104,23 +105,20 @@ export function AnnoncesValidationTable() {
           <TableHeader>
             <TableRow>
               <TableHead className="pl-6">Article</TableHead>
-              <TableHead>Prix</TableHead>
+              <TableHead>Statut / Raison</TableHead>
               <TableHead>Vendeur ID</TableHead>
-              <TableHead>Statut Actuel</TableHead>
               <TableHead className="text-right pr-6">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {annonces.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic">Aucune annonce en attente de modération.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic">Aucune annonce en attente de modération.</TableCell></TableRow>
             ) : annonces.map((ad) => (
               <TableRow key={ad.id}>
                 <TableCell className="pl-6">
                   <div className="flex items-center gap-3">
                     {ad.media && ad.media[0] ? (
                       <img src={ad.media[0].url} alt="" className="h-10 w-10 object-cover rounded-lg border" />
-                    ) : ad.image ? (
-                      <img src={ad.image} alt="" className="h-10 w-10 object-cover rounded-lg border" />
                     ) : (
                       <div className="h-10 w-10 bg-muted rounded-lg border flex items-center justify-center text-[8px]">NO IMG</div>
                     )}
@@ -130,13 +128,26 @@ export function AnnoncesValidationTable() {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="font-bold text-primary">{ad.prix}</TableCell>
-                <TableCell className="text-xs font-mono">{ad.vendeurId.slice(0, 8)}...</TableCell>
                 <TableCell>
-                    <Badge variant={ad.status === 'rejected' ? 'destructive' : 'secondary'}>
-                        {ad.manualReviewRequested ? '🔥 Manuel' : ad.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge variant={ad.status === 'rejected' ? 'destructive' : 'secondary'}>
+                            {ad.status}
+                        </Badge>
+                        {ad.moderationReason && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        <p className="text-xs font-medium">{ad.moderationReason}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
                 </TableCell>
+                <TableCell className="text-xs font-mono">{ad.vendeurId.slice(0, 8)}...</TableCell>
                 <TableCell className="text-right pr-6">
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleApprove(ad.id)} className="text-green-600 border-green-200 hover:bg-green-50 rounded-xl">
