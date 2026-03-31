@@ -193,19 +193,15 @@ export default function HomePage() {
         } as Post;
       });
 
-      // --- TRI HIÉRARCHIQUE : BOOSTÉS > CERTIFIÉS > RESTE ---
       const sorted = [...posts].sort((a, b) => {
-        // 1. Sponsorisés ou Promus d'abord (Priorité Haute)
         const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
         const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
         if (priorityA !== priorityB) return priorityB - priorityA;
 
-        // 2. Vendeurs certifiés ensuite (Priorité Moyenne)
         const certA = a.vendeurVerified ? 1 : 0;
         const certB = b.vendeurVerified ? 1 : 0;
         if (certA !== certB) return certB - certA;
 
-        // 3. Date la plus récente pour tout le reste
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -262,10 +258,6 @@ export default function HomePage() {
                 Annonces à la une
                 <span className="absolute -bottom-1 left-0 w-8 h-1 sm:h-1.5 bg-accent rounded-full"></span>
               </h2>
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-2">
-                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                Vendeurs certifiés & Annonces boostées en priorité
-              </p>
             </div>
             <Link href="/dashboard" className="group flex items-center gap-1 sm:gap-2 text-accent font-black py-2 hover:opacity-80 transition-all text-sm sm:text-base">
               Voir tout <span className="transition-transform group-hover:translate-x-1">→</span>

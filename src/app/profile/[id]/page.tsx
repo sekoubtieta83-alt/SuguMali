@@ -26,7 +26,6 @@ export default function PublicProfilePage() {
   useEffect(() => {
     if (!id || !firestore) return;
 
-    // 1. Récupérer les infos du vendeur
     const userRef = doc(firestore, 'users', id as string);
     const unsubUser = onSnapshot(userRef, (snap) => {
       if (snap.exists()) {
@@ -36,7 +35,6 @@ export default function PublicProfilePage() {
       }
     });
 
-    // 2. Récupérer les annonces approuvées du vendeur
     const postsRef = collection(firestore, 'annonces');
     const q = query(
       postsRef,
@@ -70,7 +68,6 @@ export default function PublicProfilePage() {
         } as unknown as Post;
       });
       
-      // Tri côté client par date décroissante
       const sorted = [...fetchedPosts].sort((a: any, b: any) => {
         const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
         const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
@@ -81,7 +78,6 @@ export default function PublicProfilePage() {
       setLoading(false);
     });
 
-    // 3. Récupérer les avis pour calculer la moyenne
     const reviewsRef = collection(firestore, 'reviews');
     const qRev = query(reviewsRef, where('sellerId', '==', id));
     const unsubReviews = onSnapshot(qRev, (snap) => {
@@ -122,7 +118,6 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header compact */}
       <div className="bg-background border-b p-4 sticky top-0 z-30 flex items-center justify-between gap-4 backdrop-blur-md bg-background/80">
         <div className="flex items-center gap-4">
             <button onClick={() => router.back()} className="p-2 bg-muted rounded-full hover:bg-muted/80 transition-colors">
@@ -131,15 +126,13 @@ export default function PublicProfilePage() {
             <h1 className="text-lg font-black tracking-tight truncate max-w-[200px]">{seller.displayName}</h1>
         </div>
         {seller.isVerified && (
-            <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border border-accent/20">
-                <BadgeCheck className="h-3.5 w-3.5 fill-accent text-white" />
-                Vendeur Certifié
+            <div className="bg-accent/10 text-accent px-2 py-1 rounded-full border border-accent/20" title="Vendeur Certifié">
+                <BadgeCheck className="h-4 w-4 fill-accent text-white" />
             </div>
         )}
       </div>
 
       <div className="max-w-6xl mx-auto p-4 md:p-8">
-        {/* Carte Profil */}
         <div className="bg-card rounded-[2.5rem] border shadow-sm p-6 md:p-10 mb-10 overflow-hidden relative">
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <ShoppingBag className="h-32 w-32 rotate-12" />
@@ -181,7 +174,6 @@ export default function PublicProfilePage() {
           </div>
         </div>
 
-        {/* Grille d'annonces */}
         <div className="space-y-8">
           <div className="flex items-center justify-between border-b pb-4">
             <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">

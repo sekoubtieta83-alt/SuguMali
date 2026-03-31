@@ -52,7 +52,7 @@ function DashboardInner() {
     return query(
       collection(firestore, 'annonces'), 
       where('status', '==', 'approved'),
-      limit(100) // Augmenté pour montrer plus d'annonces incluant les non-certifiées
+      limit(100)
     );
   }, [firestore]);
 
@@ -129,19 +129,15 @@ function DashboardInner() {
         return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition && matchesLocation;
     });
 
-    // --- LOGIQUE DE TRI HIÉRARCHIQUE : BOOSTÉS > CERTIFIÉS > RESTE ---
     const finalResults = [...filteredResults].sort((a, b) => {
-        // Priorité 1: Sponsorisé ou Promu
         const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
         const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
         if (priorityA !== priorityB) return priorityB - priorityA;
 
-        // Priorité 2: Vendeur Certifié
         const certA = a.vendeurVerified ? 1 : 0;
         const certB = b.vendeurVerified ? 1 : 0;
         if (certA !== certB) return certB - certA;
 
-        // Priorité 3: Date de création (décroissante) pour tout le reste
         const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
         const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
         return timeB - timeA;
@@ -166,10 +162,6 @@ function DashboardInner() {
                         {pageTitle}
                         {!filters.searchQuery && !filters.location && <Sparkles className="h-6 w-6 text-accent animate-pulse" />}
                     </h1>
-                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        Priorité aux vendeurs certifiés et annonces boostées
-                    </div>
                     <p className="text-muted-foreground font-medium text-sm md:text-base mt-2">
                         {isLoading ? "Chargement..." : `${filteredPosts.length} annonce(s) trouvée(s)`}
                     </p>
