@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import type { Post } from '@/lib/data';
 import Link from 'next/link';
@@ -10,16 +12,21 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const formattedPrice = post.isProduct && post.product 
-    ? `${post.product.price.replace(/[^0-9,.]/g, '')} FCFA`
+  const formattedPrice = post.price 
+    ? `${post.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} FCFA`
     : null;
 
-  const title = post.isProduct && post.product?.name ? post.product.name : post.content;
-  const firstMedia = post.media && post.media.length > 0 ? post.media[0] : null;
+  const title = post.title || "Sans titre";
+
+  // LOGIQUE CORRIGÉE : On vérifie media OU le champ image direct
+  const firstMedia = (post.media && post.media.length > 0) 
+    ? post.media[0] 
+    : (post.image ? { type: 'image', url: post.image } : null);
 
   return (
-    <Link href={`/annonces/${post.id}`} className="group block bg-card rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-border/50 overflow-hidden flex flex-col relative">
+    <Link href={`/annonces/${post.id}`} className="group block bg-card rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-border/50 overflow-hidden flex flex-col relative h-full">
       <div className="relative h-48 bg-muted overflow-hidden">
+        {/* Badge Vendu */}
         {post.isSold && (
           <div className="absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
             <div className="bg-destructive text-white px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-2 scale-110">
@@ -29,12 +36,15 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         )}
         
+        {/* Badge Sponsorisé */}
         {post.isPromoted && !post.isSold && (
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-primary/80 backdrop-blur-sm text-primary-foreground text-xs font-bold py-1 px-2 rounded-full shadow-lg">
                 <Rocket className="h-3 w-3" />
                 <span>Sponsorisé</span>
             </div>
         )}
+
+        {/* Affichage du Média (Image ou Vidéo) */}
         {firstMedia ? (
           firstMedia.type === 'image' ? (
             <Image 
@@ -42,7 +52,7 @@ export function PostCard({ post }: PostCardProps) {
               alt={title}
               fill 
               className={cn("w-full h-full object-cover group-hover:scale-105 transition-transform duration-300", post.isSold && "grayscale-[0.5]")} 
-              data-ai-hint="product image"
+              unoptimized={firstMedia.url.startsWith('data:')} // Important pour les images en base64
             />
           ) : (
             <div className="relative w-full h-full">
@@ -62,29 +72,38 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           )
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <ImageIcon className="h-10 w-10" />
+          /* Si aucune image n'est trouvée */
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-slate-100">
+              <ImageIcon className="h-10 w-10 mb-2 opacity-20" />
+              <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">SuguMali</span>
           </div>
         )}
       </div>
+
       <div className="p-4 flex flex-col flex-1">
-        <h3 className={cn("font-bold text-card-foreground truncate", post.isSold && "text-muted-foreground")} title={title}>{title}</h3>
+        <h3 className={cn("font-bold text-card-foreground truncate", post.isSold && "text-muted-foreground")} title={title}>
+          {title}
+        </h3>
         
         {formattedPrice && (
-            <p className={cn("text-accent font-extrabold text-xl mt-1", post.isSold && "text-muted-foreground line-through")}>{formattedPrice}</p>
+            <p className={cn("text-orange-500 font-extrabold text-xl mt-1", post.isSold && "text-muted-foreground line-through")}>
+              {formattedPrice}
+            </p>
         )}
         
         <div className="flex items-center gap-1 mt-3 text-sm text-muted-foreground">
-          {post.location && (
+          {post.location ? (
             <>
               <MapPin className="h-4 w-4" />
               <span>{post.location}</span>
             </>
+          ) : (
+            <span>Bamako</span>
           )}
         </div>
 
         <div className="mt-auto pt-4">
-            <Button className={cn("w-full font-bold rounded-xl border-none", post.isSold ? "bg-muted text-muted-foreground" : "bg-accent hover:bg-accent/90 text-white")} tabIndex={-1}>
+            <Button className={cn("w-full font-bold rounded-xl border-none", post.isSold ? "bg-muted text-muted-foreground" : "bg-orange-500 hover:bg-orange-600 text-white")} tabIndex={-1}>
               {post.isSold ? 'Voir l\'annonce' : 'Voir les détails'}
             </Button>
         </div>
