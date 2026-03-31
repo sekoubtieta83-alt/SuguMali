@@ -13,37 +13,30 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  // ✅ DEBUG - Affiche les données dans la Console
+  // ✅ DEBUG - Affiche les données dans la Console pour vérification
   console.log('Post data:', {
     id: post.id,
     titre: post.titre,
-    image: post.image ? `${post.image.substring(0, 100)}...` : 'UNDEFINED',
-    media: post.media,
-    prix: post.prix,
+    image: post.image ? `${post.image.substring(0, 50)}...` : 'N/A',
+    mediaCount: post.media?.length || 0,
   });
 
-  // Gestion du prix (utilise 'prix' au lieu de 'price')
+  // Gestion du prix
   const formattedPrice = post.prix 
     ? `${post.prix.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`
     : null;
 
   const title = post.titre || "Annonce sans titre";
 
-  // LOGIQUE DE RÉCUPÉRATION D'IMAGE (La plus complète possible)
+  // ✅ LOGIQUE DE RÉCUPÉRATION D'IMAGE AMÉLIORÉE
   let imageUrl = null;
   let isVideo = false;
 
   if (post.image) {
-    // Cas 1 : Image directe dans le champ 'image'
     imageUrl = post.image;
-    console.log('✅ Image trouvée dans post.image');
   } else if (post.media && post.media.length > 0) {
-    // Cas 2 : Image dans le tableau 'media'
     imageUrl = post.media[0].url;
     isVideo = post.media[0].type === 'video';
-    console.log('✅ Image trouvée dans post.media[0].url');
-  } else {
-    console.log('❌ Aucune image trouvée!');
   }
 
   return (
@@ -65,6 +58,7 @@ export function PostCard({ post }: PostCardProps) {
               alt={title}
               fill 
               className={cn("w-full h-full object-cover group-hover:scale-105 transition-transform duration-300", post.status === 'sold' && "grayscale-[0.5]")} 
+              // ✅ Unoptimized est crucial pour les longues chaînes Base64
               unoptimized={imageUrl.startsWith('data:') || imageUrl.includes('firebase')} 
               priority={false}
               loading="lazy"

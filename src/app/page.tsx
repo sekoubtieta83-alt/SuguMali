@@ -165,12 +165,18 @@ export default function HomePage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const posts = snapshot.docs.map(doc => {
         const data = doc.data();
+        
+        // ✅ Récupération robuste de l'image (Base64 supporté)
+        const base64Image = data.image || (data.media && data.media[0]?.url) || data.imageUrl || null;
+
         return {
           id: doc.id,
           userId: data.vendeurId,
-          vendeurVerified: data.vendeurVerified || false, // Extraction de l'état certifié
+          vendeurVerified: data.vendeurVerified || false,
           content: data.description || '',
-          media: data.imageUrl ? [{ url: data.imageUrl, type: 'image' as const }] : data.image ? [{ url: data.image, type: 'image' as const }] : [],
+          // On s'assure que media contient l'image correcte pour le rendu
+          media: data.media || (base64Image ? [{ url: base64Image, type: 'image' as const }] : []),
+          image: base64Image,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
           isProduct: true,
           isPromoted: data.isPromoted || false,
@@ -188,21 +194,13 @@ export default function HomePage() {
         } as Post & { sponsored: boolean; vendeurVerified: boolean };
       });
 
-      // Tri intelligent : Promus (Sponsored/Promoted) > Vérifiés > Date
       const sorted = [...posts].sort((a: any, b: any) => {
-        // 1. Sponsored
         if (a.sponsored && !b.sponsored) return -1;
         if (!a.sponsored && b.sponsored) return 1;
-        
-        // 2. Promoted (Boosted)
         if (a.isPromoted && !b.isPromoted) return -1;
         if (!a.isPromoted && b.isPromoted) return 1;
-
-        // 3. Vendeur Vérifié
         if (a.vendeurVerified && !b.vendeurVerified) return -1;
         if (!a.vendeurVerified && b.vendeurVerified) return 1;
-
-        // 4. Date de création (plus récent en premier)
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -286,7 +284,7 @@ export default function HomePage() {
                   title={post.product?.name || post.content}
                   price={post.product?.price || ''}
                   location={post.location || 'N/A'}
-                  image={post.media?.[0]?.url || ''}
+                  image={post.image || (post.media && post.media[0]?.url) || ''}
                   condition={post.condition}
                   sponsored={post.sponsored}
                 />

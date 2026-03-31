@@ -74,6 +74,9 @@ function DashboardInner() {
         const rawPrice = data.prix ? String(data.prix).replace(/[^0-9]/g, '') : '0';
         const numericPrice = parseFloat(rawPrice) || 0;
 
+        // ✅ Mapping robuste pour l'image (Base64 ou URL)
+        const postImage = data.image || (data.media && data.media[0]?.url) || null;
+
         const post: Post = {
           id: doc.id,
           vendeurId: data.vendeurId || data.userId || '',
@@ -92,7 +95,7 @@ function DashboardInner() {
           whatsapp: data.whatsapp || '',
           isPromoted: Boolean(data.isPromoted),
           isSold: Boolean(data.isSold),
-          image: data.image || (data.media?.[0]?.url) || null,
+          image: postImage,
           media: data.media || (data.image ? [{ url: data.image, type: 'image' }] : []),
           product: {
             name: data.titre || data.title || 'Sans titre',
@@ -163,7 +166,6 @@ function DashboardInner() {
             <FilterSidebar filters={filters} setFilters={setFilters} />
         </div>
         <main className="flex-1 p-4 md:p-8 lg:p-10">
-            {/* ... (Reste du JSX identique à ton code précédent) ... */}
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
                 <div className="space-y-1">
                     <h1 className="font-black text-2xl md:text-4xl tracking-tight text-foreground flex items-center gap-3">
