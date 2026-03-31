@@ -9,7 +9,7 @@ import { useFirestore, useAuth } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { categories } from '@/lib/categories';
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { logActivity } from '@/lib/audit';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
@@ -19,7 +19,7 @@ const CLOUDINARY_UPLOAD_PRESET = "video_upload_preset";
 const MAX_IMAGE_RES = 3840;
 const MAX_VIDEO_DURATION = 60; // secondes
 
-// ✅ Tronque la vidéo à 60s côté navigateur (sans dépendance externe)
+// ✅ Tronque la vidéo à 60s côté navigateur
 const trimVideoTo60s = (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -28,14 +28,12 @@ const trimVideoTo60s = (file: File): Promise<File> => {
     video.muted = true;
 
     video.onloadedmetadata = () => {
-      // Si la vidéo fait moins de 60s, on la retourne telle quelle
       if (video.duration <= MAX_VIDEO_DURATION) {
         URL.revokeObjectURL(url);
         resolve(file);
         return;
       }
 
-      // Sinon, on enregistre les 60 premières secondes via MediaRecorder
       const stream = (video as any).captureStream();
       const chunks: BlobPart[] = [];
       const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
@@ -61,7 +59,6 @@ const trimVideoTo60s = (file: File): Promise<File> => {
       video.play();
       recorder.start();
 
-      // Arrête l'enregistrement après 60 secondes
       setTimeout(() => {
         recorder.stop();
         video.pause();
@@ -75,7 +72,6 @@ const trimVideoTo60s = (file: File): Promise<File> => {
   });
 };
 
-// Upload vers Cloudinary (simple, sans eager)
 const uploadVideoToCloudinary = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -88,7 +84,6 @@ const uploadVideoToCloudinary = async (file: File): Promise<string> => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error("Cloudinary error:", errorData);
     throw new Error(errorData.error?.message || "Upload échoué.");
   }
 
@@ -185,24 +180,7 @@ export default function SellPage() {
         setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true, uploadLabel: 'Préparation...' }]);
 
         try {
-          // Étape 1 : tronquer à 60s si nécessaire
-          setMediaPreviews(prev => {
-            const updated = [...prev];
-            const idx = updated.findIndex(p => p.uploading && p.url === '');
-            if (idx !== -1) updated[idx] = { ...updated[idx], uploadLabel: 'Découpage à 1 min...' };
-            return updated;
-          });
-
           const trimmedFile = await trimVideoTo60s(file);
-
-          // Étape 2 : upload vers Cloudinary
-          setMediaPreviews(prev => {
-            const updated = [...prev];
-            const idx = updated.findIndex(p => p.uploading && p.url === '');
-            if (idx !== -1) updated[idx] = { ...updated[idx], uploadLabel: 'Upload en cours...' };
-            return updated;
-          });
-
           const videoUrl = await uploadVideoToCloudinary(trimmedFile);
 
           setMediaPreviews(prev => {
@@ -212,16 +190,10 @@ export default function SellPage() {
             return updated;
           });
 
-          toast({ title: "Vidéo ajoutée ✅", description: "Limitée à la première minute." });
-
+          toast({ title: "Vidéo ajoutée ✅" });
         } catch (e: any) {
-          console.error("Erreur upload video:", e.message);
           setMediaPreviews(prev => prev.filter(p => !(p.uploading && p.url === '')));
-          toast({
-            variant: "destructive",
-            title: "Erreur vidéo",
-            description: e.message || "Impossible d'uploader la vidéo.",
-          });
+          toast({ variant: "destructive", title: "Erreur vidéo", description: e.message });
         }
       } else if (file.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -248,17 +220,25 @@ export default function SellPage() {
     setModerationMessage("Mami vérifie l'annonce...");
 
     try {
+      // 1. Vérifier si le vendeur est certifié (badge orange)
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const isVerified = userSnap.exists() ? Boolean(userSnap.data().isVerified) : false;
+
+      // 2. Modération IA
       const moderateImageFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
       const modResult: any = await moderateImageFn({ titre: title, description, prix: `${price} FCFA` });
 
       const isApproved = modResult.data.approved;
       const cleanWhatsapp = `${countryCode}${whatsappNumber.replace(/\D/g, '')}`;
 
+      // 3. Enregistrement
       await addDoc(collection(db, "annonces"), {
         titre: title,
         prix: `${price} FCFA`,
         media: mediaPreviews.map(m => ({ url: m.url, type: m.type })),
         vendeurId: auth.currentUser.uid,
+        vendeurVerified: isVerified, // ON ENREGISTRE LE STATUT ICI
         status: isApproved ? 'approved' : 'rejected',
         moderationReason: modResult.data.reason || '',
         description,
@@ -271,11 +251,7 @@ export default function SellPage() {
       });
 
       if (!isApproved) {
-        toast({ 
-          variant: "destructive", 
-          title: "Annonce en attente", 
-          description: "Mami a détecté un problème. Un admin va vérifier." 
-        });
+        toast({ variant: "destructive", title: "Annonce en attente", description: "Mami a détecté un problème. Un admin va vérifier." });
       } else {
         toast({ title: "Succès !", description: "Votre annonce est enregistrée." });
       }
@@ -305,7 +281,7 @@ export default function SellPage() {
                 {m.uploading ? (
                   <div className="flex h-full items-center justify-center flex-col gap-2 p-2 text-center">
                     <Loader2 className="animate-spin text-orange-500" />
-                    <span className="text-xs text-muted-foreground">{m.uploadLabel || 'Chargement...'}</span>
+                    <span className="text-xs text-muted-foreground text-[10px]">{m.uploadLabel || 'Chargement...'}</span>
                   </div>
                 ) : m.type === 'image' ? (
                   <img src={m.url} className="h-full w-full object-cover" alt="" />
@@ -331,75 +307,34 @@ export default function SellPage() {
               <Camera className="text-muted-foreground" />
             </button>
           </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            multiple
-            accept="image/*,video/*"
-            className="hidden"
-          />
+          <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,video/*" className="hidden" />
         </section>
 
         <div className="bg-card p-6 rounded-2xl border shadow-sm space-y-4">
           <div className="space-y-2">
-            <Label>
-              Titre{' '}
-              {isAnalyzing && <span className="text-orange-500 text-xs">Mami analyse...</span>}
-            </Label>
-            <input
-              type="text"
-              className="w-full bg-muted/40 p-4 rounded-xl outline-none"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-            />
+            <Label>Titre {isAnalyzing && <span className="text-orange-500 text-xs">Mami analyse...</span>}</Label>
+            <input type="text" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={title} onChange={e => setTitle(e.target.value)} required />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Prix (FCFA)</Label>
-              <input
-                type="number"
-                className="w-full bg-muted/40 p-4 rounded-xl outline-none"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
-                required
-              />
+              <input type="number" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={price} onChange={e => setPrice(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label>WhatsApp</Label>
-              <input
-                type="tel"
-                className="w-full bg-muted/40 p-4 rounded-xl outline-none"
-                value={whatsappNumber}
-                onChange={e => setWhatsappNumber(e.target.value)}
-                required
-              />
+              <input type="tel" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} required />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Description</Label>
-            <textarea
-              rows={4}
-              className="w-full bg-muted/40 p-4 rounded-xl outline-none resize-none"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              required
-            />
+            <textarea rows={4} className="w-full bg-muted/40 p-4 rounded-xl outline-none resize-none" value={description} onChange={e => setDescription(e.target.value)} required />
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading || mediaPreviews.some(m => m.uploading)}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 disabled:opacity-50 transition-colors"
-        >
-          {isLoading
-            ? <><Loader2 className="animate-spin" /><span>{moderationMessage}</span></>
-            : <><Sparkles size={20} /><span>Publier l'annonce</span></>
-          }
+        <button type="submit" disabled={isLoading || mediaPreviews.some(m => m.uploading)} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 disabled:opacity-50 transition-colors">
+          {isLoading ? <><Loader2 className="animate-spin" /><span>{moderationMessage}</span></> : <><Sparkles size={20} /><span>Publier l'annonce</span></>}
         </button>
       </form>
     </div>

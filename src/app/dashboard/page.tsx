@@ -5,7 +5,7 @@ import { PostCard } from '@/components/dashboard/post-card';
 import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
-import { Frown, Sparkles } from 'lucide-react';
+import { Frown, Sparkles, Star } from 'lucide-react';
 import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sidebar';
 import { useFirestore } from '@/firebase';
 import { collection, onSnapshot, query, where, limit, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
@@ -52,7 +52,7 @@ function DashboardInner() {
     return query(
       collection(firestore, 'annonces'), 
       where('status', '==', 'approved'),
-      limit(40) 
+      limit(60) 
     );
   }, [firestore]);
 
@@ -92,7 +92,10 @@ function DashboardInner() {
         } as Post;
       });
 
-      setAllPosts(postsFromFirestore);
+      // --- FILTRAGE STRICT : SEULEMENT LES CERTIFIÉS / PROMUS ---
+      const verifiedOnly = postsFromFirestore.filter(p => p.sponsored || p.isPromoted || p.vendeurVerified);
+
+      setAllPosts(verifiedOnly);
       setIsLoading(false);
     }, (serverError) => {
       if (serverError.code === 'permission-denied') {
@@ -166,8 +169,12 @@ function DashboardInner() {
                         {pageTitle}
                         {!filters.searchQuery && !filters.location && <Sparkles className="h-6 w-6 text-accent animate-pulse" />}
                     </h1>
-                    <p className="text-muted-foreground font-medium text-sm md:text-base">
-                        {isLoading ? "Chargement..." : `${filteredPosts.length} annonce(s) trouvée(s)`}
+                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        Affichage exclusif : Vendeurs certifiés
+                    </div>
+                    <p className="text-muted-foreground font-medium text-sm md:text-base mt-2">
+                        {isLoading ? "Chargement..." : `${filteredPosts.length} annonce(s) certifiée(s) trouvée(s)`}
                     </p>
                 </div>
             </div>
@@ -181,9 +188,10 @@ function DashboardInner() {
                     {filteredPosts.map((post) => <PostCard key={post.id} post={post} />)}
                 </div>
             ) : (
-                <div className="text-center py-20">
-                    <Frown className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-bold">Aucun résultat</h3>
+                <div className="text-center py-20 bg-card rounded-[2rem] border-2 border-dashed">
+                    <Frown className="mx-auto h-12 w-12 text-muted-foreground mb-4 opacity-20" />
+                    <h3 className="text-lg font-bold text-muted-foreground">Aucune annonce certifiée ici</h3>
+                    <p className="text-sm text-muted-foreground/60 mt-1">Seuls les vendeurs avec le badge orange apparaissent.</p>
                 </div>
             )}
         </main>
