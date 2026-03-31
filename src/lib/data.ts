@@ -1,46 +1,55 @@
-export type User = {
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
+import { db } from '@/firebase'; // Chemin vers votre fichier de configuration Firebase
+
+// Définition de la structure d'une annonce
+export interface Post {
   id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  isVerified: boolean;
-  joined: string;
-};
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  image?: string; 
+}
 
-export type Post = {
-  id: string;
-  userId: string;
-  content: string;
-  media: { url: string; type: 'image' | 'video' }[];
-  createdAt: string;
-  likes: number;
-  comments: number;
-  isProduct: boolean;
-  isPromoted?: boolean;
-  isSold?: boolean;
-  location?: string;
-  whatsappNumber?: string;
-  category?: string;
-  condition?: 'Neuf' | 'Comme neuf' | 'Occasion';
-  status?: 'pending' | 'approved' | 'rejected' | 'shadowed';
-  moderationReason?: string;
-  manualReviewRequested?: boolean;
-  views?: number;
-  product?: {
-    name: string;
-    price: string;
-    url: string;
-  };
-};
+// Référence à votre collection Firestore (assurez-vous qu'elle s'appelle bien 'annonces' ou modifiez ici)
+const postsCollection = collection(db, 'annonces'); 
 
-export const users: User[] = [
-  { id: '1', name: 'Alice Johnson', email: 'alice@example.com', avatar: 'https://picsum.photos/seed/avatar1/100/100', isVerified: true, joined: '2023-01-15' },
-  { id: '2', name: 'Bob Williams', email: 'bob@example.com', avatar: 'https://picsum.photos/seed/avatar2/100/100', isVerified: false, joined: '2023-02-20' },
-  { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', avatar: 'https://picsum.photos/seed/avatar3/100/100', isVerified: true, joined: '2023-03-10' },
-  { id: '4', name: 'Diana Prince', email: 'diana@example.com', avatar: 'https://picsum.photos/seed/avatar4/100/100', isVerified: false, joined: '2023-04-05' },
-  { id: '5', name: 'Ethan Hunt', email: 'ethan@example.com', avatar: 'https://picsum.photos/seed/avatar5/100/100', isVerified: false, joined: '2023-05-21' },
-];
+// 1. Charger TOUTES les annonces
+export async function getAllPosts(): Promise<Post[]> {
+  try {
+    const snapshot = await getDocs(postsCollection);
+    // On mappe les documents pour inclure l'ID généré par Firestore
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+  } catch (error) {
+    console.error("Erreur lors de la récupération des annonces :", error);
+    return []; // Retourne un tableau vide pour ne pas faire crasher l'application
+  }
+}
 
-export const posts: Post[] = [];
+// 2. Charger une annonce spécifique (pour votre page de détail)
+export async function getPostById(postId: string): Promise<Post | null> {
+  try {
+    const docRef = doc(db, 'annonces', postId);
+    const docSnap = await getDoc(docRef);
 
-export const getPostUser = (userId: string) => users.find(u => u.id === userId);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Post;
+    }
+    return null; // Si l'annonce n'existe pas
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'annonce :", error);
+    return null;
+  }
+}
+
+// 3. Filtrer par catégorie (idéal pour la navigation)
+export async function getPostsByCategory(category: string): Promise<Post[]> {
+  try {
+    const q = query(postsCollection, where("category", "==", category));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+  } catch (error) {
+    console.error(`Erreur lors du filtrage pour la catégorie ${category} :`, error);
+    return [];
+  }
+}
