@@ -1,8 +1,8 @@
 export interface Post {
   id: string;
   vendeurId: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: any;
+  updatedAt?: any;
   titre: string;
   description: string;
   categorie: string;
@@ -13,16 +13,18 @@ export interface Post {
   media?: Array<{ type: 'image' | 'video'; url: string }>;
   vendeurVerified: boolean;
   whatsapp?: string;
+  whatsappNumber?: string;
   status: 'pending' | 'approved' | 'rejected' | 'sold';
   views: number;
   likes: number;
   comments: number;
   
-  // ✅ AJOUTE CES DEUX LIGNES (OBLIGATOIRE POUR LE DASHBOARD)
+  // Champs de priorité et statut
   isPromoted: boolean; 
   isSold: boolean;
+  sponsored?: boolean;
 
-  // AJOUTE CES LIGNES POUR COMPATIBILITÉ (ANCIENS COMPOSANTS)
+  // Champs de compatibilité
   product?: any; 
   content?: string;
   location?: string;

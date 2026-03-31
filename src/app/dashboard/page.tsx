@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { PostCard } from '@/components/dashboard/post-card';
 import { type Post } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
-import { Frown, ListFilter, Sparkles } from 'lucide-react';
+import { Frown, Sparkles } from 'lucide-react';
 import { FilterSidebar, type Filters } from '@/components/dashboard/filter-sidebar';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { collection, onSnapshot, query, where, limit, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -30,7 +28,6 @@ function DashboardInner() {
     location: '',
   });
 
-  // 1. Synchronisation des filtres avec l'URL
   useEffect(() => {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || null;
@@ -50,7 +47,6 @@ function DashboardInner() {
     });
   }, [searchParams]);
 
-  // 2. Définition de la requête Firestore avec LIMITE
   const annoncesQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
@@ -60,17 +56,15 @@ function DashboardInner() {
     );
   }, [firestore]);
 
-  // 3. Écoute en temps réel de Firestore
   useEffect(() => {
     if (!annoncesQuery) return;
 
     const unsubscribe = onSnapshot(annoncesQuery, { includeMetadataChanges: true }, (snapshot) => {
       const postsFromFirestore = snapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => {
         const data = doc.data();
-        
         const postImage = data.image || (data.media && data.media[0]?.url) || null;
 
-        const post: Post = {
+        return {
           id: doc.id,
           vendeurId: data.vendeurId || '',
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
@@ -80,13 +74,14 @@ function DashboardInner() {
           etat: data.etat || 'Occasion',
           prix: data.prix || 0,
           localisation: data.localisation || 'Mali',
-          vendeurVerified: Boolean(data.vendeurVerified),
+          vendeurVerified: Boolean(data.vendeurVerified || data.isVerified),
           status: data.status || 'approved',
           views: data.views || 0,
           likes: data.likes || 0,
           comments: data.comments || 0,
           isPromoted: Boolean(data.isPromoted),
-          isSold: Boolean(data.isSold),
+          sponsored: Boolean(data.sponsored),
+          isSold: data.status === 'sold',
           image: postImage,
           media: data.media || (postImage ? [{ url: postImage, type: 'image' }] : []),
           product: {
@@ -94,8 +89,7 @@ function DashboardInner() {
             price: data.prix || '0 FCFA',
             url: `/annonces/${doc.id}`,
           }
-        };
-        return post;
+        } as Post;
       });
 
       setAllPosts(postsFromFirestore);
@@ -114,7 +108,6 @@ function DashboardInner() {
     return () => unsubscribe();
   }, [annoncesQuery]);
 
-  // 4. Filtrage local et TRI HIERARCHIQUE
   useEffect(() => {
     const filteredResults = allPosts.filter((post: Post) => {
         const { searchQuery, category, minPrice, maxPrice, conditions, location } = filters;
@@ -136,15 +129,17 @@ function DashboardInner() {
         return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition && matchesLocation;
     });
 
-    // --- LOGIQUE DE TRI ---
+    // --- LOGIQUE DE TRI HIÉRARCHIQUE ---
     const finalResults = [...filteredResults].sort((a, b) => {
-        // Priorité 1: isPromoted
-        if (a.isPromoted && !b.isPromoted) return -1;
-        if (!a.isPromoted && b.isPromoted) return 1;
+        // Priorité 1: Sponsorisé ou Promu
+        const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
+        const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
+        if (priorityA !== priorityB) return priorityB - priorityA;
 
-        // Priorité 2: vendeurVerified
-        if (a.vendeurVerified && !b.vendeurVerified) return -1;
-        if (!a.vendeurVerified && b.vendeurVerified) return 1;
+        // Priorité 2: Vendeur Certifié
+        const certA = a.vendeurVerified ? 1 : 0;
+        const certB = b.vendeurVerified ? 1 : 0;
+        if (certA !== certB) return certB - certA;
 
         // Priorité 3: Date de création (décroissante)
         const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;

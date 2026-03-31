@@ -15,8 +15,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post } from '@/lib/data';
 import { collection, onSnapshot, query, where, doc, setDoc, increment } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 // ── Carte annonce compacte ──────────────────────────────────────────────────
 const FeaturedProductCard = ({
@@ -165,42 +163,49 @@ export default function HomePage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const posts = snapshot.docs.map(doc => {
         const data = doc.data();
-        
-        // ✅ Récupération robuste de l'image (Base64 supporté)
         const base64Image = data.image || (data.media && data.media[0]?.url) || data.imageUrl || null;
 
         return {
           id: doc.id,
-          userId: data.vendeurId,
-          vendeurVerified: data.vendeurVerified || false,
+          vendeurId: data.vendeurId,
+          vendeurVerified: Boolean(data.vendeurVerified || data.isVerified),
           content: data.description || '',
-          // On s'assure que media contient l'image correcte pour le rendu
           media: data.media || (base64Image ? [{ url: base64Image, type: 'image' as const }] : []),
           image: base64Image,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
           isProduct: true,
-          isPromoted: data.isPromoted || false,
-          sponsored: data.sponsored || false,
-          location: data.localisation || '',
+          isPromoted: Boolean(data.isPromoted),
+          sponsored: Boolean(data.sponsored),
+          location: data.localisation || 'Mali',
           whatsappNumber: data.whatsapp || '',
           category: data.categorie || '',
           condition: data.etat || 'Occasion',
           status: data.status || 'approved',
+          views: data.views || 0,
+          likes: data.likes || 0,
+          comments: data.comments || 0,
+          isSold: data.status === 'sold',
           product: {
             name: data.titre || 'Sans titre',
             price: data.prix || '0 FCFA',
             url: `/annonces/${doc.id}`,
           },
-        } as Post & { sponsored: boolean; vendeurVerified: boolean };
+        } as Post;
       });
 
-      const sorted = [...posts].sort((a: any, b: any) => {
-        if (a.sponsored && !b.sponsored) return -1;
-        if (!a.sponsored && b.sponsored) return 1;
-        if (a.isPromoted && !b.isPromoted) return -1;
-        if (!a.isPromoted && b.isPromoted) return 1;
-        if (a.vendeurVerified && !b.vendeurVerified) return -1;
-        if (!a.vendeurVerified && b.vendeurVerified) return 1;
+      // --- TRI HIÉRARCHIQUE ---
+      const sorted = [...posts].sort((a, b) => {
+        // 1. Sponsorisés ou Promus d'abord
+        const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
+        const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
+        if (priorityA !== priorityB) return priorityB - priorityA;
+
+        // 2. Vendeurs certifiés ensuite
+        const certA = a.vendeurVerified ? 1 : 0;
+        const certB = b.vendeurVerified ? 1 : 0;
+        if (certA !== certB) return certB - certA;
+
+        // 3. Date la plus récente
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -277,16 +282,16 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-2">
-              {(featuredProducts || []).slice(0, 12).map((post: any) => (
+              {(featuredProducts || []).slice(0, 12).map((post: Post) => (
                 <FeaturedProductCard
                   key={post.id}
                   id={post.id}
-                  title={post.product?.name || post.content}
-                  price={post.product?.price || ''}
-                  location={post.location || 'N/A'}
+                  title={post.product?.name || post.titre || post.content || ''}
+                  price={post.product?.price || (typeof post.prix === 'string' ? post.prix : `${post.prix} FCFA`)}
+                  location={post.localisation || post.location || 'N/A'}
                   image={post.image || (post.media && post.media[0]?.url) || ''}
-                  condition={post.condition}
-                  sponsored={post.sponsored}
+                  condition={post.etat || post.condition}
+                  sponsored={post.sponsored || post.isPromoted}
                 />
               ))}
             </div>
