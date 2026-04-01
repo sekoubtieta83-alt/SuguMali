@@ -16,13 +16,14 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 /**
  * 2. INITIALISATION OPTIMISÉE DE FIRESTORE
  * - persistence: active le cache local pour un chargement instantané (hors ligne supporté)
- * - autoDetectLongPolling: améliore la stabilité sur les réseaux instables
+ * - experimentalForceLongPolling: résout les erreurs de connexion 'Listen' stream transport (RPC 404)
+ *   en forçant un mode de communication plus compatible avec certains environnements réseaux.
  */
 export const db: Firestore = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   }),
-  experimentalAutoDetectLongPolling: true, // Meilleure stabilité de connexion
+  experimentalForceLongPolling: true,
 });
 
 // 3. Exportation de Auth
