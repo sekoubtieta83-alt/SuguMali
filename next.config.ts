@@ -1,4 +1,5 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
+
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -6,8 +7,23 @@ const nextConfig: NextConfig = {
   experimental: {},
   async headers() {
     return [
+      // Pour les routes d'authentification
       {
-        source: '/(.*)',
+        source: '/api/auth/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+        ],
+      },
+      // Pour les autres routes
+      {
+        source: '/:path*',
         headers: [
           {
             key: 'Cross-Origin-Opener-Policy',
@@ -27,4 +43,5 @@ const nextConfig: NextConfig = {
     ],
   },
 };
+
 export default nextConfig;
