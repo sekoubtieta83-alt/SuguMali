@@ -39,6 +39,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [isLoading, setIsLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [regionError, setRegionError] = useState<string | null>(null);
   
@@ -50,6 +51,14 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Gestion du compte à rebours pour le cooldown
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
@@ -93,10 +102,13 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   };
 
   const onSendOTP = async () => {
-    if (!auth || !phoneNumber || !displayName.trim() || isLoading) {
-      if (!displayName.trim()) toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
+    if (!auth || !phoneNumber || !displayName.trim() || isLoading || cooldown > 0) {
+      if (!displayName.trim() && !isLoading) {
+        toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
+      }
       return;
     }
+    
     setIsLoading(true);
     setRegionError(null);
 
@@ -121,16 +133,17 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       if (error.code === 'auth/operation-not-allowed') {
         setRegionError("L'envoi de SMS vers cette région n'est pas activé dans votre console Firebase.");
       } else if (error.code === 'auth/too-many-requests') {
+        setCooldown(60); // Bloquer pendant 1 minute
         toast({ 
           variant: 'destructive', 
           title: "Trop de tentatives", 
-          description: "Veuillez patienter quelques minutes avant de réessayer."
+          description: "Sécurité activée : veuillez patienter 1 minute avant de réessayer."
         });
       } else {
         toast({ 
           variant: 'destructive', 
           title: "Échec de l'envoi", 
-          description: "Veuillez vérifier le numéro et réessayer."
+          description: "Veuillez vérifier le numéro ou votre connexion internet."
         });
       }
     } finally {
@@ -146,14 +159,12 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Création/Mise à jour automatique du profil
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       
       if (!userSnap.exists()) {
         let photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
 
-        // Upload de l'image si sélectionnée
         if (profileImage && app) {
           try {
             const storage = getStorage(app);
@@ -215,7 +226,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
 
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
-          {/* Photo de Profil */}
           <div className="flex flex-col items-center gap-2 mb-2">
             <div className="relative group">
               <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
@@ -236,7 +246,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
             <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
           </div>
 
-          {/* Nom et Prénom */}
           <div className="space-y-1.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM ET PRÉNOM</Label>
             <div className="relative">
@@ -250,7 +259,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
             </div>
           </div>
 
-          {/* Téléphone */}
           <div className="space-y-1.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NUMÉRO DE TÉLÉPHONE</Label>
             <div className="flex gap-2">
@@ -286,9 +294,15 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
           <Button 
             className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-2" 
             onClick={onSendOTP}
-            disabled={isLoading || !phoneNumber || !displayName.trim()}
+            disabled={isLoading || !phoneNumber || !displayName.trim() || cooldown > 0}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ArrowRight className="mr-2 h-5 w-5" /> S'inscrire par téléphone</>}
+            {isLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : cooldown > 0 ? (
+              <span>Réessayer dans {cooldown}s</span>
+            ) : (
+              <><ArrowRight className="mr-2 h-5 w-5" /> S'inscrire par téléphone</>
+            )}
           </Button>
         </div>
       )}
