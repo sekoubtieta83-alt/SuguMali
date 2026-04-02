@@ -94,6 +94,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
       
+      // Tentative d'envoi
       const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
@@ -110,6 +111,12 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
           variant: 'destructive', 
           title: "Région non autorisée", 
           description: "Veuillez activer le pays dans la console Firebase (SMS Region Policy)."
+        });
+      } else if (error.code === 'auth/too-many-requests') {
+        toast({ 
+          variant: 'destructive', 
+          title: "Trop de tentatives", 
+          description: "Nous avons détecté trop de demandes. Veuillez patienter quelques minutes avant de réessayer."
         });
       } else {
         toast({ 
@@ -139,7 +146,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
         router.push('/dashboard');
       } else {
         // Nouvel utilisateur -> Étape Profil
-        // On notifie le parent pour empêcher la redirection automatique
         if (onProfileStep) onProfileStep();
         setStep('profile');
       }
