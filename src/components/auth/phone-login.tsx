@@ -46,6 +46,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const firestore = useFirestore();
   const app = useFirebaseApp();
   const router = useRouter();
+  const { toast } = useToast();
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +173,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const storage = getStorage(app);
       let finalPhotoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
 
-      // 1. Upload de la photo vers Firebase Storage si présente
       if (photoURL && photoURL.startsWith('data:')) {
         const storagePath = `profiles/${user.uid}/photo.jpg`;
         const storageRef = ref(storage, storagePath);
@@ -180,13 +180,11 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
         finalPhotoURL = await getDownloadURL(storageRef);
       }
 
-      // 2. Mettre à jour le profil Firebase Auth
       await updateProfile(user, {
         displayName: displayName,
         photoURL: finalPhotoURL
       });
 
-      // 3. Créer le document utilisateur dans Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
         displayName: displayName,
