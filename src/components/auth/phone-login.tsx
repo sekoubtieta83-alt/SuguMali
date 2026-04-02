@@ -9,11 +9,12 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { useAuth, useFirestore } from '@/firebase';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle, User, Check } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle, User, Camera } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface PhoneLoginProps {
   onProfileStep?: () => void;
@@ -34,6 +36,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
   const [otp, setOtp] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -41,10 +44,12 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   
   const auth = useAuth();
   const firestore = useFirestore();
+  const app = useFirebaseApp();
   const router = useRouter();
   const { toast } = useToast();
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
@@ -77,6 +82,15 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       }
     };
   }, [auth]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => setProfileImage(event.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSendOTP = async () => {
     if (!auth || !phoneNumber || !displayName.trim() || isLoading) {
@@ -137,7 +151,19 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const userSnap = await getDoc(userRef);
       
       if (!userSnap.exists()) {
-        const photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
+        let photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
+
+        // Upload de l'image si sélectionnée
+        if (profileImage && app) {
+          try {
+            const storage = getStorage(app);
+            const storageRef = ref(storage, `profiles/${user.uid}/avatar.jpg`);
+            await uploadString(storageRef, profileImage, 'data_url');
+            photoURL = await getDownloadURL(storageRef);
+          } catch (storageErr) {
+            console.error("Storage upload error:", storageErr);
+          }
+        }
         
         await updateProfile(user, {
           displayName: displayName,
@@ -189,6 +215,27 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
 
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
+          {/* Photo de Profil */}
+          <div className="flex flex-col items-center gap-2 mb-2">
+            <div className="relative group">
+              <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
+                <AvatarImage src={profileImage || undefined} className="object-cover" />
+                <AvatarFallback className="bg-accent/5 text-accent">
+                  <User className="h-8 w-8" />
+                </AvatarFallback>
+              </Avatar>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"
+              >
+                <Camera className="h-3 w-3" />
+              </button>
+            </div>
+            <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Ma Photo</p>
+            <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
+          </div>
+
           {/* Nom et Prénom */}
           <div className="space-y-1.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM ET PRÉNOM</Label>
