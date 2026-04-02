@@ -1,5 +1,6 @@
 export const countryCodes = [
     { name: 'Mali', dial_code: '+223', code: 'ML', flag: '🇲🇱' },
+    { name: 'Ghana', dial_code: '+233', code: 'GH', flag: '🇬🇭' },
     { name: 'Senegal', dial_code: '+221', code: 'SN', flag: '🇸🇳' },
     { name: 'Cote d\'Ivoire', dial_code: '+225', code: 'CI', flag: '🇨🇮' },
     { name: 'Burkina Faso', dial_code: '+226', code: 'BF', flag: '🇧🇫' },
@@ -81,7 +82,6 @@ export const countryCodes = [
     { name: 'Gambia', dial_code: '+220', code: 'GM', flag: '🇬🇲' },
     { name: 'Georgia', dial_code: '+995', code: 'GE', flag: '🇬🇪' },
     { name: 'Germany', dial_code: '+49', code: 'DE', flag: '🇩🇪' },
-    { name: 'Ghana', dial_code: '+233', code: 'GH', flag: '🇬🇭' },
     { name: 'Gibraltar', dial_code: '+350', code: 'GI', flag: '🇬🇮' },
     { name: 'Greece', dial_code: '+30', code: 'GR', flag: '🇬🇷' },
     { name: 'Greenland', dial_code: '+299', code: 'GL', flag: '🇬🇱' },
