@@ -17,7 +17,7 @@ import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, User, Camera, AlertTriangle } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, User, Camera } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -54,6 +54,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Gestion du cooldown pour éviter auth/too-many-requests
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -61,18 +62,26 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     }
   }, [cooldown]);
 
+  // Initialisation robuste du ReCAPTCHA
   const initRecaptcha = () => {
     if (!auth || typeof window === 'undefined') return;
     
     try {
+      // Nettoyer l'ancienne instance si elle existe
       if (verifierRef.current) {
         verifierRef.current.clear();
+        verifierRef.current = null;
       }
 
+      // Créer une nouvelle instance invisible
       verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
         callback: () => {
           console.log('ReCAPTCHA validé');
+        },
+        'expired-callback': () => {
+          console.log('ReCAPTCHA expiré, réinitialisation...');
+          initRecaptcha();
         }
       });
     } catch (error) {
@@ -80,15 +89,15 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     }
   };
 
+  // Nettoyage au démontage
   useEffect(() => {
-    initRecaptcha();
     return () => {
       if (verifierRef.current) {
         verifierRef.current.clear();
         verifierRef.current = null;
       }
     };
-  }, [auth]);
+  }, []);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,6 +111,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const onSendOTP = async () => {
     if (!auth || !firestore || !phoneNumber || isLoading || cooldown > 0) return;
     
+    // Validation spécifique au mode inscription
     if (mode === 'signup' && !displayName.trim()) {
       toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
       return;
@@ -110,12 +120,12 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     const cleanNumber = phoneNumber.replace(/\s/g, '');
     const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
-    // Validation de longueur : un numéro international fait au moins 10 caractères (+223 + 8 chiffres = 12)
+    // Validation de longueur minimale (indicatif + au moins 8 chiffres)
     if (formattedNumber.length < 10) {
       toast({ 
         variant: 'destructive', 
         title: "Numéro invalide", 
-        description: "Le numéro de téléphone est trop court. Veuillez vérifier." 
+        description: "Le numéro de téléphone est trop court." 
       });
       return;
     }
@@ -123,40 +133,41 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     setIsLoading(true);
 
     try {
-      // 1. Vérification d'existence via Cloud Function
+      // 1. Vérification d'existence via Cloud Function (Mode Connexion uniquement)
       if (mode === 'login') {
         const functions = getFunctions(getApp(), 'europe-west1');
         const checkUserByPhone = httpsCallable(functions, 'checkUserByPhone');
-        try {
-          const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
-          if (!checkResult.data.exists) {
-            toast({ 
-              variant: 'destructive', 
-              title: "Compte introuvable", 
-              description: "Aucun compte n'est associé à ce numéro. Veuillez d'abord vous inscrire." 
-            });
-            setIsLoading(false);
-            return;
-          }
-        } catch (fnErr) {
-          console.error("Erreur checkUserByPhone:", fnErr);
+        
+        const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
+        
+        if (!checkResult.data.exists) {
+          toast({ 
+            variant: 'destructive', 
+            title: "Compte introuvable", 
+            description: "Ce numéro n'est pas enregistré. Veuillez d'abord vous inscrire." 
+          });
+          setIsLoading(false);
+          return;
         }
       }
 
-      // 2. Initialisation ou rafraîchissement du vérificateur
-      if (!verifierRef.current) initRecaptcha();
+      // 2. Initialisation forcée du ReCAPTCHA pour cette tentative
+      initRecaptcha();
       
       // 3. Envoi du SMS
+      if (!verifierRef.current) throw new Error("Échec d'initialisation du système de sécurité.");
+      
       const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current!);
       setConfirmationResult(confirmation);
       setStep('otp');
       toast({ 
         title: 'Code envoyé !', 
-        description: `Un SMS a été envoyé au ${formattedNumber}` 
+        description: `Un SMS de validation a été envoyé au ${formattedNumber}` 
       });
     } catch (error: any) {
       console.error("Erreur d'envoi SMS:", error);
       
+      // Nettoyage immédiat du reCAPTCHA en cas d'erreur
       if (verifierRef.current) {
         verifierRef.current.clear();
         verifierRef.current = null;
@@ -164,13 +175,17 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
-        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez patienter 1 minute." });
-      } else if (error.code === 'auth/invalid-phone-number' || error.message?.includes('TOO_SHORT')) {
-        toast({ variant: 'destructive', title: "Numéro invalide", description: "Le numéro est trop court ou mal formaté." });
+        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez patienter 1 minute avant de réessayer." });
+      } else if (error.code === 'auth/invalid-phone-number') {
+        toast({ variant: 'destructive', title: "Numéro invalide", description: "Le format du numéro est incorrect." });
       } else if (error.code === 'auth/internal-error' || error.message?.includes('internal')) {
-        toast({ variant: 'destructive', title: "Erreur technique", description: "Un problème réseau est survenu. Réessayez." });
+        toast({ 
+          variant: 'destructive', 
+          title: "Erreur technique", 
+          description: "Un problème de connexion est survenu. Veuillez rafraîchir la page et réessayer." 
+        });
       } else {
-        toast({ variant: 'destructive', title: "Échec", description: "Vérifiez le numéro ou votre connexion." });
+        toast({ variant: 'destructive', title: "Échec de l'envoi", description: error.message || "Impossible d'envoyer le code." });
       }
     } finally {
       setIsLoading(false);
@@ -185,9 +200,12 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
+      // Forcer le rafraîchissement du token pour Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
+      
+      // Vérification finale du profil Firestore
       const userSnap = await getDoc(userRef).catch(async (serverError) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: userRef.path,
@@ -196,9 +214,10 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           throw serverError;
       });
       
+      // Si on est en mode login mais que le profil Firestore a été supprimé
       if (!userSnap.exists() && mode === 'login') {
           await signOut(auth);
-          toast({ variant: 'destructive', title: "Profil manquant", description: "Veuillez vous inscrire avec ce numéro." });
+          toast({ variant: 'destructive', title: "Profil manquant", description: "Votre compte existe mais votre profil est incomplet. Veuillez vous inscrire." });
           setIsLoading(false);
           setStep('phone');
           return;
@@ -207,6 +226,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       if (mode === 'signup') {
         let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
+        // Upload de l'avatar si sélectionné
         if (profileImage && app) {
           try {
             const storage = getStorage(app);
@@ -218,8 +238,10 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           }
         }
         
+        // Mise à jour du profil Auth
         await updateProfile(user, { displayName, photoURL });
 
+        // Création du document Firestore
         const newUserPayload = {
           uid: user.uid,
           displayName: displayName,
@@ -238,7 +260,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             }));
         });
         
-        toast({ title: 'Bienvenue sur SuguMali !', description: 'Compte créé avec succès.' });
+        toast({ title: 'Bienvenue !', description: 'Votre compte SuguMali a été créé.' });
       } else {
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
       }
@@ -246,7 +268,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
-      toast({ variant: 'destructive', title: 'Code incorrect', description: "Le code est invalide ou expiré." });
+      toast({ variant: 'destructive', title: 'Code incorrect', description: "Le code entré est invalide ou a expiré." });
     } finally {
       setIsLoading(false);
     }
@@ -254,6 +276,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
   return (
     <div className="space-y-6">
+      {/* Container ReCAPTCHA invisible */}
       <div id="recaptcha-container"></div>
       
       {step === 'phone' && (
@@ -285,7 +308,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                   <Input 
-                    placeholder="Sekou Tieta" 
+                    placeholder="Ex: Sekou Tieta" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20"
@@ -337,7 +360,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             ) : cooldown > 0 ? (
               <span>Réessayer dans {cooldown}s</span>
             ) : (
-              <><ArrowRight className="mr-2 h-5 w-5" /> {mode === 'login' ? 'Se connecter' : "S'inscrire par téléphone"}</>
+              <><ArrowRight className="mr-2 h-5 w-5" /> {mode === 'login' ? 'Se connecter' : "Créer mon compte"}</>
             )}
           </Button>
         </div>
@@ -369,16 +392,22 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             onClick={onVerifyOTP}
             disabled={isLoading || otp.length < 6}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Valider mon compte</>}
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Confirmer le code</>}
           </Button>
 
           <Button 
             variant="ghost" 
             className="w-full text-[10px] font-black text-muted-foreground uppercase tracking-wider hover:text-accent"
-            onClick={() => { setStep('phone'); }}
+            onClick={() => { 
+              setStep('phone');
+              if (verifierRef.current) {
+                verifierRef.current.clear();
+                verifierRef.current = null;
+              }
+            }}
             disabled={isLoading}
           >
-            Modifier les informations
+            Modifier le numéro
           </Button>
         </div>
       )}
