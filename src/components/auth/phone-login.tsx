@@ -152,7 +152,7 @@ export function PhoneLogin() {
           <AlertTitle className="font-bold">Action requise (Admin)</AlertTitle>
           <AlertDescription className="text-xs mt-1">
             Activez le <strong>Mali (+223)</strong> et le <strong>Ghana (+233)</strong> dans : 
-            <br/><code className="bg-black/10 px-1 rounded">Console Firebase > Auth > Settings > SMS Region Policy</code>
+            <br/><code className="bg-black/10 px-1 rounded">Console Firebase &gt; Auth &gt; Settings &gt; SMS Region Policy</code>
           </AlertDescription>
         </Alert>
       )}
