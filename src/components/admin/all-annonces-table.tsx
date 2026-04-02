@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Trash2, ExternalLink, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function AllAnnoncesTable() {
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -28,7 +30,14 @@ export function AllAnnoncesTable() {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAnnonces(data);
       setLoading(false);
-    }, () => setLoading(false));
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: annoncesRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      setLoading(false);
+    });
 
     return () => unsubscribe();
   }, [firestore]);
@@ -36,12 +45,18 @@ export function AllAnnoncesTable() {
   const handleDelete = async (id: string) => {
     if (!firestore || !confirm("Voulez-vous vraiment supprimer DEFINITIVEMENT cette annonce ? Cette action est irréversible.")) return;
     
-    try {
-      await deleteDoc(doc(firestore, 'annonces', id));
-      toast({ title: "Annonce supprimée" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erreur lors de la suppression" });
-    }
+    const adRef = doc(firestore, 'annonces', id);
+    deleteDoc(adRef)
+      .then(() => {
+        toast({ title: "Annonce supprimée" });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: adRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const filtered = annonces.filter(ad => 

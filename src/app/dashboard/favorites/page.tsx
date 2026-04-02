@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, onSnapshot, doc, DocumentReference } from 'firebase/firestore';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { type Post } from '@/lib/data';
 import { PostCard } from '@/components/dashboard/post-card';
-import { Heart } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -24,7 +24,6 @@ export default function FavoritesPage() {
 
     const favsRef = collection(firestore, 'users', user.uid, 'favorites');
     
-    // On écoute la liste des IDs en favoris
     const unsubscribeFavs = onSnapshot(favsRef, (snapshot) => {
       const annonceIds = snapshot.docs.map(d => d.id);
       
@@ -34,7 +33,6 @@ export default function FavoritesPage() {
         return;
       }
 
-      // Pour chaque ID, on crée un écouteur temps réel sur l'annonce elle-même
       const adsData: { [key: string]: Post } = {};
       const adUnsubscribes: (() => void)[] = [];
 
@@ -45,7 +43,7 @@ export default function FavoritesPage() {
             const data = adSnap.data();
             const post: Post = {
               id: adSnap.id,
-              userId: data.vendeurId,
+              vendeurId: data.vendeurId,
               content: data.description || '',
               media: data.media ? data.media : (data.image ? [{ url: data.image, type: 'image' }] : []),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
@@ -53,7 +51,7 @@ export default function FavoritesPage() {
               comments: 0,
               isProduct: true,
               isPromoted: data.isPromoted || false,
-              isSold: data.isSold || false,
+              isSold: data.status === 'sold' || data.isSold || false,
               location: data.localisation || '',
               whatsappNumber: data.whatsapp || '',
               category: data.categorie || '',
@@ -67,7 +65,7 @@ export default function FavoritesPage() {
               }
             };
             
-            if (post.status === 'approved') {
+            if (post.status === 'approved' || post.status === 'sold') {
                 adsData[id] = post;
             } else {
                 delete adsData[id];
@@ -76,11 +74,14 @@ export default function FavoritesPage() {
             delete adsData[id];
           }
           
-          // Mise à jour de l'état avec les données collectées
           setFavorites(Object.values(adsData).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
           setLoading(false);
-        }, (err) => {
-            console.error("Error listening to ad:", id, err);
+        }, async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: adRef.path,
+              operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
         });
         adUnsubscribes.push(unsubAd);
       });

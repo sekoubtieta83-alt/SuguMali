@@ -53,39 +53,53 @@ export function PromotionsView() {
   const handleAction = async (status: 'approved' | 'rejected') => {
     if (!firestore || !selectedRequest) return;
     
-    try {
-      const requestId = selectedRequest.id;
-      const annonceId = selectedRequest.annonceId;
-      const days = parseInt(duration);
+    const requestId = selectedRequest.id;
+    const annonceId = selectedRequest.annonceId;
+    const days = parseInt(duration);
 
-      // 1. Mettre à jour le statut de la demande
-      const requestRef = doc(firestore, 'promotion_requests', requestId);
-      await updateDoc(requestRef, { 
-        status,
-        durationDays: status === 'approved' ? days : null,
-        processedAt: Timestamp.now()
-      });
-      
-      // 2. Si approuvé, marquer l'annonce comme promue avec expiration
-      if (status === 'approved') {
-        const expiresAt = addDays(new Date(), days);
-        const annonceRef = doc(firestore, 'annonces', annonceId);
-        await updateDoc(annonceRef, { 
-          isPromoted: true,
-          promotionExpiresAt: Timestamp.fromDate(expiresAt)
+    // 1. Mettre à jour le statut de la demande
+    const requestRef = doc(firestore, 'promotion_requests', requestId);
+    const requestUpdateData = { 
+      status,
+      durationDays: status === 'approved' ? days : null,
+      processedAt: Timestamp.now()
+    };
+
+    updateDoc(requestRef, requestUpdateData)
+      .then(() => {
+        if (status === 'approved') {
+          const expiresAt = addDays(new Date(), days);
+          const annonceRef = doc(firestore, 'annonces', annonceId);
+          const annonceUpdateData = { 
+            isPromoted: true,
+            promotionExpiresAt: Timestamp.fromDate(expiresAt)
+          };
+          
+          updateDoc(annonceRef, annonceUpdateData)
+            .catch(async (serverError) => {
+              const permissionError = new FirestorePermissionError({
+                path: annonceRef.path,
+                operation: 'update',
+                requestResourceData: annonceUpdateData,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+            });
+        }
+        
+        toast({ 
+          title: status === 'approved' ? `Promotion activée pour ${days} jours !` : "Demande rejetée" 
         });
-      }
-
-      toast({ 
-        title: status === 'approved' ? `Promotion activée pour ${days} jours !` : "Demande rejetée" 
+        setIsApprovalDialogOpen(false);
+        setSelectedRequest(null);
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: requestRef.path,
+          operation: 'update',
+          requestResourceData: requestUpdateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      
-      setIsApprovalDialogOpen(false);
-      setSelectedRequest(null);
-    } catch (e) {
-      console.error(e);
-      toast({ variant: 'destructive', title: "Erreur lors du traitement" });
-    }
   };
 
   if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-accent" /></div>;
@@ -174,7 +188,6 @@ export function PromotionsView() {
         </CardContent>
       </Card>
 
-      {/* Modal de choix de la durée */}
       <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
         <DialogContent className="rounded-3xl max-w-sm">
           <DialogHeader>
