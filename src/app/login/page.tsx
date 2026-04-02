@@ -5,14 +5,19 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { PhoneLogin } from '@/components/auth/phone-login';
 import { GoogleAuthButton } from '@/components/auth/google-auth-button';
+import { LoginForm } from '@/components/auth/login-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Phone } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const { user, loading } = useUser();
   const router = useRouter();
   const [isCompletingProfile, setIsCompletingProfile] = useState(false);
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
 
   useEffect(() => {
     if (!loading && user && !isCompletingProfile) {
@@ -37,34 +42,71 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Logo className="h-12 w-12" />
-          <h1 className="text-3xl font-black tracking-tighter">Bienvenue sur <span className="text-accent">SuguMali</span></h1>
-          <p className="text-muted-foreground font-medium">Connectez-vous pour commencer</p>
+    <div className="flex min-h-svh w-full items-center justify-center bg-[#F8F9FB] px-4 py-12">
+      <div className="w-full max-w-md space-y-6">
+        {/* En-tête avec Logo */}
+        <div className="flex flex-col items-center gap-2 text-center mb-2">
+          <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mb-2">
+            <Logo className="h-10 w-10" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+            Sugu<span className="text-accent">Mali</span>
+          </h1>
+          <p className="text-muted-foreground font-medium text-sm">Connectez-vous à votre compte</p>
         </div>
 
-        <div className="bg-card p-8 rounded-[2.5rem] border shadow-xl shadow-accent/5 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="space-y-4">
-            <GoogleAuthButton />
-          </div>
+        {/* Card de Connexion Blanche */}
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          {/* 1. Email & Mot de Passe */}
+          <LoginForm />
 
+          {/* Séparateur */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
+              <Separator className="w-full bg-gray-100" />
             </div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
-              <span className="bg-card px-4 text-muted-foreground">OU</span>
+            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em]">
+              <span className="bg-white px-4 text-muted-foreground/60">OU</span>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <PhoneLogin onProfileStep={() => setIsCompletingProfile(true)} />
+          {/* 2. Autres méthodes */}
+          <div className="space-y-3">
+            <GoogleAuthButton />
+            
+            {!showPhoneLogin ? (
+              <Button 
+                variant="outline" 
+                className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                onClick={() => setShowPhoneLogin(true)}
+              >
+                <Phone className="h-5 w-5 text-accent" />
+                Connexion par téléphone
+              </Button>
+            ) : (
+              <div className="pt-4 border-t border-dashed animate-in slide-in-from-top-2 duration-300">
+                <PhoneLogin onProfileStep={() => setIsCompletingProfile(true)} />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-[10px] font-bold text-muted-foreground mt-2"
+                  onClick={() => setShowPhoneLogin(false)}
+                >
+                  Annuler la connexion par téléphone
+                </Button>
+              </div>
+            )}
           </div>
+        </div>
 
-          <p className="text-center text-[10px] text-muted-foreground mt-6 leading-relaxed">
-            En vous connectant, vous acceptez nos <a href="/terms" className="text-accent font-bold hover:underline">Conditions d'utilisation</a> et notre <a href="/privacy" className="text-accent font-bold hover:underline">Politique de confidentialité</a>.
+        {/* Footer Link */}
+        <div className="text-center">
+          <p className="text-sm font-medium text-muted-foreground">
+            Pas encore de compte ?{' '}
+            <Link href="/signup" className="font-black text-accent hover:underline underline-offset-4">
+              S'inscrire
+            </Link>
           </p>
         </div>
       </div>
