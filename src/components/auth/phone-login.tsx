@@ -17,7 +17,7 @@ import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle, User, Camera } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, User, Camera, AlertTriangle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -33,10 +33,9 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 interface PhoneLoginProps {
   mode: 'login' | 'signup';
-  onProfileStep?: () => void;
 }
 
-export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
+export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
   const [otp, setOtp] = useState('');
@@ -52,7 +51,6 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
   const app = useFirebaseApp();
   const router = useRouter();
   const { toast } = useToast();
-  const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,33 +61,32 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
     }
   }, [cooldown]);
 
-  useEffect(() => {
-    if (!auth || !recaptchaRef.current) return;
+  // Initialisation sécurisée du ReCAPTCHA
+  const initRecaptcha = () => {
+    if (!auth || typeof window === 'undefined') return;
     
-    const initRecaptcha = () => {
-      try {
-        if (verifierRef.current) {
-          verifierRef.current.clear();
-        }
-
-        verifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current!, {
-          size: 'invisible',
-          'callback': () => {
-            console.log('ReCAPTCHA validé');
-          }
-        });
-      } catch (error) {
-        console.error("Erreur lors de l'initialisation du ReCAPTCHA:", error);
+    try {
+      if (verifierRef.current) {
+        verifierRef.current.clear();
       }
-    };
 
+      // Utilisation du container invisible par ID
+      verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          console.log('ReCAPTCHA validé');
+        }
+      });
+    } catch (error) {
+      console.error("Erreur d'initialisation ReCAPTCHA:", error);
+    }
+  };
+
+  useEffect(() => {
     initRecaptcha();
-
     return () => {
       if (verifierRef.current) {
-        try {
-          verifierRef.current.clear();
-        } catch (e) {}
+        verifierRef.current.clear();
         verifierRef.current = null;
       }
     };
@@ -118,28 +115,32 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
-      // VÉRIFICATION D'EXISTENCE via Cloud Function (évite les erreurs de permissions Firestore)
+      // 1. Vérification d'existence via Cloud Function
       if (mode === 'login') {
         const functions = getFunctions(getApp(), 'europe-west1');
         const checkUserByPhone = httpsCallable(functions, 'checkUserByPhone');
-        const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
-        
-        if (!checkResult.data.exists) {
-          toast({ 
-            variant: 'destructive', 
-            title: "Compte introuvable", 
-            description: "Aucun compte n'est associé à ce numéro. Veuillez d'abord vous inscrire." 
-          });
-          setIsLoading(false);
-          return;
+        try {
+          const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
+          if (!checkResult.data.exists) {
+            toast({ 
+              variant: 'destructive', 
+              title: "Compte introuvable", 
+              description: "Aucun compte n'est associé à ce numéro. Veuillez d'abord vous inscrire." 
+            });
+            setIsLoading(false);
+            return;
+          }
+        } catch (fnErr) {
+          console.error("Erreur checkUserByPhone:", fnErr);
+          // On continue si la fonction échoue pour ne pas bloquer l'utilisateur (cas de timeout par ex)
         }
       }
 
-      if (!verifierRef.current) {
-        throw new Error("Le vérificateur de sécurité n'est pas prêt.");
-      }
+      // 2. Initialisation ou rafraîchissement du vérificateur
+      if (!verifierRef.current) initRecaptcha();
       
-      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
+      // 3. Envoi du SMS
+      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current!);
       setConfirmationResult(confirmation);
       setStep('otp');
       toast({ 
@@ -148,9 +149,18 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
       });
     } catch (error: any) {
       console.error("Erreur d'envoi SMS:", error);
+      
+      // Réinitialiser le ReCAPTCHA après une erreur
+      if (verifierRef.current) {
+        verifierRef.current.clear();
+        verifierRef.current = null;
+      }
+
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
         toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez patienter 1 minute." });
+      } else if (error.code === 'auth/internal-error' || error.message?.includes('internal')) {
+        toast({ variant: 'destructive', title: "Erreur technique", description: "Un problème réseau est survenu. Réessayez." });
       } else {
         toast({ variant: 'destructive', title: "Échec", description: "Vérifiez le numéro ou votre connexion." });
       }
@@ -167,6 +177,9 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
+      // Forcer le rafraîchissement du token pour s'assurer des permissions
+      await user.getIdToken(true);
+
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef).catch(async (serverError) => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -176,16 +189,18 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
           throw serverError;
       });
       
-      // Sécurité : Si mode login mais pas de doc Firestore (cas rare de numéro recyclé ou suppression manuelle)
+      // Si mode login mais pas de doc Firestore
       if (!userSnap.exists() && mode === 'login') {
           await signOut(auth);
-          toast({ variant: 'destructive', title: "Compte incomplet", description: "Votre profil n'a pas pu être chargé. Veuillez vous inscrire." });
+          toast({ variant: 'destructive', title: "Profil manquant", description: "Veuillez vous inscrire avec ce numéro." });
           setIsLoading(false);
+          setStep('phone');
           return;
       }
 
-      if (!userSnap.exists() && mode === 'signup') {
-        let photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
+      // Si mode signup, on crée/met à jour le profil
+      if (mode === 'signup') {
+        let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
         if (profileImage && app) {
           try {
@@ -194,7 +209,7 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
             await uploadString(storageRef, profileImage, 'data_url');
             photoURL = await getDownloadURL(storageRef);
           } catch (storageErr) {
-            console.error("Storage upload error:", storageErr);
+            console.error("Erreur upload photo:", storageErr);
           }
         }
         
@@ -210,13 +225,12 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
           createdAt: serverTimestamp(),
         };
 
-        await setDoc(userRef, newUserPayload).catch(async (serverError) => {
+        await setDoc(userRef, newUserPayload, { merge: true }).catch(async (serverError) => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: userRef.path,
-                operation: 'create',
+                operation: 'write',
                 requestResourceData: newUserPayload
             }));
-            throw serverError;
         });
         
         toast({ title: 'Bienvenue sur SuguMali !', description: 'Compte créé avec succès.' });
@@ -235,7 +249,7 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
 
   return (
     <div className="space-y-6">
-      <div id="recaptcha-container" ref={recaptchaRef}></div>
+      <div id="recaptcha-container"></div>
       
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">

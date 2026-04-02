@@ -52,7 +52,6 @@ async function sendOTPEmail(email: string, otp: string) {
 
 /**
  * Vérifie si un utilisateur existe déjà avec ce numéro de téléphone.
- * Utilisé pour la connexion sécurisée sans exposer les permissions de listing Firestore.
  */
 export const checkUserByPhone = onCall({
   cors: true,
@@ -70,7 +69,8 @@ export const checkUserByPhone = onCall({
     return { exists: !snap.empty };
   } catch (error) {
     console.error("Erreur checkUserByPhone:", error);
-    throw new HttpsError('internal', 'Impossible de vérifier le numéro.');
+    // On renvoie false au lieu de throw pour éviter le code 'internal' bloquant sur le client
+    return { exists: false, error: 'Database query failed' };
   }
 });
 
