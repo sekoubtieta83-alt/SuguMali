@@ -4,13 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { type Post } from "@/lib/data";
-import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare, Info, Camera, Send, Rocket, UserMinus } from "lucide-react";
+import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare, Info, Camera, Send, Rocket, UserMinus, User } from "lucide-react";
 import { useFirebaseApp, useFirestore, useUser, useAuth } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch, deleteDoc, getDocs } from "firebase/firestore";
-import { getStorage, refine, uploadString, getDownloadURL, ref } from 'firebase/storage';
+import { getStorage, uploadString, getDownloadURL, ref } from 'firebase/storage';
 import { deleteUser } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { type Review, ReviewCard } from "@/components/dashboard/review-card";
 import { ReviewStars } from "@/components/dashboard/review-stars";
 import { addYears, isAfter } from "date-fns";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -110,6 +109,16 @@ export default function ProfilePage() {
           if (data.idDocumentUrl && !data.isVerificationPaid) {
             setVerificationStep('payment');
           }
+        } else {
+          // Si le profil n'existe pas encore dans Firestore, on utilise les infos Auth
+          setUserProfile({
+            uid: user.uid,
+            displayName: user.displayName || 'Utilisateur',
+            email: user.email || '',
+            photoURL: user.photoURL || '',
+            isVerified: false,
+            verificationStatus: 'none',
+          });
         }
       }, async (serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -260,7 +269,7 @@ export default function ProfilePage() {
       // 2. Supprimer le profil Firestore
       await deleteDoc(doc(firestore, 'users', user.uid));
 
-      // 3. Supprimer le compte Auth (Nécessite souvent une reconnexion récente)
+      // 3. Supprimer le compte Auth
       await deleteUser(auth.currentUser);
 
       toast({ title: "Compte supprimé définitivement" });
@@ -361,16 +370,25 @@ export default function ProfilePage() {
 
   const isVerified = checkIsVerified(userProfile);
   const filteredUserPosts = userPosts.filter(post => {
-    const title = post.product?.name || post.content;
+    const title = post.product?.name || post.content || '';
     const queryText = searchQuery.toLowerCase();
-    return title.toLowerCase().includes(queryText) || post.content.toLowerCase().includes(queryText);
+    return title.toLowerCase().includes(queryText) || (post.content || '').toLowerCase().includes(queryText);
   });
 
   const averageRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
 
-  if (userLoading || !userProfile) {
+  if (userLoading || (!userProfile && !user)) {
     return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8" /></div>;
   }
+
+  // Fallback profile if Firestore is still loading but Auth is ready
+  const currentProfile = userProfile || {
+    uid: user?.uid || '',
+    displayName: user?.displayName || 'Utilisateur',
+    email: user?.email || '',
+    photoURL: user?.photoURL || '',
+    isVerified: false,
+  } as UserProfile;
 
   return (
     <div className="flex flex-1 flex-col pb-20">
@@ -378,30 +396,30 @@ export default function ProfilePage() {
         <img src="https://picsum.photos/seed/cover1/1200/200" alt="Couverture" className="h-full w-full object-cover" data-ai-hint="abstract background"/>
         <div className="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8">
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-background shadow-lg">
-            <AvatarImage src={userProfile.photoURL ?? undefined} alt={userProfile.displayName ?? ""} />
-            <AvatarFallback>{userProfile.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+            <AvatarImage src={currentProfile.photoURL ?? undefined} alt={currentProfile.displayName ?? ""} />
+            <AvatarFallback className="bg-accent text-white font-black text-2xl">{currentProfile.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
           </Avatar>
         </div>
       </div>
       
       <div className="flex justify-end p-3 sm:p-4 border-b gap-2 sm:gap-3">
-        {userProfile.isBanned && <div className="bg-destructive/10 text-destructive px-3 py-1 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold flex items-center">Compte suspendu</div>}
+        {currentProfile.isBanned && <div className="bg-destructive/10 text-destructive px-3 py-1 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold flex items-center">Compte suspendu</div>}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-xl"><Edit className="h-4 w-4 mr-1 sm:mr-2" /> Modifier</Button></DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader><DialogTitle>Modifier le profil</DialogTitle></DialogHeader>
-                <EditProfileForm userProfile={userProfile} onFinished={() => setIsEditDialogOpen(false)} />
+                <EditProfileForm userProfile={currentProfile} onFinished={() => setIsEditDialogOpen(false)} />
             </DialogContent>
         </Dialog>
       </div>
 
       <div className="px-4 sm:px-8 pt-16 sm:pt-20 pb-6 sm:pb-8">
         <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold">{userProfile.displayName}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{currentProfile.displayName}</h1>
              {isVerified && <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 fill-accent text-white" />}
         </div>
-        <p className="text-muted-foreground text-sm">{userProfile.email || userProfile.phoneNumber}</p>
-        <p className="mt-4 text-xs sm:text-sm max-w-2xl leading-relaxed">{userProfile.bio || "Ajoutez une biographie pour vous présenter !"}</p>
+        <p className="text-muted-foreground text-sm">{currentProfile.email}</p>
+        <p className="mt-4 text-xs sm:text-sm max-w-2xl leading-relaxed">{currentProfile.bio || "Ajoutez une biographie pour vous présenter !"}</p>
 
         <div className="mt-4 flex items-center gap-2">
             {reviews.length > 0 ? (
@@ -423,7 +441,7 @@ export default function ProfilePage() {
                         <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5 fill-accent text-white" />
                         <p className="text-xs sm:text-sm font-bold">Profil certifié SuguMali.</p>
                     </div>
-                ) : userProfile.verificationStatus === 'pending' ? (
+                ) : currentProfile.verificationStatus === 'pending' ? (
                     <div className="bg-accent/10 text-accent p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3">
                         <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                         <p className="text-xs sm:text-sm font-bold">Vérification en cours...</p>
@@ -452,7 +470,7 @@ export default function ProfilePage() {
                                             <input type="file" ref={fileInputRef} onChange={handleIdFileSelect} accept="image/*" className="hidden" />
                                             {idPhoto ? (
                                                 <div className="relative group rounded-xl overflow-hidden border-2 border-accent/20 shadow-lg">
-                                                    <img src={idPhoto} className="w-full aspect-video object-cover" />
+                                                    <img src={idPhoto} className="w-full aspect-video object-cover" alt="ID Document" />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                         <Button variant="secondary" size="sm" onClick={() => setIdPhoto(null)} className="rounded-xl font-bold h-7 text-[10px]">Changer</Button>
                                                     </div>
