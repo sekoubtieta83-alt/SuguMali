@@ -58,46 +58,48 @@ export default function LoginPage() {
         {/* Card de Connexion Blanche */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
-          {/* 1. Email & Mot de Passe */}
-          <LoginForm />
+          {!showPhoneLogin ? (
+            <>
+              {/* 1. Email & Mot de Passe */}
+              <LoginForm />
 
-          {/* Séparateur */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full bg-gray-100" />
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em]">
-              <span className="bg-white px-4 text-muted-foreground/60">OU</span>
-            </div>
-          </div>
+              {/* Séparateur */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full bg-gray-100" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em]">
+                  <span className="bg-white px-4 text-muted-foreground/60">OU</span>
+                </div>
+              </div>
 
-          {/* 2. Autres méthodes */}
-          <div className="space-y-3">
-            <GoogleAuthButton />
-            
-            {!showPhoneLogin ? (
-              <Button 
-                variant="outline" 
-                className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-                onClick={() => setShowPhoneLogin(true)}
-              >
-                <Phone className="h-5 w-5 text-accent" />
-                Connexion par téléphone
-              </Button>
-            ) : (
-              <div className="pt-4 border-t border-dashed animate-in slide-in-from-top-2 duration-300">
-                <PhoneLogin onProfileStep={() => setIsCompletingProfile(true)} />
+              {/* 2. Autres méthodes */}
+              <div className="space-y-3">
+                <GoogleAuthButton />
+                
                 <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full text-[10px] font-bold text-muted-foreground mt-2"
-                  onClick={() => setShowPhoneLogin(false)}
+                  variant="outline" 
+                  className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                  onClick={() => setShowPhoneLogin(true)}
                 >
-                  Annuler la connexion par téléphone
+                  <Phone className="h-5 w-5 text-accent" />
+                  Connexion par téléphone
                 </Button>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              <PhoneLogin mode="login" />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-[10px] font-bold text-muted-foreground mt-4"
+                onClick={() => setShowPhoneLogin(false)}
+              >
+                Retour aux autres méthodes
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Footer Link */}

@@ -8,7 +8,7 @@ import {
   ConfirmationResult,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -28,10 +28,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface PhoneLoginProps {
+  mode: 'login' | 'signup';
   onProfileStep?: () => void;
 }
 
-export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
+export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
   const [otp, setOtp] = useState('');
@@ -52,7 +53,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gestion du compte à rebours pour le cooldown
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -102,10 +102,11 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   };
 
   const onSendOTP = async () => {
-    if (!auth || !phoneNumber || !displayName.trim() || isLoading || cooldown > 0) {
-      if (!displayName.trim() && !isLoading) {
-        toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
-      }
+    if (!auth || !firestore || !phoneNumber || isLoading || cooldown > 0) return;
+    
+    // Validation du nom uniquement en mode inscription
+    if (mode === 'signup' && !displayName.trim()) {
+      toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
       return;
     }
     
@@ -113,12 +114,29 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
     setRegionError(null);
 
     try {
-      if (!verifierRef.current) {
-        throw new Error("Le vérificateur de sécurité n'est pas prêt. Veuillez rafraîchir la page.");
-      }
-
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
+
+      // VÉRIFICATION D'EXISTENCE (Si mode login)
+      if (mode === 'login') {
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where('phoneNumber', '==', formattedNumber), limit(1));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          toast({ 
+            variant: 'destructive', 
+            title: "Compte introuvable", 
+            description: "Aucun compte n'est associé à ce numéro. Veuillez d'abord vous inscrire." 
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      if (!verifierRef.current) {
+        throw new Error("Le vérificateur de sécurité n'est pas prêt.");
+      }
       
       const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
@@ -128,23 +146,12 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
         description: `Un SMS a été envoyé au ${formattedNumber}` 
       });
     } catch (error: any) {
-      console.error("Erreur d'envoi SMS Firebase:", error);
-      
-      if (error.code === 'auth/operation-not-allowed') {
-        setRegionError("L'envoi de SMS vers cette région n'est pas activé dans votre console Firebase.");
-      } else if (error.code === 'auth/too-many-requests') {
-        setCooldown(60); // Bloquer pendant 1 minute
-        toast({ 
-          variant: 'destructive', 
-          title: "Trop de tentatives", 
-          description: "Sécurité activée : veuillez patienter 1 minute avant de réessayer."
-        });
+      console.error("Erreur d'envoi SMS:", error);
+      if (error.code === 'auth/too-many-requests') {
+        setCooldown(60);
+        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez patienter 1 minute." });
       } else {
-        toast({ 
-          variant: 'destructive', 
-          title: "Échec de l'envoi", 
-          description: "Veuillez vérifier le numéro ou votre connexion internet."
-        });
+        toast({ variant: 'destructive', title: "Échec", description: "Vérifiez le numéro ou votre connexion." });
       }
     } finally {
       setIsLoading(false);
@@ -162,7 +169,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       
-      if (!userSnap.exists()) {
+      if (!userSnap.exists() && mode === 'signup') {
         let photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
 
         if (profileImage && app) {
@@ -176,10 +183,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
           }
         }
         
-        await updateProfile(user, {
-          displayName: displayName,
-          photoURL: photoURL
-        });
+        await updateProfile(user, { displayName, photoURL });
 
         await setDoc(userRef, {
           uid: user.uid,
@@ -191,7 +195,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
           createdAt: serverTimestamp(),
         });
         
-        toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte a été créé avec succès.' });
+        toast({ title: 'Bienvenue sur SuguMali !', description: 'Compte créé avec succès.' });
       } else {
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
       }
@@ -199,11 +203,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Code incorrect', 
-        description: "Le code saisi n'est pas valide ou a expiré." 
-      });
+      toast({ variant: 'destructive', title: 'Code incorrect', description: "Le code est invalide ou expiré." });
     } finally {
       setIsLoading(false);
     }
@@ -213,51 +213,44 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
     <div className="space-y-6">
       <div id="recaptcha-container" ref={recaptchaRef}></div>
       
-      {regionError && step === 'phone' && (
-        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive rounded-2xl">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle className="font-bold">Action requise (Admin)</AlertTitle>
-          <AlertDescription className="text-xs mt-1">
-            Activez le <strong>Mali (+223)</strong> dans : 
-            <br/><code className="bg-black/10 px-1 rounded">Console Firebase &gt; Auth &gt; Settings &gt; SMS Region Policy</code>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
-          <div className="flex flex-col items-center gap-2 mb-2">
-            <div className="relative group">
-              <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
-                <AvatarImage src={profileImage || undefined} className="object-cover" />
-                <AvatarFallback className="bg-accent/5 text-accent">
-                  <User className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"
-              >
-                <Camera className="h-3 w-3" />
-              </button>
-            </div>
-            <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Ma Photo</p>
-            <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
-          </div>
+          {mode === 'signup' && (
+            <>
+              <div className="flex flex-col items-center gap-2 mb-2">
+                <div className="relative group">
+                  <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
+                    <AvatarImage src={profileImage || undefined} className="object-cover" />
+                    <AvatarFallback className="bg-accent/5 text-accent">
+                      <User className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"
+                  >
+                    <Camera className="h-3 w-3" />
+                  </button>
+                </div>
+                <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Ma Photo</p>
+                <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM ET PRÉNOM</Label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
-              <Input 
-                placeholder="Sekou Tieta" 
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20"
-              />
-            </div>
-          </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM ET PRÉNOM</Label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
+                  <Input 
+                    placeholder="Sekou Tieta" 
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NUMÉRO DE TÉLÉPHONE</Label>
@@ -294,14 +287,14 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
           <Button 
             className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-2" 
             onClick={onSendOTP}
-            disabled={isLoading || !phoneNumber || !displayName.trim() || cooldown > 0}
+            disabled={isLoading || !phoneNumber || (mode === 'signup' && !displayName.trim()) || cooldown > 0}
           >
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : cooldown > 0 ? (
               <span>Réessayer dans {cooldown}s</span>
             ) : (
-              <><ArrowRight className="mr-2 h-5 w-5" /> S'inscrire par téléphone</>
+              <><ArrowRight className="mr-2 h-5 w-5" /> {mode === 'login' ? 'Se connecter' : "S'inscrire par téléphone"}</>
             )}
           </Button>
         </div>
