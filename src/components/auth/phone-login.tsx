@@ -37,21 +37,43 @@ export function PhoneLogin() {
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
     
-    // Nettoyage de l'instance précédente si elle existe
-    if ((window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier.clear();
-    }
+    const initRecaptcha = () => {
+      try {
+        // Nettoyage sécurisé de l'instance précédente
+        if ((window as any).recaptchaVerifier) {
+          try {
+            (window as any).recaptchaVerifier.clear();
+          } catch (e) {
+            console.warn('Recaptcha clear error ignored during re-init:', e);
+          }
+          (window as any).recaptchaVerifier = null;
+        }
 
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current, {
-      size: 'invisible',
-      callback: () => {
-        console.log('Recaptcha resolved');
+        // Initialisation de la nouvelle instance
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, {
+          size: 'invisible',
+          callback: () => {
+            console.log('Recaptcha resolved');
+          },
+          'expired-callback': () => {
+            console.log('Recaptcha expired');
+          }
+        });
+      } catch (error) {
+        console.error("Error initializing recaptcha:", error);
       }
-    });
+    };
+
+    initRecaptcha();
 
     return () => {
       if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch (e) {
+          // Ignorer l'erreur au démontage pour éviter le crash
+        }
+        (window as any).recaptchaVerifier = null;
       }
     };
   }, [auth]);
@@ -62,6 +84,10 @@ export function PhoneLogin() {
 
     try {
       const verifier = (window as any).recaptchaVerifier;
+      if (!verifier) {
+        throw new Error("Le vérificateur de sécurité n'est pas prêt. Rafraîchissez la page.");
+      }
+
       // On nettoie le numéro des espaces et on ajoute l'indicatif choisi
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
@@ -75,7 +101,7 @@ export function PhoneLogin() {
       toast({ 
         variant: 'destructive', 
         title: 'Erreur', 
-        description: "Impossible d'envoyer le code. Vérifiez le numéro ou réessayez plus tard." 
+        description: error.message || "Impossible d'envoyer le code. Vérifiez le numéro ou réessayez plus tard." 
       });
     } finally {
       setIsLoading(false);
