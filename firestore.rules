@@ -16,8 +16,6 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // On autorise l'accès admin par email spécifique pour le développeur en priorité
-      // Puis via la collection roles_admin
       return isSignedIn() && (
         request.auth.token.email == 'sekoubtieta83@gmail.com' ||
         exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
@@ -27,9 +25,9 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Autorisé pour permettre l'affichage des stats dans le dashboard
-      allow create, update, delete: if isOwner(userId) || isAdmin();
+      // Un utilisateur connecté peut voir les profils, mais seul le propriétaire peut modifier
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
       
       // Gestion des favoris par l'utilisateur propriétaire
       match /favorites/{favId} {
@@ -85,7 +83,7 @@ service cloud.firestore {
 
     match /site_stats/{docId} {
       allow read: if isSignedIn();
-      allow create, update: if true; // Autorise l'incrémentation des visites
+      allow create, update: if true;
     }
   }
 }

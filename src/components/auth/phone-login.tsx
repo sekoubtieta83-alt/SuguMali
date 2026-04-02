@@ -9,7 +9,8 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { useAuth, useFirestore } from '@/firebase';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +44,7 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   
   const auth = useAuth();
   const firestore = useFirestore();
-  const { toast } = useToast();
+  const app = useFirebaseApp();
   const router = useRouter();
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
@@ -94,7 +95,6 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
       
-      // Tentative d'envoi
       const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
@@ -107,22 +107,17 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       
       if (error.code === 'auth/operation-not-allowed') {
         setRegionError("L'envoi de SMS vers cette région n'est pas activé dans votre console Firebase.");
-        toast({ 
-          variant: 'destructive', 
-          title: "Région non autorisée", 
-          description: "Veuillez activer le pays dans la console Firebase (SMS Region Policy)."
-        });
       } else if (error.code === 'auth/too-many-requests') {
         toast({ 
           variant: 'destructive', 
           title: "Trop de tentatives", 
-          description: "Nous avons détecté trop de demandes. Veuillez patienter quelques minutes avant de réessayer."
+          description: "Veuillez patienter quelques minutes avant de réessayer."
         });
       } else {
         toast({ 
           variant: 'destructive', 
           title: "Échec de l'envoi", 
-          description: error.message || "Veuillez vérifier le numéro et réessayer."
+          description: "Veuillez vérifier le numéro et réessayer."
         });
       }
     } finally {
@@ -138,14 +133,12 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Vérifier si l'utilisateur existe déjà dans Firestore
       const userSnap = await getDoc(doc(firestore, 'users', user.uid));
       
       if (userSnap.exists()) {
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // Nouvel utilisateur -> Étape Profil
         if (onProfileStep) onProfileStep();
         setStep('profile');
       }
@@ -176,21 +169,30 @@ export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
 
     try {
       const user = auth.currentUser;
-      const finalPhoto = photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
+      const storage = getStorage(app);
+      let finalPhotoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
 
-      // 1. Mettre à jour le profil Auth
+      // 1. Upload de la photo vers Firebase Storage si présente
+      if (photoURL && photoURL.startsWith('data:')) {
+        const storagePath = `profiles/${user.uid}/photo.jpg`;
+        const storageRef = ref(storage, storagePath);
+        await uploadString(storageRef, photoURL, 'data_url');
+        finalPhotoURL = await getDownloadURL(storageRef);
+      }
+
+      // 2. Mettre à jour le profil Firebase Auth
       await updateProfile(user, {
         displayName: displayName,
-        photoURL: finalPhoto
+        photoURL: finalPhotoURL
       });
 
-      // 2. Créer le document Firestore
+      // 3. Créer le document utilisateur dans Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
         displayName: displayName,
         email: user.email || '',
         phoneNumber: user.phoneNumber,
-        photoURL: finalPhoto,
+        photoURL: finalPhotoURL,
         isVerified: false,
         isBanned: false,
         createdAt: serverTimestamp(),
