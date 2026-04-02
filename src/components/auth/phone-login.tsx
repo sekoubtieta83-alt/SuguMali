@@ -70,7 +70,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         verifierRef.current = null;
       }
 
-      // Attendre un cycle de rendu pour être sûr que le container est dans le DOM
+      // Attendre un cycle de rendu
       await new Promise(resolve => setTimeout(resolve, 100));
 
       verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -85,11 +85,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       await verifierRef.current.render();
       console.log('ReCAPTCHA correctly initialized');
     } catch (error: any) {
-      console.error("ReCAPTCHA Initialization Error:", {
-        message: error.message,
-        code: error.code,
-        details: error.customData || error.details || 'No extra details'
-      });
+      console.error("ReCAPTCHA Initialization Error:", error);
     }
   };
 
@@ -135,7 +131,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         const checkUserByPhone = httpsCallable(functions, 'checkUserByPhone');
         const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
         
-        if (!checkResult.data.exists) {
+        if (!checkResult.data?.exists) {
           toast({ variant: 'destructive', title: "Compte introuvable", description: "Ce numéro n'est pas inscrit." });
           setIsLoading(false);
           return;
@@ -144,21 +140,15 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
       await initRecaptcha();
       
-      if (!verifierRef.current) throw new Error("Système de sécurité indisponible (ReCAPTCHA).");
+      if (!verifierRef.current) throw new Error("Système de sécurité indisponible.");
       
-      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current!);
+      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
       toast({ title: 'Code envoyé !', description: `SMS envoyé au ${formattedNumber}` });
     } catch (error: any) {
-      // Diagnostic profond de l'erreur brute demandé par l'utilisateur
-      console.error("Firebase Phone Auth Raw Error:", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        customData: error.customData,
-        stack: error.stack
-      });
+      // Diagnostic profond amélioré
+      console.error("Firebase Phone Auth Error:", error);
       
       if (verifierRef.current) {
         verifierRef.current.clear();
@@ -167,15 +157,15 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
-        toast({ variant: 'destructive', title: "Anti-spam actif", description: "Attendez 1 minute." });
-      } else if (error.code === 'auth/internal-error' || error.message?.includes('internal')) {
+        toast({ variant: 'destructive', title: "Anti-spam actif", description: "Attends 1 minute." });
+      } else if (error.code === 'auth/invalid-phone-number') {
+        toast({ variant: 'destructive', title: "Numéro invalide", description: "Vérifiez le format du numéro." });
+      } else {
         toast({ 
           variant: 'destructive', 
-          title: "Erreur Système", 
-          description: "Vérifiez vos paramètres de sécurité navigateur ou rafraîchissez la page." 
+          title: "Échec de l'envoi", 
+          description: error.message || "Vérifiez votre connexion ou réessayez plus tard." 
         });
-      } else {
-        toast({ variant: 'destructive', title: "Échec de l'envoi", description: error.message || "Erreur inconnue." });
       }
     } finally {
       setIsLoading(false);
@@ -245,7 +235,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Verification Error details:", error.customData || error.details || error);
+      console.error("Verification Error:", error);
       toast({ variant: 'destructive', title: 'Code invalide', description: "Vérifiez le code reçu." });
     } finally {
       setIsLoading(false);
@@ -254,7 +244,8 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
   return (
     <div className="space-y-6">
-      <div id="recaptcha-container" className="hidden"></div>
+      {/* Container ReCAPTCHA invisible mais présent dans le layout */}
+      <div id="recaptcha-container" className="opacity-0 pointer-events-none fixed bottom-0"></div>
       
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
