@@ -50,6 +50,30 @@ async function sendOTPEmail(email: string, otp: string) {
 
 // --- CLOUD FUNCTIONS ---
 
+/**
+ * Vérifie si un utilisateur existe déjà avec ce numéro de téléphone.
+ * Utilisé pour la connexion sécurisée sans exposer les permissions de listing Firestore.
+ */
+export const checkUserByPhone = onCall({
+  cors: true,
+  region: 'europe-west1',
+}, async (request) => {
+  const { phoneNumber } = request.data;
+  if (!phoneNumber) throw new HttpsError('invalid-argument', 'Numéro requis.');
+  
+  try {
+    const snap = await db.collection('users')
+      .where('phoneNumber', '==', phoneNumber)
+      .limit(1)
+      .get();
+    
+    return { exists: !snap.empty };
+  } catch (error) {
+    console.error("Erreur checkUserByPhone:", error);
+    throw new HttpsError('internal', 'Impossible de vérifier le numéro.');
+  }
+});
+
 export const mamiChat = onCall({
   cors: true,
   region: 'europe-west1',

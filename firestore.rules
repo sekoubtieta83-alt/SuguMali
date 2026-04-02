@@ -27,7 +27,11 @@ service cloud.firestore {
     match /users/{userId} {
       // Un utilisateur connecté peut voir les profils, mais seul le propriétaire peut modifier
       allow read: if isSignedIn();
-      allow write: if isOwner(userId) || isAdmin();
+      // Seul le propriétaire peut créer son doc initial ou le modifier
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      // Suppression autorisée par le propriétaire (pour gestion RGPD/nettoyage)
+      allow delete: if isOwner(userId) || isAdmin();
       
       // Gestion des favoris par l'utilisateur propriétaire
       match /favorites/{favId} {

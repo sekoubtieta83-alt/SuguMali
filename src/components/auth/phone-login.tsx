@@ -6,10 +6,13 @@ import {
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
   ConfirmationResult,
-  updateProfile
+  updateProfile,
+  signOut
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface PhoneLoginProps {
   mode: 'login' | 'signup';
@@ -42,7 +46,6 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [regionError, setRegionError] = useState<string | null>(null);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -104,26 +107,24 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
   const onSendOTP = async () => {
     if (!auth || !firestore || !phoneNumber || isLoading || cooldown > 0) return;
     
-    // Validation du nom uniquement en mode inscription
     if (mode === 'signup' && !displayName.trim()) {
       toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
       return;
     }
     
     setIsLoading(true);
-    setRegionError(null);
 
     try {
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
-      // VÉRIFICATION D'EXISTENCE (Si mode login)
+      // VÉRIFICATION D'EXISTENCE via Cloud Function (évite les erreurs de permissions Firestore)
       if (mode === 'login') {
-        const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where('phoneNumber', '==', formattedNumber), limit(1));
-        const querySnapshot = await getDocs(q);
+        const functions = getFunctions(getApp(), 'europe-west1');
+        const checkUserByPhone = httpsCallable(functions, 'checkUserByPhone');
+        const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
         
-        if (querySnapshot.empty) {
+        if (!checkResult.data.exists) {
           toast({ 
             variant: 'destructive', 
             title: "Compte introuvable", 
@@ -167,8 +168,22 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
       const user = result.user;
 
       const userRef = doc(firestore, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+      const userSnap = await getDoc(userRef).catch(async (serverError) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'get'
+          }));
+          throw serverError;
+      });
       
+      // Sécurité : Si mode login mais pas de doc Firestore (cas rare de numéro recyclé ou suppression manuelle)
+      if (!userSnap.exists() && mode === 'login') {
+          await signOut(auth);
+          toast({ variant: 'destructive', title: "Compte incomplet", description: "Votre profil n'a pas pu être chargé. Veuillez vous inscrire." });
+          setIsLoading(false);
+          return;
+      }
+
       if (!userSnap.exists() && mode === 'signup') {
         let photoURL = `https://picsum.photos/seed/${user.uid}/200/200`;
 
@@ -185,7 +200,7 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
         
         await updateProfile(user, { displayName, photoURL });
 
-        await setDoc(userRef, {
+        const newUserPayload = {
           uid: user.uid,
           displayName: displayName,
           phoneNumber: user.phoneNumber,
@@ -193,6 +208,15 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
           isVerified: false,
           isBanned: false,
           createdAt: serverTimestamp(),
+        };
+
+        await setDoc(userRef, newUserPayload).catch(async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'create',
+                requestResourceData: newUserPayload
+            }));
+            throw serverError;
         });
         
         toast({ title: 'Bienvenue sur SuguMali !', description: 'Compte créé avec succès.' });
@@ -332,7 +356,7 @@ export function PhoneLogin({ mode, onProfileStep }: PhoneLoginProps) {
           <Button 
             variant="ghost" 
             className="w-full text-[10px] font-black text-muted-foreground uppercase tracking-wider hover:text-accent"
-            onClick={() => { setStep('phone'); setRegionError(null); }}
+            onClick={() => { setStep('phone'); }}
             disabled={isLoading}
           >
             Modifier les informations
