@@ -11,8 +11,6 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
 import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +52,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Countdown cooldown pour éviter le spam
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -61,42 +60,31 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     }
   }, [cooldown]);
 
-  const initRecaptcha = async () => {
-    if (!auth || typeof window === 'undefined') return;
-    
-    try {
-      if (verifierRef.current) {
-        verifierRef.current.clear();
-        verifierRef.current = null;
-      }
-
-      // Attendre un cycle de rendu
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => console.log('ReCAPTCHA challenge solved'),
-        'expired-callback': () => {
-          console.warn('ReCAPTCHA expired, re-initializing...');
-          initRecaptcha();
-        }
-      });
-
-      await verifierRef.current.render();
-      console.log('ReCAPTCHA correctly initialized');
-    } catch (error: any) {
-      console.error("ReCAPTCHA Initialization Error:", error);
-    }
-  };
-
+  // Nettoyage au démontage pour éviter les fuites de mémoire
   useEffect(() => {
     return () => {
       if (verifierRef.current) {
-        verifierRef.current.clear();
+        try { verifierRef.current.clear(); } catch (_) {}
         verifierRef.current = null;
       }
     };
   }, []);
+
+  // Création stable du RecaptchaVerifier
+  const getVerifier = (): RecaptchaVerifier => {
+    if (verifierRef.current) return verifierRef.current;
+
+    verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {},
+      'expired-callback': () => {
+        try { verifierRef.current?.clear(); } catch (_) {}
+        verifierRef.current = null;
+      },
+    });
+
+    return verifierRef.current;
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -108,7 +96,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   };
 
   const onSendOTP = async () => {
-    if (!auth || !firestore || !phoneNumber || isLoading || cooldown > 0) return;
+    if (!auth || !phoneNumber || isLoading || cooldown > 0) return;
     
     if (mode === 'signup' && !displayName.trim()) {
       toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
@@ -119,52 +107,36 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
     if (formattedNumber.length < 10) {
-      toast({ variant: 'destructive', title: "Numéro invalide", description: "Format: +223 XXXX XXXX" });
+      toast({ variant: 'destructive', title: "Numéro invalide", description: "Vérifiez le format du numéro." });
       return;
     }
     
     setIsLoading(true);
 
     try {
-      if (mode === 'login') {
-        const functions = getFunctions(getApp(), 'europe-west1');
-        const checkUserByPhone = httpsCallable(functions, 'checkUserByPhone');
-        const checkResult: any = await checkUserByPhone({ phoneNumber: formattedNumber });
-        
-        if (!checkResult.data?.exists) {
-          toast({ variant: 'destructive', title: "Compte introuvable", description: "Ce numéro n'est pas inscrit." });
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      await initRecaptcha();
+      // ✅ Étape 1 : Envoyer le SMS directement sans vérification préalable Cloud Function
+      const verifier = getVerifier();
+      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifier);
       
-      if (!verifierRef.current) throw new Error("Système de sécurité indisponible.");
-      
-      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
-      toast({ title: 'Code envoyé !', description: `SMS envoyé au ${formattedNumber}` });
+      toast({ title: 'Code envoyé !', description: `Un SMS a été envoyé au ${formattedNumber}` });
+
     } catch (error: any) {
-      // Diagnostic profond amélioré
       console.error("Firebase Phone Auth Error:", error);
       
-      if (verifierRef.current) {
-        verifierRef.current.clear();
-        verifierRef.current = null;
-      }
+      // Réinitialiser reCAPTCHA après erreur pour permettre une nouvelle tentative
+      try { verifierRef.current?.clear(); } catch (_) {}
+      verifierRef.current = null;
 
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
-        toast({ variant: 'destructive', title: "Anti-spam actif", description: "Attends 1 minute." });
-      } else if (error.code === 'auth/invalid-phone-number') {
-        toast({ variant: 'destructive', title: "Numéro invalide", description: "Vérifiez le format du numéro." });
+        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez attendre 1 minute." });
       } else {
         toast({ 
           variant: 'destructive', 
           title: "Échec de l'envoi", 
-          description: error.message || "Vérifiez votre connexion ou réessayez plus tard." 
+          description: "Impossible d'envoyer le SMS. Vérifiez votre connexion." 
         });
       }
     } finally {
@@ -177,27 +149,37 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     setIsLoading(true);
 
     try {
+      // ✅ Étape 2 : Confirmation OTP
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
+
+      // ✅ Étape 3 : Synchroniser le token avant d'accéder à Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef).catch(async (serverError) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: userRef.path,
-              operation: 'get'
-          }));
-          throw serverError;
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'get'
+        }));
+        throw serverError;
       });
       
+      // ✅ Étape 4 : Si doc n'existe pas ET mode login → signOut() immédiat
       if (!userSnap.exists() && mode === 'login') {
-          await signOut(auth);
-          toast({ variant: 'destructive', title: "Profil incomplet", description: "Veuillez vous inscrire." });
-          setIsLoading(false);
-          setStep('phone');
-          return;
+        await signOut(auth);
+        toast({ 
+          variant: 'destructive', 
+          title: "Compte introuvable", 
+          description: "Aucun compte n'est lié à ce numéro. Veuillez vous inscrire." 
+        });
+        setIsLoading(false);
+        setStep('phone');
+        setOtp('');
+        return;
       }
 
+      // Mode signup : créer le profil s'il n'existe pas encore
       if (mode === 'signup') {
         let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
@@ -208,7 +190,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             await uploadString(storageRef, profileImage, 'data_url');
             photoURL = await getDownloadURL(storageRef);
           } catch (storageErr) {
-            console.error("Upload error:", storageErr);
+            console.error("Upload photo error:", storageErr);
           }
         }
         
@@ -225,18 +207,33 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         };
 
         await setDoc(userRef, newUserPayload, { merge: true }).catch(async (serverError) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userRef.path,
-                operation: 'write',
-                requestResourceData: newUserPayload
-            }));
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'write',
+            requestResourceData: newUserPayload
+          }));
+          throw serverError;
         });
+
+        toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte a été créé.' });
+      } else {
+        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
       }
       
+      // ✅ Étape 5 : Succès → Redirection
       router.push('/dashboard');
+
     } catch (error: any) {
-      console.error("Verification Error:", error);
-      toast({ variant: 'destructive', title: 'Code invalide', description: "Vérifiez le code reçu." });
+      console.error("OTP Verification Error:", error);
+      const messages: Record<string, string> = {
+        'auth/invalid-verification-code': "Code incorrect. Réessayez.",
+        'auth/code-expired': "Le code a expiré. Renvoyez un SMS.",
+      };
+      toast({ 
+        variant: 'destructive', 
+        title: 'Vérification échouée', 
+        description: messages[error.code] || "Une erreur est survenue lors de la validation." 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -244,8 +241,8 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
   return (
     <div className="space-y-6">
-      {/* Container ReCAPTCHA invisible mais présent dans le layout */}
-      <div id="recaptcha-container" className="opacity-0 pointer-events-none fixed bottom-0"></div>
+      {/* Container ReCAPTCHA requis par Firebase */}
+      <div id="recaptcha-container" />
       
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
@@ -267,7 +264,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                     <Camera className="h-3 w-3" />
                   </button>
                 </div>
-                <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Photo</p>
+                <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Ma Photo</p>
                 <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
               </div>
 
@@ -276,7 +273,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                   <Input 
-                    placeholder="Sekou Tieta" 
+                    placeholder="Votre nom et prénom" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20"
@@ -287,7 +284,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">TÉLÉPHONE</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">VOTRE NUMÉRO</Label>
             <div className="flex gap-2">
               <div className="w-[100px] shrink-0">
                 <Select value={selectedDialCode} onValueChange={setSelectedCountryCode}>
@@ -308,7 +305,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
               <div className="relative flex-1">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                 <Input 
-                  placeholder="79 05 28 86" 
+                  placeholder="Ex: 79 05 28 86" 
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg"
@@ -323,7 +320,13 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             onClick={onSendOTP}
             disabled={isLoading || !phoneNumber || (mode === 'signup' && !displayName.trim()) || cooldown > 0}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : cooldown > 0 ? `Réessayer (${cooldown}s)` : <><ArrowRight className="mr-2 h-5 w-5" /> Continuer</>}
+            {isLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : cooldown > 0 ? (
+              `Attendre (${cooldown}s)`
+            ) : (
+              <><ArrowRight className="mr-2 h-5 w-5" /> Recevoir le code</>
+            )}
           </Button>
         </div>
       )}
@@ -331,12 +334,14 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       {step === 'otp' && (
         <div className="space-y-5 animate-in slide-in-from-right-4 duration-500">
           <div className="text-center space-y-1 mb-2">
-            <h3 className="font-black text-lg">Vérification</h3>
-            <p className="text-xs text-muted-foreground">Code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span></p>
+            <h3 className="font-black text-lg">Code de vérification</h3>
+            <p className="text-xs text-muted-foreground">
+              Entrez le code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span>
+            </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU PAR SMS</Label>
             <div className="relative">
               <MessageSquareCode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
               <Input 
@@ -354,10 +359,19 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             onClick={onVerifyOTP}
             disabled={isLoading || otp.length < 6}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Valider"}
+            {isLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <><ShieldCheck className="mr-2 h-5 w-5" /> Valider mon compte</>
+            )}
           </Button>
 
-          <Button variant="ghost" className="w-full text-[10px] font-black text-muted-foreground uppercase" onClick={() => setStep('phone')} disabled={isLoading}>
+          <Button 
+            variant="ghost" 
+            className="w-full text-[10px] font-black text-muted-foreground uppercase tracking-wider hover:text-accent"
+            onClick={() => setStep('phone')} 
+            disabled={isLoading}
+          >
             Modifier le numéro
           </Button>
         </div>
