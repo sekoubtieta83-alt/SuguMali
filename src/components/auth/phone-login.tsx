@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
-  ConfirmationResult 
+  ConfirmationResult,
+  updateProfile
 } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle, User, Camera, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -22,26 +24,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function PhoneLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [step, setStep] = useState<'phone' | 'otp' | 'profile'>('phone');
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [regionError, setRegionError] = useState<string | null>(null);
   
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
     
-    // Initialisation sécurisée du ReCAPTCHA
     const initRecaptcha = () => {
       try {
         if (verifierRef.current) {
@@ -118,9 +124,19 @@ export function PhoneLogin() {
     setIsLoading(true);
 
     try {
-      await confirmationResult.confirm(otp);
-      toast({ title: 'Connexion réussie', description: 'Bienvenue sur SuguMali !' });
-      router.push('/dashboard');
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+
+      // Vérifier si l'utilisateur existe déjà dans Firestore
+      const userSnap = await getDoc(doc(firestore, 'users', user.uid));
+      
+      if (userSnap.exists()) {
+        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
+        router.push('/dashboard');
+      } else {
+        // Nouvel utilisateur -> Étape Profil
+        setStep('profile');
+      }
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
       toast({ 
@@ -133,20 +149,69 @@ export function PhoneLogin() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => setPhotoURL(event.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onFinalizeProfile = async () => {
+    if (!auth.currentUser || !displayName.trim() || isLoading) return;
+    setIsLoading(true);
+
+    try {
+      const user = auth.currentUser;
+      const finalPhoto = photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
+
+      // 1. Mettre à jour le profil Auth
+      await updateProfile(user, {
+        displayName: displayName,
+        photoURL: finalPhoto
+      });
+
+      // 2. Créer le document Firestore
+      await setDoc(doc(firestore, 'users', user.uid), {
+        uid: user.uid,
+        displayName: displayName,
+        email: user.email || '',
+        phoneNumber: user.phoneNumber,
+        photoURL: finalPhoto,
+        isVerified: false,
+        isBanned: false,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre profil est prêt.' });
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Erreur finalisation profil:", error);
+      toast({ variant: 'destructive', title: 'Erreur', description: "Impossible d'enregistrer vos informations." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div id="recaptcha-container" ref={recaptchaRef}></div>
       
       <div className="text-center space-y-2 mb-4">
-        <h2 className="text-xl font-black">{step === 'phone' ? 'Votre Numéro' : 'Vérification'}</h2>
+        <h2 className="text-xl font-black">
+          {step === 'phone' ? 'Votre Numéro' : step === 'otp' ? 'Vérification' : 'Complétez votre profil'}
+        </h2>
         <p className="text-sm text-muted-foreground">
           {step === 'phone' 
             ? "Entrez votre numéro pour vous connecter." 
-            : `Entrez le code reçu par SMS.`}
+            : step === 'otp' 
+            ? "Entrez le code reçu par SMS."
+            : "Dites-nous qui vous êtes pour commencer."}
         </p>
       </div>
 
-      {regionError && (
+      {regionError && step === 'phone' && (
         <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive rounded-2xl">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle className="font-bold">Action requise (Admin)</AlertTitle>
@@ -157,7 +222,7 @@ export function PhoneLogin() {
         </Alert>
       )}
 
-      {step === 'phone' ? (
+      {step === 'phone' && (
         <div className="space-y-4">
           <div className="space-y-3">
             <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Indicatif & Numéro</Label>
@@ -200,7 +265,9 @@ export function PhoneLogin() {
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ArrowRight className="mr-2 h-5 w-5" /> Continuer</>}
           </Button>
         </div>
-      ) : (
+      )}
+
+      {step === 'otp' && (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Code reçu par SMS</Label>
@@ -230,6 +297,58 @@ export function PhoneLogin() {
           >
             Changer de numéro
           </Button>
+        </div>
+      )}
+
+      {step === 'profile' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative group">
+              <Avatar className="h-24 w-24 border-4 border-accent/20 shadow-xl">
+                <AvatarImage src={photoURL || undefined} className="object-cover" />
+                <AvatarFallback className="bg-muted text-accent font-black text-2xl">
+                  {displayName ? displayName.charAt(0).toUpperCase() : <User size={32} />}
+                </AvatarFallback>
+              </Avatar>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-accent text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
+              >
+                <Camera size={16} />
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept="image/*" 
+                className="hidden" 
+              />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ajoutez une photo</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nom et Prénom</Label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                <Input 
+                  placeholder="Ex: Sekou Tieta" 
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="h-14 rounded-2xl bg-muted/50 border-none pl-12 font-bold"
+                />
+              </div>
+            </div>
+
+            <Button 
+              className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]" 
+              onClick={onFinalizeProfile}
+              disabled={isLoading || !displayName.trim()}
+            >
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="mr-2 h-5 w-5" /> Terminer l'inscription</>}
+            </Button>
+          </div>
         </div>
       )}
     </div>
