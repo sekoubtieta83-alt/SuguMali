@@ -4,13 +4,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { type Post } from "@/lib/data";
-import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare, Info, Camera, Send, Rocket } from "lucide-react";
-import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
+import { Edit, Search, Bell, BellOff, Loader2, BadgeCheck, ShieldCheck, Upload, Trash2, AlertTriangle, Smartphone, CheckCircle2, MessageSquare, Info, Camera, Send, Rocket, UserMinus } from "lucide-react";
+import { useFirebaseApp, useFirestore, useUser, useAuth } from "@/firebase";
 import { useEffect, useState, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch, deleteDoc, getDocs } from "firebase/firestore";
 import { getStorage, refine, uploadString, getDownloadURL, ref } from 'firebase/storage';
+import { deleteUser } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   AlertDialog,
@@ -65,8 +67,10 @@ export function checkIsVerified(profile: UserProfile | null): boolean {
 
 export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
+  const auth = useAuth();
   const firestore = useFirestore();
   const app = useFirebaseApp();
+  const router = useRouter();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -85,6 +89,7 @@ export default function ProfilePage() {
   const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
   const [isSubmittingId, setIsSubmittingId] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const paymentInputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +107,6 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
-          // Si l'ID est déjà là mais pas le paiement, on peut suggérer l'étape paiement
           if (data.idDocumentUrl && !data.isVerificationPaid) {
             setVerificationStep('payment');
           }
@@ -238,6 +242,49 @@ export default function ProfilePage() {
         .finally(() => setIsDeletingAll(false));
   };
 
+  const handleDeleteAccount = async () => {
+    if (!firestore || !user || !auth.currentUser) return;
+    setIsDeletingAccount(true);
+
+    try {
+      // 1. Supprimer les annonces
+      const annoncesRef = collection(firestore, 'annonces');
+      const q = query(annoncesRef, where('vendeurId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(firestore);
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      // 2. Supprimer le profil Firestore
+      await deleteDoc(doc(firestore, 'users', user.uid));
+
+      // 3. Supprimer le compte Auth (Nécessite souvent une reconnexion récente)
+      await deleteUser(auth.currentUser);
+
+      toast({ title: "Compte supprimé définitivement" });
+      router.push('/');
+    } catch (error: any) {
+      console.error("Erreur suppression compte:", error);
+      if (error.code === 'auth/requires-recent-login') {
+        toast({ 
+          variant: 'destructive', 
+          title: "Action requise", 
+          description: "Pour supprimer votre compte, déconnectez-vous et reconnectez-vous, puis réessayez." 
+        });
+      } else {
+        toast({ 
+          variant: 'destructive', 
+          title: "Erreur", 
+          description: "Une erreur est survenue lors de la suppression de votre compte." 
+        });
+      }
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const handleIdFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -353,7 +400,7 @@ export default function ProfilePage() {
             <h1 className="text-2xl sm:text-3xl font-bold">{userProfile.displayName}</h1>
              {isVerified && <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 fill-accent text-white" />}
         </div>
-        <p className="text-muted-foreground text-sm">{userProfile.email}</p>
+        <p className="text-muted-foreground text-sm">{userProfile.email || userProfile.phoneNumber}</p>
         <p className="mt-4 text-xs sm:text-sm max-w-2xl leading-relaxed">{userProfile.bio || "Ajoutez une biographie pour vous présenter !"}</p>
 
         <div className="mt-4 flex items-center gap-2">
@@ -597,6 +644,46 @@ export default function ProfilePage() {
                 )}
             </TabsContent>
         </Tabs>
+
+        {/* ZONE DE DANGER */}
+        <div className="mt-12 pt-8 border-t border-destructive/20">
+            <h3 className="text-destructive font-black uppercase tracking-widest text-sm mb-4">Zone de danger</h3>
+            <div className="p-6 bg-destructive/5 rounded-[2rem] border border-destructive/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h4 className="font-bold text-foreground">Supprimer mon compte</h4>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-md">Cette action supprimera définitivement votre profil, vos annonces et vos avis. Cette action est irréversible.</p>
+                </div>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="rounded-xl font-bold px-8 h-12 shadow-lg shadow-destructive/20">
+                            <UserMinus className="h-4 w-4 mr-2" />
+                            Supprimer mon compte
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-[2rem] max-w-md">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <AlertTriangle className="h-6 w-6" />
+                                Action irréversible
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-base">
+                                Êtes-vous absolument sûr ? Toutes vos données (annonces, favoris, profil) seront supprimées de SuguMali sans possibilité de retour.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="mt-6">
+                            <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={handleDeleteAccount} 
+                                disabled={isDeletingAccount} 
+                                className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-bold"
+                            >
+                                {isDeletingAccount ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Oui, supprimer tout"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
       </div>
     </div>
   );
