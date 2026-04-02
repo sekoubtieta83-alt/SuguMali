@@ -11,7 +11,7 @@ import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertTriangle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function PhoneLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -29,6 +30,8 @@ export function PhoneLogin() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [regionError, setRegionError] = useState<string | null>(null);
+  
   const auth = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -38,6 +41,7 @@ export function PhoneLogin() {
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
     
+    // Initialisation sécurisée du ReCAPTCHA
     const initRecaptcha = () => {
       try {
         if (verifierRef.current) {
@@ -47,18 +51,11 @@ export function PhoneLogin() {
         verifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current!, {
           size: 'invisible',
           'callback': () => {
-            console.log('ReCAPTCHA résolu');
-          },
-          'expired-callback': () => {
-            toast({ 
-              variant: "destructive", 
-              title: "Session expirée", 
-              description: "Le vérificateur de sécurité a expiré. Veuillez recommencer." 
-            });
+            console.log('ReCAPTCHA validé');
           }
         });
       } catch (error) {
-        console.error("Erreur ReCAPTCHA init:", error);
+        console.error("Erreur lors de l'initialisation du ReCAPTCHA:", error);
       }
     };
 
@@ -72,21 +69,21 @@ export function PhoneLogin() {
         verifierRef.current = null;
       }
     };
-  }, [auth, toast]);
+  }, [auth]);
 
   const onSendOTP = async () => {
     if (!auth || !phoneNumber || isLoading) return;
     setIsLoading(true);
+    setRegionError(null);
 
     try {
       if (!verifierRef.current) {
-        throw new Error("Le système de sécurité n'est pas prêt. Veuillez rafraîchir la page.");
+        throw new Error("Le vérificateur de sécurité n'est pas prêt. Veuillez rafraîchir la page.");
       }
 
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
       
-      // Tentative d'envoi
       const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
@@ -95,27 +92,22 @@ export function PhoneLogin() {
         description: `Un SMS a été envoyé au ${formattedNumber}` 
       });
     } catch (error: any) {
-      console.error("Détails de l'erreur SMS Firebase:", error);
+      console.error("Erreur d'envoi SMS Firebase:", error);
       
-      let title = "Échec de l'envoi";
-      let message = "Impossible d'envoyer le code par SMS. Veuillez réessayer.";
-
       if (error.code === 'auth/operation-not-allowed') {
-        title = "Région bloquée (Firebase)";
-        message = "L'envoi de SMS vers ce pays n'est pas autorisé dans votre console Firebase. Veuillez activer le Mali (+223) et le Ghana (+233) dans les paramètres 'SMS Region Policy'.";
-      } else if (error.code === 'auth/too-many-requests') {
-        title = "Trop de tentatives";
-        message = "Ce numéro a été bloqué temporairement pour des raisons de sécurité. Réessayez plus tard.";
-      } else if (error.code === 'auth/invalid-phone-number') {
-        title = "Numéro invalide";
-        message = "Le format du numéro de téléphone n'est pas correct.";
+        setRegionError("L'envoi de SMS vers cette région n'est pas activé dans votre console Firebase.");
+        toast({ 
+          variant: 'destructive', 
+          title: "Région non autorisée", 
+          description: "Veuillez activer le pays dans la console Firebase (SMS Region Policy)."
+        });
+      } else {
+        toast({ 
+          variant: 'destructive', 
+          title: "Échec de l'envoi", 
+          description: error.message || "Veuillez vérifier le numéro et réessayer."
+        });
       }
-
-      toast({ 
-        variant: 'destructive', 
-        title: title, 
-        description: message
-      });
     } finally {
       setIsLoading(false);
     }
@@ -147,12 +139,23 @@ export function PhoneLogin() {
       
       <div className="text-center space-y-2 mb-4">
         <h2 className="text-xl font-black">{step === 'phone' ? 'Votre Numéro' : 'Vérification'}</h2>
-        <p className="text-sm text-muted-foreground px-4">
+        <p className="text-sm text-muted-foreground">
           {step === 'phone' 
-            ? "Choisissez votre pays et entrez votre numéro." 
-            : `Entrez le code de sécurité reçu par SMS.`}
+            ? "Entrez votre numéro pour vous connecter." 
+            : `Entrez le code reçu par SMS.`}
         </p>
       </div>
+
+      {regionError && (
+        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive rounded-2xl">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-bold">Action requise (Admin)</AlertTitle>
+          <AlertDescription className="text-xs mt-1">
+            Activez le <strong>Mali (+223)</strong> et le <strong>Ghana (+233)</strong> dans : 
+            <br/><code className="bg-black/10 px-1 rounded">Console Firebase > Auth > Settings > SMS Region Policy</code>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {step === 'phone' ? (
         <div className="space-y-4">
@@ -222,7 +225,7 @@ export function PhoneLogin() {
           <Button 
             variant="ghost" 
             className="w-full text-xs font-bold text-muted-foreground hover:text-accent"
-            onClick={() => setStep('phone')}
+            onClick={() => { setStep('phone'); setRegionError(null); }}
             disabled={isLoading}
           >
             Changer de numéro
