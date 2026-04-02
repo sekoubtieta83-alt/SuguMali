@@ -11,7 +11,7 @@ import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, Globe } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -46,12 +46,19 @@ export function PhoneLogin() {
 
         verifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current!, {
           size: 'invisible',
-          callback: () => {
-            console.log('Recaptcha resolved');
+          'callback': () => {
+            console.log('ReCAPTCHA résolu');
+          },
+          'expired-callback': () => {
+            toast({ 
+              variant: "destructive", 
+              title: "Session expirée", 
+              description: "Le vérificateur de sécurité a expiré. Veuillez recommencer." 
+            });
           }
         });
       } catch (error) {
-        console.error("Error initializing recaptcha:", error);
+        console.error("Erreur ReCAPTCHA init:", error);
       }
     };
 
@@ -65,46 +72,49 @@ export function PhoneLogin() {
         verifierRef.current = null;
       }
     };
-  }, [auth]);
+  }, [auth, toast]);
 
   const onSendOTP = async () => {
-    if (!auth || !phoneNumber) return;
+    if (!auth || !phoneNumber || isLoading) return;
     setIsLoading(true);
 
     try {
-      const verifier = verifierRef.current;
-      if (!verifier) {
-        throw new Error("Le vérificateur de sécurité n'est pas prêt. Rafraîchissez la page.");
+      if (!verifierRef.current) {
+        throw new Error("Le système de sécurité n'est pas prêt. Veuillez rafraîchir la page.");
       }
 
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
       
-      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifier);
+      // Tentative d'envoi
+      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current);
       setConfirmationResult(confirmation);
       setStep('otp');
-      toast({ title: 'Code envoyé !', description: `Un SMS a été envoyé au ${formattedNumber}` });
+      toast({ 
+        title: 'Code envoyé !', 
+        description: `Un SMS a été envoyé au ${formattedNumber}` 
+      });
     } catch (error: any) {
-      console.error("SMS Error:", error);
+      console.error("Détails de l'erreur SMS Firebase:", error);
       
-      let errorMessage = error.message;
-      let errorTitle = "Erreur";
+      let title = "Échec de l'envoi";
+      let message = "Impossible d'envoyer le code par SMS. Veuillez réessayer.";
 
       if (error.code === 'auth/operation-not-allowed') {
-        errorTitle = "Configuration Requise";
-        errorMessage = "L'envoi de SMS vers cette région est bloqué dans votre console Firebase. Veuillez activer le Mali (+223) et le Ghana (+233) dans les paramètres SMS de Firebase.";
+        title = "Région bloquée (Firebase)";
+        message = "L'envoi de SMS vers ce pays n'est pas autorisé dans votre console Firebase. Veuillez activer le Mali (+223) et le Ghana (+233) dans les paramètres 'SMS Region Policy'.";
       } else if (error.code === 'auth/too-many-requests') {
-        errorTitle = "Trop de tentatives";
-        errorMessage = "Veuillez attendre quelques minutes avant de réessayer.";
+        title = "Trop de tentatives";
+        message = "Ce numéro a été bloqué temporairement pour des raisons de sécurité. Réessayez plus tard.";
       } else if (error.code === 'auth/invalid-phone-number') {
-        errorTitle = "Numéro invalide";
-        errorMessage = "Le format du numéro de téléphone n'est pas correct.";
+        title = "Numéro invalide";
+        message = "Le format du numéro de téléphone n'est pas correct.";
       }
 
       toast({ 
         variant: 'destructive', 
-        title: errorTitle, 
-        description: errorMessage
+        title: title, 
+        description: message
       });
     } finally {
       setIsLoading(false);
@@ -112,7 +122,7 @@ export function PhoneLogin() {
   };
 
   const onVerifyOTP = async () => {
-    if (!confirmationResult || !otp) return;
+    if (!confirmationResult || !otp || isLoading) return;
     setIsLoading(true);
 
     try {
@@ -120,7 +130,7 @@ export function PhoneLogin() {
       toast({ title: 'Connexion réussie', description: 'Bienvenue sur SuguMali !' });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("OTP Error:", error);
+      console.error("Erreur vérification OTP:", error);
       toast({ 
         variant: 'destructive', 
         title: 'Code incorrect', 
