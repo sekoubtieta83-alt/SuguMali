@@ -61,7 +61,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     }
   }, [cooldown]);
 
-  // Initialisation sécurisée du ReCAPTCHA
   const initRecaptcha = () => {
     if (!auth || typeof window === 'undefined') return;
     
@@ -70,7 +69,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         verifierRef.current.clear();
       }
 
-      // Utilisation du container invisible par ID
       verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
         callback: () => {
@@ -108,13 +106,23 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       toast({ variant: 'destructive', title: "Nom requis", description: "Veuillez entrer votre nom et prénom." });
       return;
     }
+
+    const cleanNumber = phoneNumber.replace(/\s/g, '');
+    const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
+
+    // Validation de longueur : un numéro international fait au moins 10 caractères (+223 + 8 chiffres = 12)
+    if (formattedNumber.length < 10) {
+      toast({ 
+        variant: 'destructive', 
+        title: "Numéro invalide", 
+        description: "Le numéro de téléphone est trop court. Veuillez vérifier." 
+      });
+      return;
+    }
     
     setIsLoading(true);
 
     try {
-      const cleanNumber = phoneNumber.replace(/\s/g, '');
-      const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
-
       // 1. Vérification d'existence via Cloud Function
       if (mode === 'login') {
         const functions = getFunctions(getApp(), 'europe-west1');
@@ -132,7 +140,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           }
         } catch (fnErr) {
           console.error("Erreur checkUserByPhone:", fnErr);
-          // On continue si la fonction échoue pour ne pas bloquer l'utilisateur (cas de timeout par ex)
         }
       }
 
@@ -150,7 +157,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     } catch (error: any) {
       console.error("Erreur d'envoi SMS:", error);
       
-      // Réinitialiser le ReCAPTCHA après une erreur
       if (verifierRef.current) {
         verifierRef.current.clear();
         verifierRef.current = null;
@@ -159,6 +165,8 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
         toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez patienter 1 minute." });
+      } else if (error.code === 'auth/invalid-phone-number' || error.message?.includes('TOO_SHORT')) {
+        toast({ variant: 'destructive', title: "Numéro invalide", description: "Le numéro est trop court ou mal formaté." });
       } else if (error.code === 'auth/internal-error' || error.message?.includes('internal')) {
         toast({ variant: 'destructive', title: "Erreur technique", description: "Un problème réseau est survenu. Réessayez." });
       } else {
@@ -177,7 +185,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Forcer le rafraîchissement du token pour s'assurer des permissions
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
@@ -189,7 +196,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           throw serverError;
       });
       
-      // Si mode login mais pas de doc Firestore
       if (!userSnap.exists() && mode === 'login') {
           await signOut(auth);
           toast({ variant: 'destructive', title: "Profil manquant", description: "Veuillez vous inscrire avec ce numéro." });
@@ -198,7 +204,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           return;
       }
 
-      // Si mode signup, on crée/met à jour le profil
       if (mode === 'signup') {
         let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
