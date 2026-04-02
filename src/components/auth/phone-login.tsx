@@ -26,7 +26,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-export function PhoneLogin() {
+interface PhoneLoginProps {
+  onProfileStep?: () => void;
+}
+
+export function PhoneLogin({ onProfileStep }: PhoneLoginProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
   const [otp, setOtp] = useState('');
@@ -135,6 +139,8 @@ export function PhoneLogin() {
         router.push('/dashboard');
       } else {
         // Nouvel utilisateur -> Étape Profil
+        // On notifie le parent pour empêcher la redirection automatique
+        if (onProfileStep) onProfileStep();
         setStep('profile');
       }
     } catch (error: any) {

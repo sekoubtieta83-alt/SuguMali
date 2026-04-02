@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { PhoneLogin } from '@/components/auth/phone-login';
@@ -12,14 +12,18 @@ import { Logo } from '@/components/logo';
 export default function LoginPage() {
   const { user, loading } = useUser();
   const router = useRouter();
+  // État pour intercepter la redirection si on est dans un flux de création de profil
+  const [isCompletingProfile, setIsCompletingProfile] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    // On ne redirige que si l'utilisateur est connecté ET qu'on n'est pas en train de créer son profil
+    if (!loading && user && !isCompletingProfile) {
       router.push('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isCompletingProfile]);
 
-  if (loading || user) {
+  // Si on charge ou si l'utilisateur est connecté (et qu'on ne crée pas son profil), on montre le skeleton
+  if (loading || (user && !isCompletingProfile)) {
     return (
       <div className="flex h-svh w-full items-center justify-center bg-background px-4">
         <div className="w-full max-w-md space-y-4">
@@ -65,7 +69,7 @@ export default function LoginPage() {
 
           <TabsContent value="phone" className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-card p-8 rounded-[2.5rem] border shadow-xl shadow-accent/5">
-              <PhoneLogin />
+              <PhoneLogin onProfileStep={() => setIsCompletingProfile(true)} />
             </div>
           </TabsContent>
         </Tabs>
