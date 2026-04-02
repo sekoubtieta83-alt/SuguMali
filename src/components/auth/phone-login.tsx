@@ -33,30 +33,21 @@ export function PhoneLogin() {
   const { toast } = useToast();
   const router = useRouter();
   const recaptchaRef = useRef<HTMLDivElement>(null);
+  const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     if (!auth || !recaptchaRef.current) return;
     
     const initRecaptcha = () => {
       try {
-        // Nettoyage sécurisé de l'instance précédente
-        if ((window as any).recaptchaVerifier) {
-          try {
-            (window as any).recaptchaVerifier.clear();
-          } catch (e) {
-            console.warn('Recaptcha clear error ignored during re-init:', e);
-          }
-          (window as any).recaptchaVerifier = null;
+        if (verifierRef.current) {
+          verifierRef.current.clear();
         }
 
-        // Initialisation de la nouvelle instance
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, {
+        verifierRef.current = new RecaptchaVerifier(auth, recaptchaRef.current!, {
           size: 'invisible',
           callback: () => {
             console.log('Recaptcha resolved');
-          },
-          'expired-callback': () => {
-            console.log('Recaptcha expired');
           }
         });
       } catch (error) {
@@ -67,13 +58,11 @@ export function PhoneLogin() {
     initRecaptcha();
 
     return () => {
-      if ((window as any).recaptchaVerifier) {
+      if (verifierRef.current) {
         try {
-          (window as any).recaptchaVerifier.clear();
-        } catch (e) {
-          // Ignorer l'erreur au démontage pour éviter le crash
-        }
-        (window as any).recaptchaVerifier = null;
+          verifierRef.current.clear();
+        } catch (e) {}
+        verifierRef.current = null;
       }
     };
   }, [auth]);
@@ -83,12 +72,11 @@ export function PhoneLogin() {
     setIsLoading(true);
 
     try {
-      const verifier = (window as any).recaptchaVerifier;
+      const verifier = verifierRef.current;
       if (!verifier) {
         throw new Error("Le vérificateur de sécurité n'est pas prêt. Rafraîchissez la page.");
       }
 
-      // On nettoie le numéro des espaces et on ajoute l'indicatif choisi
       const cleanNumber = phoneNumber.replace(/\s/g, '');
       const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
       
@@ -98,10 +86,25 @@ export function PhoneLogin() {
       toast({ title: 'Code envoyé !', description: `Un SMS a été envoyé au ${formattedNumber}` });
     } catch (error: any) {
       console.error("SMS Error:", error);
+      
+      let errorMessage = error.message;
+      let errorTitle = "Erreur";
+
+      if (error.code === 'auth/operation-not-allowed') {
+        errorTitle = "Configuration Requise";
+        errorMessage = "L'envoi de SMS vers cette région est bloqué dans votre console Firebase. Veuillez activer le Mali (+223) et le Ghana (+233) dans les paramètres SMS de Firebase.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorTitle = "Trop de tentatives";
+        errorMessage = "Veuillez attendre quelques minutes avant de réessayer.";
+      } else if (error.code === 'auth/invalid-phone-number') {
+        errorTitle = "Numéro invalide";
+        errorMessage = "Le format du numéro de téléphone n'est pas correct.";
+      }
+
       toast({ 
         variant: 'destructive', 
-        title: 'Erreur', 
-        description: error.message || "Impossible d'envoyer le code. Vérifiez le numéro ou réessayez plus tard." 
+        title: errorTitle, 
+        description: errorMessage
       });
     } finally {
       setIsLoading(false);
