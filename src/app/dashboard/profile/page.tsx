@@ -255,17 +255,14 @@ export default function ProfilePage() {
     if (!firestore || !user || !auth.currentUser) return;
     setIsDeletingAccount(true);
 
-    try {
-      // 1. Tenter la suppression Auth d'abord pour vérifier si une reconnexion est nécessaire
-      // On le fait avant de toucher à la base de données
-      await deleteUser(auth.currentUser);
+    const userId = user.uid;
 
-      // Si on arrive ici, la suppression auth a réussi (ou n'a pas encore été commitée mais le token est valide)
-      // On procède au nettoyage des données
+    try {
+      // 1. D'abord, nettoyer les données Firestore (nécessite d'être authentifié)
       
-      // 2. Supprimer les annonces
+      // Supprimer les annonces
       const annoncesRef = collection(firestore, 'annonces');
-      const q = query(annoncesRef, where('vendeurId', '==', user.uid));
+      const q = query(annoncesRef, where('vendeurId', '==', userId));
       const querySnapshot = await getDocs(q);
       const batch = writeBatch(firestore);
       querySnapshot.forEach((doc) => {
@@ -273,25 +270,33 @@ export default function ProfilePage() {
       });
       await batch.commit();
 
-      // 3. Supprimer le profil Firestore
-      await deleteDoc(doc(firestore, 'users', user.uid));
+      // Supprimer le profil Firestore
+      const profileRef = doc(firestore, 'users', userId);
+      await deleteDoc(profileRef).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: profileRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
 
-      toast({ title: "Compte et données supprimés" });
+      // 2. Enfin, tenter la suppression Auth (opération la plus sensible qui peut échouer)
+      await deleteUser(auth.currentUser);
+
+      toast({ title: "Compte supprimé", description: "Votre compte et vos données ont été effacés." });
       router.push('/');
     } catch (error: any) {
-      console.error("Erreur suppression compte:", error);
-      
       if (error.code === 'auth/requires-recent-login') {
         toast({ 
           variant: 'destructive', 
           title: "Action sécurisée", 
-          description: "Pour supprimer votre compte, déconnectez-vous et reconnectez-vous, puis réessayez immédiatement." 
+          description: "Pour supprimer votre identifiant de connexion, déconnectez-vous et reconnectez-vous, puis réessayez. Vos annonces ont déjà été retirées." 
         });
       } else {
         toast({ 
           variant: 'destructive', 
           title: "Erreur", 
-          description: "Une erreur est survenue. Veuillez vérifier votre connexion et réessayer." 
+          description: "Une erreur est survenue lors de la suppression définitive." 
         });
       }
     } finally {
