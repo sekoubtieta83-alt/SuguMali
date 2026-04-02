@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, writeBatch, deleteDoc, getDocs } from "firebase/firestore";
 import { getStorage, uploadString, getDownloadURL, ref } from 'firebase/storage';
-import { deleteUser } from "firebase/auth";
+import { deleteUser, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
@@ -256,7 +256,14 @@ export default function ProfilePage() {
     setIsDeletingAccount(true);
 
     try {
-      // 1. Supprimer les annonces
+      // 1. Tenter la suppression Auth d'abord pour vérifier si une reconnexion est nécessaire
+      // On le fait avant de toucher à la base de données
+      await deleteUser(auth.currentUser);
+
+      // Si on arrive ici, la suppression auth a réussi (ou n'a pas encore été commitée mais le token est valide)
+      // On procède au nettoyage des données
+      
+      // 2. Supprimer les annonces
       const annoncesRef = collection(firestore, 'annonces');
       const q = query(annoncesRef, where('vendeurId', '==', user.uid));
       const querySnapshot = await getDocs(q);
@@ -266,27 +273,25 @@ export default function ProfilePage() {
       });
       await batch.commit();
 
-      // 2. Supprimer le profil Firestore
+      // 3. Supprimer le profil Firestore
       await deleteDoc(doc(firestore, 'users', user.uid));
 
-      // 3. Supprimer le compte Auth
-      await deleteUser(auth.currentUser);
-
-      toast({ title: "Compte supprimé définitivement" });
+      toast({ title: "Compte et données supprimés" });
       router.push('/');
     } catch (error: any) {
       console.error("Erreur suppression compte:", error);
+      
       if (error.code === 'auth/requires-recent-login') {
         toast({ 
           variant: 'destructive', 
-          title: "Action requise", 
-          description: "Pour supprimer votre compte, déconnectez-vous et reconnectez-vous, puis réessayez." 
+          title: "Action sécurisée", 
+          description: "Pour supprimer votre compte, déconnectez-vous et reconnectez-vous, puis réessayez immédiatement." 
         });
       } else {
         toast({ 
           variant: 'destructive', 
           title: "Erreur", 
-          description: "Une erreur est survenue lors de la suppression de votre compte." 
+          description: "Une erreur est survenue. Veuillez vérifier votre connexion et réessayer." 
         });
       }
     } finally {
