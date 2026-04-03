@@ -15,7 +15,7 @@ import { useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, User, Camera, Mail, ShoppingBag, LayoutGrid, CheckCircle2 } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, User, Camera, Mail, ShoppingBag, LayoutGrid, CheckCircle2, UserPlus, AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -32,9 +32,10 @@ interface PhoneLoginProps {
   mode: 'login' | 'signup';
 }
 
-type Step = 'phone' | 'otp' | 'profile' | 'loading';
+type Step = 'phone' | 'otp' | 'profile' | 'loading' | 'no-account';
 
-export function PhoneLogin({ mode }: PhoneLoginProps) {
+export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
@@ -61,7 +62,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Nettoyage au démontage
   useEffect(() => {
     return () => {
       if (verifierRef.current) {
@@ -72,15 +72,13 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   }, []);
 
   const initVerifier = () => {
-    if (typeof window === 'undefined' || verifierRef.current) return;
+    if (typeof window === 'undefined') return;
     try {
+      if (verifierRef.current) {
+        verifierRef.current.clear();
+      }
       verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
-        callback: () => {},
-        'expired-callback': () => {
-          verifierRef.current?.clear();
-          verifierRef.current = null;
-        },
       });
     } catch (e) {
       console.error("Failed to init ReCAPTCHA", e);
@@ -103,7 +101,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
     if (formattedNumber.length < 10) {
-      toast({ variant: 'destructive', title: "Numéro invalide", description: "Veuillez entrer un numéro valide." });
+      toast({ variant: 'destructive', title: "Numéro invalide", description: "Veuillez entrer un numéro complet." });
       return;
     }
     
@@ -116,9 +114,14 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       setStep('otp');
       toast({ title: 'Code envoyé !', description: `SMS envoyé au ${formattedNumber}` });
     } catch (error: any) {
-      console.error("Firebase Phone Auth Error", error);
+      console.error(error);
       if (verifierRef.current) { verifierRef.current.clear(); verifierRef.current = null; }
-      toast({ variant: 'destructive', title: "Échec de l'envoi", description: "Vérifiez votre numéro ou réessayez plus tard." });
+      
+      let message = "Erreur technique. Réessayez.";
+      if (error.code === 'auth/too-many-requests') message = "Trop de tentatives. Attendez un moment.";
+      if (error.code === 'auth/invalid-phone-number') message = "Format de numéro invalide.";
+      
+      toast({ variant: 'destructive', title: "Échec", description: message });
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +137,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Synchroniser le token pour les lectures Firestore
+      // Synchronisation forcée du token pour Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
@@ -142,14 +145,10 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
       if (mode === 'login') {
         if (!userSnap.exists()) {
+          // CONSIGNE : Déconnexion immédiate si pas de compte
           await signOut(auth);
-          setStep('phone');
+          setStep('no-account'); // Afficher la "page" d'inscription
           setIsLoading(false);
-          toast({
-            variant: 'destructive',
-            title: "Aucun compte trouvé",
-            description: "Ce numéro n'est pas enregistré. Veuillez créer un compte.",
-          });
           return;
         }
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
@@ -157,7 +156,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       } else {
         // Mode Signup
         if (userSnap.exists()) {
-          toast({ title: 'Compte existant', description: 'Vous êtes déjà inscrit. Redirection...' });
+          toast({ title: 'Compte existant', description: 'Vous avez déjà un compte. Redirection...' });
           router.push('/dashboard');
         } else {
           setStep('profile');
@@ -165,10 +164,14 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         }
       }
     } catch (error: any) {
-      console.error("OTP Verification Error", error);
+      console.error(error);
       setStep('otp');
       setIsLoading(false);
-      toast({ variant: 'destructive', title: 'Code invalide', description: "Le code saisi est incorrect." });
+      
+      let message = "Le code est incorrect.";
+      if (error.code === 'auth/code-expired') message = "Le code a expiré. Renvoyez-en un.";
+      
+      toast({ variant: 'destructive', title: 'Erreur', description: message });
     }
   };
 
@@ -183,7 +186,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
     setIsLoading(true);
     setStep('loading');
-    setLoadingMsg('Création de votre boutique…');
+    setLoadingMsg('Création de votre profil…');
 
     try {
       let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
@@ -216,14 +219,21 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte a été créé avec succès.' });
+      toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte est prêt.' });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Signup Finalization Error", error);
+      console.error(error);
       setStep('profile');
       setIsLoading(false);
-      toast({ variant: 'destructive', title: "Erreur", description: "Impossible de créer le profil." });
+      toast({ variant: 'destructive', title: "Erreur", description: "Impossible de finaliser l'inscription." });
     }
+  };
+
+  // Basculer du mode "No account found" vers l'inscription
+  const switchToSignup = () => {
+    setMode('signup');
+    setStep('phone');
+    setOtp('');
   };
 
   if (step === 'loading') {
@@ -235,9 +245,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
         </div>
-        <div className="text-center space-y-2">
-          <p className="font-black text-base">{loadingMsg}</p>
-        </div>
+        <p className="font-black text-base">{loadingMsg}</p>
       </div>
     );
   }
@@ -291,11 +299,11 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       {step === 'otp' && (
         <div className="space-y-5 animate-in slide-in-from-right-4 duration-500">
           <div className="text-center space-y-1 mb-2">
-            <h3 className="font-black text-lg">Code de vérification</h3>
-            <p className="text-xs text-muted-foreground">Envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span></p>
+            <h3 className="font-black text-lg">Vérification</h3>
+            <p className="text-xs text-muted-foreground">Entrez le code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span></p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU PAR SMS</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU</Label>
             <div className="relative">
               <MessageSquareCode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
               <Input 
@@ -312,9 +320,40 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             onClick={onVerifyOTP}
             disabled={isLoading || otp.length < 6}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Valider le code</>}
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Valider</>}
           </Button>
-          <Button variant="ghost" className="w-full text-[10px] font-black text-muted-foreground uppercase hover:text-accent" onClick={() => setStep('phone')} disabled={isLoading}>Modifier le numéro</Button>
+          <Button variant="ghost" className="w-full text-[10px] font-black text-muted-foreground uppercase hover:text-accent" onClick={() => setStep('phone')} disabled={isLoading}>Changer le numéro</Button>
+        </div>
+      )}
+
+      {/* "PAGE" QUI S'OUVRE SI PAS DE COMPTE EN MODE LOGIN */}
+      {step === 'no-account' && (
+        <div className="space-y-6 animate-in zoom-in-95 duration-500 text-center py-4">
+          <div className="bg-destructive/10 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
+            <AlertCircle className="h-10 w-10 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-black text-foreground">Compte introuvable</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed px-4">
+              Désolé, aucun compte SuguMali n'est associé au numéro <span className="font-bold text-foreground">{selectedDialCode} {phoneNumber}</span>.
+            </p>
+          </div>
+          <div className="pt-4 space-y-3">
+            <Button 
+              className="w-full h-14 rounded-2xl font-black text-base bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+              onClick={switchToSignup}
+            >
+              <UserPlus className="mr-2 h-5 w-5" />
+              Créer mon compte maintenant
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full text-xs font-bold text-muted-foreground uppercase tracking-widest"
+              onClick={() => { setStep('phone'); setMode('login'); }}
+            >
+              Essayer un autre numéro
+            </Button>
+          </div>
         </div>
       )}
 
@@ -328,7 +367,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
               </Avatar>
               <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"><Camera className="h-3 w-3" /></button>
             </div>
-            <p className="text-[9px] font-black text-accent uppercase tracking-widest">Ajouter une photo</p>
+            <p className="text-[9px] font-black text-accent uppercase tracking-widest">Photo de profil</p>
             <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
           </div>
 
@@ -358,20 +397,20 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM DE VOTRE BOUTIQUE</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM DE LA BOUTIQUE</Label>
             <div className="relative">
               <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-              <Input placeholder="Ex: Boutique Sugu" value={shopName} onChange={e => setShopName(e.target.value)} className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm" />
+              <Input placeholder="Ex: Sugu Pro" value={shopName} onChange={e => setShopName(e.target.value)} className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CATÉGORIE D'ACTIVITÉ</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ACTIVITÉ</Label>
             <div className="relative">
               <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 z-10" />
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm font-medium focus:ring-accent/20">
-                  <SelectValue placeholder="Choisir une catégorie" />
+                  <SelectValue placeholder="Catégorie" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   {categories.map(cat => (
@@ -387,7 +426,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             onClick={onFinalizeSignup}
             disabled={isLoading}
           >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CheckCircle2 className="mr-2 h-5 w-5" /> Créer mon compte</>}
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CheckCircle2 className="mr-2 h-5 w-5" /> Créer mon profil</>}
           </Button>
         </div>
       )}
