@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/firebase';
 
-export default function SignupLayout({
+function SignupLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -58,5 +58,13 @@ export default function SignupLayout({
         {children}
       </div>
     </div>
+  );
+}
+
+export default function SignupLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <SignupLayoutInner>{children}</SignupLayoutInner>
+    </Suspense>
   );
 }
