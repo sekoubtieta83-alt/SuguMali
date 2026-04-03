@@ -121,17 +121,17 @@ export default function SignupPage() {
     router.push('/login');
   };
 
-  // État de chargement avec messages détaillés
+  // État de chargement avec messages détaillés (Full Screen)
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300 min-h-screen">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-background animate-in fade-in duration-300">
         <div className="relative flex items-center justify-center">
           <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
           <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
             <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
         </div>
-        <p className="font-black text-base text-center text-foreground">{loadingMsg}</p>
+        <p className="font-black text-lg text-center text-foreground animate-pulse">{loadingMsg}</p>
       </div>
     );
   }
@@ -177,7 +177,7 @@ export default function SignupPage() {
               <Camera className="h-3 w-3" />
             </button>
           </div>
-          <p className="text-[9px] font-black text-accent uppercase tracking-widest">Photo de profil</p>
+          <p className="text-[10px] font-black text-accent uppercase tracking-widest">Photo de profil</p>
           <input 
             type="file" 
             ref={fileInputRef} 

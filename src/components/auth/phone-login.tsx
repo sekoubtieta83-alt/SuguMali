@@ -104,9 +104,10 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
   const onVerifyOTP = async () => {
     if (!confirmationResult || !otp || isLoading) return;
+    
     setIsLoading(true);
-    setLoadingMsg('Vérification du code…');
     setStep('loading');
+    setLoadingMsg('Vérification du code…');
 
     try {
       const result = await confirmationResult.confirm(otp);
@@ -115,17 +116,22 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       // Synchronisation forcée du token pour Firestore
       await user.getIdToken(true);
 
+      setLoadingMsg('Vérification de votre compte…');
+      
+      // Petit délai pour assurer la synchro Firebase
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        // ✅ Compte existant
+        setLoadingMsg('Connexion en cours…');
+        await new Promise(resolve => setTimeout(resolve, 300));
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // ✅ Pas de compte : Redirection vers inscription avec params
         setLoadingMsg('Redirection vers inscription…');
-        toast({ title: 'Nouveau compte', description: 'Créez votre profil pour continuer.' });
+        await new Promise(resolve => setTimeout(resolve, 400));
         router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
     } catch (error: any) {
@@ -149,7 +155,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
         </div>
-        <p className="font-black text-base text-foreground">{loadingMsg}</p>
+        <p className="font-black text-base text-foreground animate-pulse">{loadingMsg}</p>
       </div>
     );
   }
@@ -184,7 +190,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                   placeholder="79 05 28 86" 
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="h-14 rounded-2xl bg-muted border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg text-foreground placeholder:text-muted-foreground/50"
+                  className="h-14 rounded-2xl bg-muted border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg text-foreground"
                   type="tel"
                 />
               </div>

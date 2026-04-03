@@ -16,16 +16,15 @@ import Link from 'next/link';
 export default function LoginPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const [isCompletingProfile, setIsCompletingProfile] = useState(false);
   const [showPhoneLogin, setShowPhoneLogin] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && !isCompletingProfile) {
+    if (!loading && user) {
       router.push('/dashboard');
     }
-  }, [user, loading, router, isCompletingProfile]);
+  }, [user, loading, router]);
 
-  if (loading || (user && !isCompletingProfile)) {
+  if (loading || user) {
     return (
       <div className="flex h-svh w-full items-center justify-center bg-background px-4">
         <div className="w-full max-w-md space-y-4">
@@ -79,7 +78,7 @@ export default function LoginPage() {
                 
                 <Button 
                   variant="outline" 
-                  className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                  className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-foreground"
                   onClick={() => setShowPhoneLogin(true)}
                 >
                   <Phone className="h-5 w-5 text-accent" />
@@ -93,7 +92,7 @@ export default function LoginPage() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="w-full text-[10px] font-bold text-muted-foreground mt-4"
+                className="w-full text-[10px] font-bold text-muted-foreground mt-4 hover:text-accent"
                 onClick={() => setShowPhoneLogin(false)}
               >
                 Retour aux autres méthodes

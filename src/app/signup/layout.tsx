@@ -29,6 +29,7 @@ function SignupLayoutInner({
       if (!user) {
         router.push('/login');
       } else if (user.uid !== uid) {
+        // Sécurité: UID ne correspond pas aux paramètres d'URL
         router.push('/login');
       } else {
         setIsReady(true);
