@@ -16,16 +16,16 @@ import Link from 'next/link';
 export default function SignupPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const [isCompletingProfile, setIsCompletingProfile] = useState(false);
-  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
+  const [showPhoneSignup, setShowPhoneSignup] = useState(false);
 
+  // Redirection si déjà connecté
   useEffect(() => {
-    if (!loading && user && !isCompletingProfile) {
+    if (!loading && user) {
       router.push('/dashboard');
     }
-  }, [user, loading, router, isCompletingProfile]);
+  }, [user, loading, router]);
 
-  if (loading || (user && !isCompletingProfile)) {
+  if (loading) {
     return (
       <div className="flex h-svh w-full items-center justify-center bg-background px-4">
         <div className="w-full max-w-md space-y-4">
@@ -56,9 +56,9 @@ export default function SignupPage() {
         </div>
 
         {/* Card Blanche */}
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
           
-          {!showPhoneLogin ? (
+          {!showPhoneSignup ? (
             <>
               {/* 1. Formulaire Email/Password */}
               <SignupForm />
@@ -80,7 +80,7 @@ export default function SignupPage() {
                 <Button 
                   variant="outline" 
                   className="w-full h-14 rounded-2xl border-2 font-bold text-base hover:bg-accent/5 hover:border-accent/50 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-                  onClick={() => setShowPhoneLogin(true)}
+                  onClick={() => setShowPhoneSignup(true)}
                 >
                   <Phone className="h-5 w-5 text-accent" />
                   S'inscrire par téléphone
@@ -89,12 +89,16 @@ export default function SignupPage() {
             </>
           ) : (
             <div className="animate-in slide-in-from-top-2 duration-300">
+              <div className="mb-6">
+                <h2 className="text-xl font-black text-center">Inscription Mobile</h2>
+                <p className="text-xs text-muted-foreground text-center mt-1">Validez votre numéro pour continuer</p>
+              </div>
               <PhoneLogin mode="signup" />
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="w-full text-[10px] font-bold text-muted-foreground mt-4"
-                onClick={() => setShowPhoneLogin(false)}
+                className="w-full text-[10px] font-black text-muted-foreground mt-4 uppercase tracking-widest hover:text-accent"
+                onClick={() => setShowPhoneSignup(false)}
               >
                 Retour aux autres méthodes
               </Button>
