@@ -39,7 +39,8 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [otp, setOtp] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | 'loading'>('phone');
+  const [loadingMsg, setLoadingMsg] = useState('Vérification en cours…');
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -49,10 +50,11 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const app = useFirebaseApp();
   const router = useRouter();
   const { toast } = useToast();
+  
+  // useRef pour garder le verifier stable entre les renders
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Countdown cooldown pour éviter le spam
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -60,7 +62,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     }
   }, [cooldown]);
 
-  // Nettoyage au démontage pour éviter les fuites de mémoire
+  // Nettoyage au démontage
   useEffect(() => {
     return () => {
       if (verifierRef.current) {
@@ -70,20 +72,21 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     };
   }, []);
 
-  // Création stable du RecaptchaVerifier
-  const getVerifier = (): RecaptchaVerifier => {
-    if (verifierRef.current) return verifierRef.current;
-
-    verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {},
-      'expired-callback': () => {
-        try { verifierRef.current?.clear(); } catch (_) {}
-        verifierRef.current = null;
-      },
-    });
-
-    return verifierRef.current;
+  const initVerifier = () => {
+    if (typeof window === 'undefined' || verifierRef.current) return;
+    
+    try {
+      verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
+        'expired-callback': () => {
+          try { verifierRef.current?.clear(); } catch (_) {}
+          verifierRef.current = null;
+        },
+      });
+    } catch (e) {
+      console.error("Failed to init ReCAPTCHA", e);
+    }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,37 +110,34 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     const formattedNumber = cleanNumber.startsWith('+') ? cleanNumber : `${selectedDialCode}${cleanNumber}`;
 
     if (formattedNumber.length < 10) {
-      toast({ variant: 'destructive', title: "Numéro invalide", description: "Vérifiez le format du numéro." });
+      toast({ variant: 'destructive', title: "Numéro invalide", description: "Format attendu : +223 XXXX XXXX" });
       return;
     }
     
     setIsLoading(true);
+    initVerifier();
 
     try {
-      // ✅ Étape 1 : Envoyer le SMS directement sans vérification préalable Cloud Function
-      const verifier = getVerifier();
-      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifier);
-      
+      // Envoi direct sans Cloud Function (évite les erreurs CORS et 503)
+      const confirmation = await signInWithPhoneNumber(auth, formattedNumber, verifierRef.current!);
       setConfirmationResult(confirmation);
       setStep('otp');
-      toast({ title: 'Code envoyé !', description: `Un SMS a été envoyé au ${formattedNumber}` });
-
+      toast({ title: 'Code envoyé !', description: `SMS envoyé au ${formattedNumber}` });
     } catch (error: any) {
-      console.error("Firebase Phone Auth Error:", error);
+      console.error("Firebase Phone Auth Error", error);
       
-      // Réinitialiser reCAPTCHA après erreur pour permettre une nouvelle tentative
-      try { verifierRef.current?.clear(); } catch (_) {}
-      verifierRef.current = null;
+      if (verifierRef.current) {
+        try { verifierRef.current.clear(); } catch (_) {}
+        verifierRef.current = null;
+      }
 
       if (error.code === 'auth/too-many-requests') {
         setCooldown(60);
-        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Veuillez attendre 1 minute." });
+        toast({ variant: 'destructive', title: "Trop de tentatives", description: "Attendez 1 minute avant de réessayer." });
+      } else if (error.code === 'auth/invalid-phone-number') {
+        toast({ variant: 'destructive', title: "Numéro invalide", description: "Vérifiez le format du numéro." });
       } else {
-        toast({ 
-          variant: 'destructive', 
-          title: "Échec de l'envoi", 
-          description: "Impossible d'envoyer le SMS. Vérifiez votre connexion." 
-        });
+        toast({ variant: 'destructive', title: "Échec de l'envoi", description: "Une erreur est survenue. Vérifiez votre connexion." });
       }
     } finally {
       setIsLoading(false);
@@ -147,44 +147,41 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const onVerifyOTP = async () => {
     if (!confirmationResult || !otp || isLoading) return;
     setIsLoading(true);
+    setLoadingMsg('Vérification du code…');
+    setStep('loading');
 
     try {
-      // ✅ Étape 2 : Confirmation OTP
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // ✅ Étape 3 : Synchroniser le token avant d'accéder à Firestore
+      setLoadingMsg('Synchronisation du compte…');
       await user.getIdToken(true);
 
+      setLoadingMsg('Vérification du profil…');
       const userRef = doc(firestore, 'users', user.uid);
-      const userSnap = await getDoc(userRef).catch(async (serverError) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'get'
-        }));
-        throw serverError;
-      });
+      const userSnap = await getDoc(userRef);
       
-      // ✅ Étape 4 : Si doc n'existe pas ET mode login → signOut() immédiat
+      // LOGIQUE DEMANDÉE : Vérification post-OTP en mode login
       if (!userSnap.exists() && mode === 'login') {
         await signOut(auth);
-        toast({ 
-          variant: 'destructive', 
-          title: "Compte introuvable", 
-          description: "Aucun compte n'est lié à ce numéro. Veuillez vous inscrire." 
-        });
-        setIsLoading(false);
         setStep('phone');
-        setOtp('');
+        setIsLoading(false);
+        toast({
+          variant: 'destructive',
+          title: "Aucun compte trouvé",
+          description: "Ce numéro n'est pas enregistré. Veuillez créer un compte.",
+        });
         return;
       }
 
-      // Mode signup : créer le profil s'il n'existe pas encore
+      // Mode signup -> créer le profil
       if (mode === 'signup') {
+        setLoadingMsg('Création du profil…');
         let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
         if (profileImage && app) {
           try {
+            setLoadingMsg('Upload de la photo…');
             const storage = getStorage(app);
             const storageRef = ref(storage, `profiles/${user.uid}/avatar.jpg`);
             await uploadString(storageRef, profileImage, 'data_url');
@@ -198,51 +195,60 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
         const newUserPayload = {
           uid: user.uid,
-          displayName: displayName,
+          displayName,
           phoneNumber: user.phoneNumber,
-          photoURL: photoURL,
+          photoURL,
           isVerified: false,
           isBanned: false,
           createdAt: serverTimestamp(),
         };
 
-        await setDoc(userRef, newUserPayload, { merge: true }).catch(async (serverError) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'write',
-            requestResourceData: newUserPayload
-          }));
-          throw serverError;
-        });
-
-        toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte a été créé.' });
+        await setDoc(userRef, newUserPayload, { merge: true });
+        toast({ title: 'Bienvenue sur SuguMali !', description: 'Compte créé avec succès.' });
       } else {
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
       }
-      
-      // ✅ Étape 5 : Succès → Redirection
+
       router.push('/dashboard');
 
     } catch (error: any) {
-      console.error("OTP Verification Error:", error);
+      console.error("Verification Error", error);
+      setStep('otp');
       const messages: Record<string, string> = {
-        'auth/invalid-verification-code': "Code incorrect. Réessayez.",
-        'auth/code-expired': "Le code a expiré. Renvoyez un SMS.",
+        'auth/invalid-verification-code': "Code incorrect. Vérifiez le SMS.",
+        'auth/code-expired': "Code expiré. Renvoyez un nouveau SMS.",
       };
       toast({ 
         variant: 'destructive', 
         title: 'Vérification échouée', 
-        description: messages[error.code] || "Une erreur est survenue lors de la validation." 
+        description: messages[error.code] || "Code invalide ou expiré." 
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (step === 'loading') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-8 animate-in fade-in duration-300">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
+          <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+          </div>
+        </div>
+        <div className="text-center space-y-2">
+          <p className="font-black text-base">{loadingMsg}</p>
+          <p className="text-xs text-muted-foreground">{selectedDialCode} {phoneNumber}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Container ReCAPTCHA requis par Firebase */}
-      <div id="recaptcha-container" />
+      {/* ReCAPTCHA container : Invisible mais présent dans le DOM */}
+      <div id="recaptcha-container" className="fixed opacity-0 pointer-events-none"></div>
       
       {step === 'phone' && (
         <div className="space-y-5 animate-in fade-in duration-500">
@@ -264,7 +270,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                     <Camera className="h-3 w-3" />
                   </button>
                 </div>
-                <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Ma Photo</p>
+                <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-1">Photo</p>
                 <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
               </div>
 
@@ -273,7 +279,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                   <Input 
-                    placeholder="Votre nom et prénom" 
+                    placeholder="Sekou Tieta" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20"
@@ -284,7 +290,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">VOTRE NUMÉRO</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">TÉLÉPHONE</Label>
             <div className="flex gap-2">
               <div className="w-[100px] shrink-0">
                 <Select value={selectedDialCode} onValueChange={setSelectedCountryCode}>
@@ -305,7 +311,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
               <div className="relative flex-1">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                 <Input 
-                  placeholder="Ex: 79 05 28 86" 
+                  placeholder="79 05 28 86" 
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg"
@@ -323,9 +329,9 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : cooldown > 0 ? (
-              `Attendre (${cooldown}s)`
+              `Réessayer (${cooldown}s)`
             ) : (
-              <><ArrowRight className="mr-2 h-5 w-5" /> Recevoir le code</>
+              <><ArrowRight className="mr-2 h-5 w-5" /> Continuer</>
             )}
           </Button>
         </div>
@@ -334,14 +340,14 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       {step === 'otp' && (
         <div className="space-y-5 animate-in slide-in-from-right-4 duration-500">
           <div className="text-center space-y-1 mb-2">
-            <h3 className="font-black text-lg">Code de vérification</h3>
+            <h3 className="font-black text-lg">Vérification</h3>
             <p className="text-xs text-muted-foreground">
-              Entrez le code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span>
+              Code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span>
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU PAR SMS</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">CODE REÇU</Label>
             <div className="relative">
               <MessageSquareCode className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
               <Input 
@@ -362,7 +368,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <><ShieldCheck className="mr-2 h-5 w-5" /> Valider mon compte</>
+              <><ShieldCheck className="mr-2 h-5 w-5" /> Valider</>
             )}
           </Button>
 
