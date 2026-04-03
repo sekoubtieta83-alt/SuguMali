@@ -147,7 +147,7 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
         if (!userSnap.exists()) {
           // CONSIGNE : Déconnexion immédiate si pas de compte
           await signOut(auth);
-          setStep('no-account'); // Afficher la "page" d'inscription
+          setStep('no-account'); // Afficher la vue d'inscription suggérée
           setIsLoading(false);
           return;
         }
@@ -229,7 +229,6 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
     }
   };
 
-  // Basculer du mode "No account found" vers l'inscription
   const switchToSignup = () => {
     setMode('signup');
     setStep('phone');
@@ -326,7 +325,6 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
         </div>
       )}
 
-      {/* "PAGE" QUI S'OUVRE SI PAS DE COMPTE EN MODE LOGIN */}
       {step === 'no-account' && (
         <div className="space-y-6 animate-in zoom-in-95 duration-500 text-center py-4">
           <div className="bg-destructive/10 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
