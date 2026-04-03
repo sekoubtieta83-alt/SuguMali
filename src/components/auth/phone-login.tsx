@@ -44,6 +44,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const router = useRouter();
   const { toast } = useToast();
   
+  // Instance unique du ReCAPTCHA via useRef pour Next.js 15
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Synchronisation forcée du token pour Firestore
+      // Synchronisation du token pour Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
@@ -122,9 +123,9 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // ✅ PAS DE COMPTE : Redirection vers /signup avec les params
-        toast({ title: 'Compte introuvable', description: 'Redirection vers inscription…' });
+        // ✅ Pas de compte : redirection vers /signup avec les paramètres
         setLoadingMsg('Redirection vers inscription…');
+        toast({ title: 'Compte introuvable', description: 'Redirection vers inscription…' });
         router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
     } catch (error: any) {

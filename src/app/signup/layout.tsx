@@ -47,10 +47,10 @@ export default function SignupLayout({
     return () => unsubscribe();
   }, [auth, router, searchParams]);
 
-  // Pendant le chargement, afficher un spinner
+  // Pendant le chargement, afficher un spinner cohérent
   if (!isReady) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
         <div className="relative flex items-center justify-center">
           <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
           <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">

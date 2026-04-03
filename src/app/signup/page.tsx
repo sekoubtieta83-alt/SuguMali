@@ -56,7 +56,7 @@ export default function SignupPage() {
     const user = auth?.currentUser;
     if (!user || !firestore || isLoading) return;
 
-    // Vérifications
+    // Vérifications de base
     if (!firstName || !lastName || !email || !shopName || !category) {
       toast({ variant: 'destructive', title: "Champs requis", description: "Veuillez remplir toutes les informations." });
       return;
@@ -68,7 +68,7 @@ export default function SignupPage() {
     try {
       let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
-      // Upload de la photo si présente
+      // Upload de la photo de profil si présente
       if (profileImage && app) {
         setLoadingMsg('Upload de votre photo…');
         const storage = getStorage(app);
@@ -77,11 +77,11 @@ export default function SignupPage() {
         photoURL = await getDownloadURL(storageRef);
       }
 
-      // Mettre à jour le profil Firebase Auth
+      // Mettre à jour le profil Firebase Auth pour l'affichage immédiat
       const displayName = `${firstName} ${lastName}`;
       await updateProfile(user, { displayName, photoURL });
 
-      // Créer le document utilisateur dans Firestore
+      // Création du document utilisateur final dans Firestore
       setLoadingMsg('Enregistrement de vos informations…');
       const userRef = doc(firestore, 'users', user.uid);
       await setDoc(userRef, {
@@ -103,7 +103,7 @@ export default function SignupPage() {
       toast({ title: 'Bienvenue sur SuguMali !', description: 'Votre compte est prêt.' });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
+      console.error("Signup Submission Error:", error);
       setIsLoading(false);
       toast({ variant: 'destructive', title: "Erreur", description: "Impossible de finaliser l'inscription." });
     }
