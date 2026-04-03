@@ -118,155 +118,162 @@ export default function SignupPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-        <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
-            <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
-              <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
-            </div>
+      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
+          <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
-          <p className="font-black text-base">{loadingMsg}</p>
         </div>
+        <p className="font-black text-base">{loadingMsg}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F8F9FB] px-4 py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
-        {/* Header avec bouton retour */}
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl font-black">Créer mon profil</h1>
-            <p className="text-xs text-muted-foreground mt-1">Dernière étape avant de démarrer</p>
+    <div className="w-full space-y-6">
+      {/* Header avec bouton retour */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <h1 className="text-2xl font-black">Créer mon profil</h1>
+          <p className="text-xs text-muted-foreground mt-1">Dernière étape avant de démarrer</p>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleGoBack}
+          className="rounded-full h-10 w-10 hover:bg-accent/10"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Affichage du téléphone vérifié */}
+      <div className="bg-accent/5 border border-accent/20 rounded-2xl p-3 flex justify-between items-center">
+        <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Numéro vérifié</p>
+        <p className="text-sm font-black text-foreground">{phoneNumber}</p>
+      </div>
+
+      {/* Formulaire */}
+      <div className="space-y-5">
+        {/* Photo de profil */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative group">
+            <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
+              <AvatarImage src={profileImage || undefined} className="object-cover" />
+              <AvatarFallback className="bg-accent/5 text-accent"><User className="h-8 w-8" /></AvatarFallback>
+            </Avatar>
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current?.click()} 
+              className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"
+            >
+              <Camera className="h-3 w-3" />
+            </button>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleGoBack}
-            className="rounded-full h-10 w-10 hover:bg-accent/10"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <p className="text-[9px] font-black text-accent uppercase tracking-widest">Photo de profil</p>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImageSelect} 
+            accept="image/*" 
+            className="hidden" 
+          />
         </div>
 
-        {/* Affichage du téléphone vérifié */}
-        <div className="bg-accent/5 border border-accent/20 rounded-2xl p-3 flex justify-between items-center">
-          <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Numéro vérifié</p>
-          <p className="text-sm font-black text-foreground">{phoneNumber}</p>
-        </div>
-
-        {/* Formulaire */}
-        <div className="space-y-5">
-          {/* Photo de profil */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative group">
-              <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
-                <AvatarImage src={profileImage || undefined} className="object-cover" />
-                <AvatarFallback className="bg-accent/5 text-accent"><User className="h-8 w-8" /></AvatarFallback>
-              </Avatar>
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()} 
-                className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform"
-              >
-                <Camera className="h-3 w-3" />
-              </button>
+        {/* Prénom et Nom */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">PRÉNOM</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <Input 
+                placeholder="Jean" 
+                value={firstName} 
+                onChange={e => setFirstName(e.target.value)} 
+                className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-10 text-sm"
+              />
             </div>
-            <p className="text-[9px] font-black text-accent uppercase tracking-widest">Photo de profil</p>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImageSelect} 
-              accept="image/*" 
-              className="hidden" 
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <Input 
+                placeholder="Dupont" 
+                value={lastName} 
+                onChange={e => setLastName(e.target.value)} 
+                className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-10 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Email */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">E-MAIL</Label>
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+            <Input 
+              type="email" 
+              placeholder="votre@email.com" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm"
             />
           </div>
-
-          {/* Prénom et Nom */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">PRÉNOM</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                <Input 
-                  placeholder="Jean" 
-                  value={firstName} 
-                  onChange={e => setFirstName(e.target.value)} 
-                  className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-10 text-sm"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                <Input 
-                  placeholder="Dupont" 
-                  value={lastName} 
-                  onChange={e => setLastName(e.target.value)} 
-                  className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-10 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">E-MAIL</Label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-              <Input 
-                type="email" 
-                placeholder="votre@email.com" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Nom de la boutique */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM DE LA BOUTIQUE</Label>
-            <div className="relative">
-              <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-              <Input 
-                placeholder="Ex: Sugu Pro" 
-                value={shopName} 
-                onChange={e => setShopName(e.target.value)} 
-                className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Catégorie */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ACTIVITÉ</Label>
-            <div className="relative">
-              <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 z-10" />
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm font-medium focus:ring-accent/20">
-                  <SelectValue placeholder="Catégorie" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {categories.map(cat => (
-                    <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Button 
-            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-4" 
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CheckCircle2 className="mr-2 h-5 w-5" /> Créer mon profil</>}
-          </Button>
         </div>
+
+        {/* Nom de la boutique */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM DE LA BOUTIQUE</Label>
+          <div className="relative">
+            <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+            <Input 
+              placeholder="Ex: Sugu Pro" 
+              value={shopName} 
+              onChange={e => setShopName(e.target.value)} 
+              className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Catégorie */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ACTIVITÉ</Label>
+          <div className="relative">
+            <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 z-10" />
+            <Select value={category} onValueChange={setCategory} disabled={isLoading}>
+              <SelectTrigger className="h-12 rounded-xl bg-[#E8F0FE]/50 border-none pl-11 text-sm font-medium focus:ring-accent/20">
+                <SelectValue placeholder="Catégorie" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {categories.map(cat => (
+                  <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Bouton de soumission */}
+      <div className="space-y-3 pt-4 border-t border-accent/10">
+        <Button 
+          className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+          onClick={handleSubmit}
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CheckCircle2 className="mr-2 h-5 w-5" /> Créer mon profil</>}
+        </Button>
+        <Button 
+          variant="ghost"
+          className="w-full text-xs font-black text-muted-foreground uppercase tracking-widest"
+          onClick={handleGoBack}
+          disabled={isLoading}
+        >
+          Annuler
+        </Button>
       </div>
     </div>
   );

@@ -106,7 +106,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     if (!confirmationResult || !otp || isLoading) return;
     setIsLoading(true);
     setLoadingMsg('Vérification du code…');
-    const previousStep = step;
     setStep('loading');
 
     try {

@@ -62,5 +62,11 @@ export default function SignupLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#F8F9FB] px-4 py-12">
+      <div className="w-full max-w-md bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+        {children}
+      </div>
+    </div>
+  );
 }
