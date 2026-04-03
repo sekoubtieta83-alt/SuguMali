@@ -108,7 +108,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     
     setIsLoading(true);
     setStep('loading');
-    setLoadingMsg('Vérification en cours…');
+    setLoadingMsg('Vérification du code…');
 
     try {
       const result = await confirmationResult.confirm(otp);
@@ -117,7 +117,9 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       // Synchronisation forcée du token pour Firestore
       await user.getIdToken(true);
 
-      // Vérification de l'existence du compte dans Firestore
+      // Étape de vérification Firestore
+      setLoadingMsg('Vérification de votre compte…');
+      
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
