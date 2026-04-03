@@ -15,31 +15,22 @@ export default function SignupLayout({
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Attendre que l'utilisateur soit chargé
-    if (!auth) {
-      return;
-    }
+    if (!auth) return;
 
-    // Vérifier les paramètres
     const uid = searchParams.get('uid');
     const phone = searchParams.get('phone');
 
     if (!uid || !phone) {
-      // Pas de paramètres → redirection vers login
       router.push('/login');
       return;
     }
 
-    // Vérifier que l'utilisateur courant correspond à l'UID
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) {
-        // Pas d'utilisateur authentifié → redirection vers login
         router.push('/login');
       } else if (user.uid !== uid) {
-        // UID ne correspond pas → redirection vers login
         router.push('/login');
       } else {
-        // ✅ Tout est bon, on peut afficher la page
         setIsReady(true);
       }
     });
@@ -47,7 +38,6 @@ export default function SignupLayout({
     return () => unsubscribe();
   }, [auth, router, searchParams]);
 
-  // Pendant le chargement, afficher un spinner cohérent
   if (!isReady) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">

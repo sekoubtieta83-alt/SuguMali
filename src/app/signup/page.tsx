@@ -56,7 +56,6 @@ export default function SignupPage() {
     const user = auth?.currentUser;
     if (!user || !firestore || isLoading) return;
 
-    // Vérifications de base
     if (!firstName || !lastName || !email || !shopName || !category) {
       toast({ variant: 'destructive', title: "Champs requis", description: "Veuillez remplir toutes les informations." });
       return;
@@ -68,7 +67,6 @@ export default function SignupPage() {
     try {
       let photoURL = user.photoURL || `https://picsum.photos/seed/${user.uid}/200/200`;
 
-      // Upload de la photo de profil si présente
       if (profileImage && app) {
         setLoadingMsg('Upload de votre photo…');
         const storage = getStorage(app);
@@ -77,11 +75,9 @@ export default function SignupPage() {
         photoURL = await getDownloadURL(storageRef);
       }
 
-      // Mettre à jour le profil Firebase Auth pour l'affichage immédiat
       const displayName = `${firstName} ${lastName}`;
       await updateProfile(user, { displayName, photoURL });
 
-      // Création du document utilisateur final dans Firestore
       setLoadingMsg('Enregistrement de vos informations…');
       const userRef = doc(firestore, 'users', user.uid);
       await setDoc(userRef, {
@@ -132,7 +128,6 @@ export default function SignupPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header avec bouton retour */}
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <h1 className="text-2xl font-black">Créer mon profil</h1>
@@ -148,15 +143,12 @@ export default function SignupPage() {
         </Button>
       </div>
 
-      {/* Affichage du téléphone vérifié */}
       <div className="bg-accent/5 border border-accent/20 rounded-2xl p-3 flex justify-between items-center">
         <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Numéro vérifié</p>
         <p className="text-sm font-black text-foreground">{phoneNumber}</p>
       </div>
 
-      {/* Formulaire */}
       <div className="space-y-5">
-        {/* Photo de profil */}
         <div className="flex flex-col items-center gap-2">
           <div className="relative group">
             <Avatar className="h-20 w-20 border-4 border-white shadow-lg ring-1 ring-accent/10">
@@ -181,7 +173,6 @@ export default function SignupPage() {
           />
         </div>
 
-        {/* Prénom et Nom */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">PRÉNOM</Label>
@@ -209,7 +200,6 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Email */}
         <div className="space-y-1.5">
           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">E-MAIL</Label>
           <div className="relative">
@@ -224,7 +214,6 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Nom de la boutique */}
         <div className="space-y-1.5">
           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">NOM DE LA BOUTIQUE</Label>
           <div className="relative">
@@ -238,7 +227,6 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Catégorie */}
         <div className="space-y-1.5">
           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ACTIVITÉ</Label>
           <div className="relative">
@@ -257,7 +245,6 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* Bouton de soumission */}
       <div className="space-y-3 pt-4 border-t border-accent/10">
         <Button 
           className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"

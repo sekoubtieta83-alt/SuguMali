@@ -44,7 +44,6 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const router = useRouter();
   const { toast } = useToast();
   
-  // Instance unique du ReCAPTCHA via useRef pour Next.js 15
   const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
@@ -90,7 +89,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       setStep('otp');
       toast({ title: 'Code envoyé !', description: `SMS envoyé au ${formattedNumber}` });
     } catch (error: any) {
-      console.error("Firebase Phone Auth Error:", error);
+      console.error("Firebase Phone Auth Error Details:", error);
       if (verifierRef.current) { verifierRef.current.clear(); verifierRef.current = null; }
       
       let message = "Erreur technique. Réessayez.";
@@ -113,23 +112,26 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Synchronisation du token pour Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
+        if (mode === 'signup') {
+          toast({ title: 'Compte existant', description: 'Redirection vers votre tableau de bord...' });
+        } else {
+          toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
+        }
         router.push('/dashboard');
       } else {
-        // ✅ Pas de compte : redirection vers /signup avec les paramètres
+        // Redirection vers /signup sans signOut (Flux Step 3-4 modifié)
         setLoadingMsg('Redirection vers inscription…');
-        toast({ title: 'Compte introuvable', description: 'Redirection vers inscription…' });
+        toast({ title: 'Presque fini !', description: 'Créez votre profil pour continuer.' });
         router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
     } catch (error: any) {
-      console.error("Verification Error:", error);
+      console.error("OTP Verification Error Details:", error);
       setStep('otp');
       setIsLoading(false);
       
