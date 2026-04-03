@@ -12,7 +12,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -27,7 +27,7 @@ interface PhoneLoginProps {
   mode: 'login' | 'signup';
 }
 
-type Step = 'phone' | 'otp' | 'loading';
+type Step = 'phone' | 'otp' | 'loading' | 'no-account';
 
 export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [step, setStep] = useState<Step>('phone');
@@ -119,17 +119,17 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        if (mode === 'signup') {
-          toast({ title: 'Compte existant', description: 'Heureux de vous revoir !' });
-        } else {
-          toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
-        }
+        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // Redirection vers la page d'inscription dédiée
-        setLoadingMsg('Redirection vers inscription…');
-        toast({ title: 'Compte introuvable', description: 'Redirection vers la création de profil...' });
-        router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
+        if (mode === 'login') {
+          // En mode login, si pas de compte, on redirige vers signup avec params
+          setLoadingMsg('Redirection vers inscription…');
+          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
+        } else {
+          // En mode signup, on redirige vers signup avec params
+          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
+        }
       }
     } catch (error: any) {
       console.error("OTP Verification Error:", error);
@@ -152,7 +152,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
         </div>
-        <p className="font-black text-base">{loadingMsg}</p>
+        <p className="font-black text-base text-foreground">{loadingMsg}</p>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             <div className="flex gap-2">
               <div className="w-[100px] shrink-0">
                 <Select value={selectedDialCode} onValueChange={setSelectedCountryCode}>
-                  <SelectTrigger className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none focus:ring-accent/20 font-bold">
+                  <SelectTrigger className="h-14 rounded-2xl bg-muted border-none focus:ring-accent/20 font-bold text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl max-h-[300px]">
@@ -187,14 +187,14 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                   placeholder="79 05 28 86" 
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg"
+                  className="h-14 rounded-2xl bg-muted border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg text-foreground placeholder:text-muted-foreground/50"
                   type="tel"
                 />
               </div>
             </div>
           </div>
           <Button 
-            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-2" 
+            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-2 border-none" 
             onClick={onSendOTP}
             disabled={isLoading || !phoneNumber}
           >
@@ -204,7 +204,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       )}
 
       {step === 'otp' && (
-        <div className="space-y-5 animate-in slide-in-from-right-4 duration-500">
+        <div className="space-y-5 animate-in slide-in-from-right-4 duration-500 text-foreground">
           <div className="text-center space-y-1 mb-2">
             <h3 className="font-black text-lg">Vérification</h3>
             <p className="text-xs text-muted-foreground">Entrez le code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span></p>
@@ -218,12 +218,12 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
-                className="h-14 rounded-2xl bg-[#E8F0FE]/50 border-none pl-12 text-center text-xl font-black tracking-[0.5em] focus-visible:ring-accent/20" 
+                className="h-14 rounded-2xl bg-muted border-none pl-12 text-center text-xl font-black tracking-[0.5em] focus-visible:ring-accent/20 text-foreground" 
               />
             </div>
           </div>
           <Button 
-            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]" 
+            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] border-none" 
             onClick={onVerifyOTP}
             disabled={isLoading || otp.length < 6}
           >

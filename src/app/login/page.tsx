@@ -42,11 +42,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-[#F8F9FB] px-4 py-12">
+    <div className="flex min-h-svh w-full items-center justify-center bg-secondary/30 px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         {/* En-tête avec Logo */}
         <div className="flex flex-col items-center gap-2 text-center mb-2">
-          <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mb-2">
+          <div className="bg-card p-2 rounded-2xl shadow-sm border mb-2">
             <Logo className="h-10 w-10" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
@@ -55,8 +55,8 @@ export default function LoginPage() {
           <p className="text-muted-foreground font-medium text-sm">Connectez-vous à votre compte</p>
         </div>
 
-        {/* Card de Connexion Blanche */}
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Card de Connexion */}
+        <div className="bg-card p-8 rounded-[2.5rem] shadow-2xl shadow-primary/5 border space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
           {!showPhoneLogin ? (
             <>
@@ -66,10 +66,10 @@ export default function LoginPage() {
               {/* Séparateur */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full bg-gray-100" />
+                  <Separator className="w-full" />
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em]">
-                  <span className="bg-white px-4 text-muted-foreground/60">OU</span>
+                  <span className="bg-card px-4 text-muted-foreground/60">OU</span>
                 </div>
               </div>
 

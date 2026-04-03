@@ -47,14 +47,14 @@ function SignupLayoutInner({
             <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
           </div>
         </div>
-        <p className="font-black text-base mt-6 animate-pulse">Vérification de sécurité…</p>
+        <p className="font-black text-base mt-6 animate-pulse text-foreground">Vérification de sécurité…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F8F9FB] px-4 py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 border border-gray-50 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center bg-secondary/30 px-4 py-12 text-foreground">
+      <div className="w-full max-w-md bg-card p-8 rounded-[2.5rem] shadow-2xl shadow-primary/5 border animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
         {children}
       </div>
     </div>
