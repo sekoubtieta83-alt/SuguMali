@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
-  ConfirmationResult
+  ConfirmationResult,
+  signOut // Ajout de signOut
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -104,7 +105,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   };
 
   const onVerifyOTP = async () => {
-    if (!confirmationResult || !otp || isLoading) return;
+    if (!confirmationResult || !otp || isLoading || !auth) return;
     
     setIsLoading(true);
     setStep('loading');
@@ -114,24 +115,24 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Synchronisation forcée du token pour Firestore
-      await user.getIdToken(true);
-
-      // Étape de vérification Firestore
-      setLoadingMsg('Vérification de votre compte…');
+      // 1. On affiche le message de vérification Firestore
+      setLoadingMsg('Vérification de votre compte SuguMali…');
       
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        // CAS A: Le compte existe
+        // CAS A: Le compte existe, tout est parfait
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // CAS B: Pas de compte
+        // CAS B: Le numéro est bon mais PAS de profil Firestore
+        // TRÈS IMPORTANT : On déconnecte l'utilisateur de Auth pour ne pas créer de session fantôme
+        await signOut(auth);
+
         setLoadingMsg("Vous n'avez pas de compte enregistré sur ce numéro.");
         
-        // Redirection automatique après 3 secondes vers la page d'inscription
+        // Redirection vers l'inscription après 3 secondes
         setTimeout(() => {
           router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
         }, 3000);
