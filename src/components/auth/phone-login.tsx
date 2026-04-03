@@ -12,7 +12,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertCircle } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -27,7 +27,7 @@ interface PhoneLoginProps {
   mode: 'login' | 'signup';
 }
 
-type Step = 'phone' | 'otp' | 'loading' | 'no-account';
+type Step = 'phone' | 'otp' | 'loading';
 
 export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [step, setStep] = useState<Step>('phone');
@@ -112,24 +112,21 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Synchronisation du token pour Firestore
+      // Synchronisation forcée du token pour Firestore
       await user.getIdToken(true);
 
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
+        // ✅ Compte existant
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        if (mode === 'login') {
-          // En mode login, si pas de compte, on redirige vers signup avec params
-          setLoadingMsg('Redirection vers inscription…');
-          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
-        } else {
-          // En mode signup, on redirige vers signup avec params
-          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
-        }
+        // ✅ Pas de compte : Redirection vers inscription avec params
+        setLoadingMsg('Redirection vers inscription…');
+        toast({ title: 'Nouveau compte', description: 'Créez votre profil pour continuer.' });
+        router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
     } catch (error: any) {
       console.error("OTP Verification Error:", error);
