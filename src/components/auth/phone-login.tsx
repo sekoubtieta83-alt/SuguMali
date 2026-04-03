@@ -106,6 +106,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     if (!confirmationResult || !otp || isLoading) return;
     setIsLoading(true);
     setLoadingMsg('Vérification du code…');
+    const previousStep = step;
     setStep('loading');
 
     try {
@@ -119,15 +120,11 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        if (mode === 'login') {
-          toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
-        } else {
-          toast({ title: 'Compte existant', description: 'Vous avez déjà un compte. Redirection...' });
-        }
+        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
         // ✅ PAS DE COMPTE : Redirection vers /signup avec les params
-        toast({ title: mode === 'login' ? 'Compte introuvable' : 'Vérification réussie', description: 'Redirection vers inscription…' });
+        toast({ title: 'Compte introuvable', description: 'Redirection vers inscription…' });
         setLoadingMsg('Redirection vers inscription…');
         router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
