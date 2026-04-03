@@ -5,15 +5,14 @@ import { useRouter } from 'next/navigation';
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
-  ConfirmationResult,
-  signOut
+  ConfirmationResult
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, AlertCircle, UserPlus } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -28,10 +27,9 @@ interface PhoneLoginProps {
   mode: 'login' | 'signup';
 }
 
-type Step = 'phone' | 'otp' | 'loading' | 'no-account';
+type Step = 'phone' | 'otp' | 'loading';
 
-export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedDialCode, setSelectedCountryCode] = useState('+223');
@@ -108,7 +106,6 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
     if (!confirmationResult || !otp || isLoading) return;
     setIsLoading(true);
     setLoadingMsg('Vérification du code…');
-    const previousStep = step;
     setStep('loading');
 
     try {
@@ -121,26 +118,18 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
-      if (mode === 'login') {
-        if (!userSnap.exists()) {
-          // ✅ SI PAS DE COMPTE EN MODE LOGIN : DÉCONNEXION + ÉCRAN NO-ACCOUNT
-          await signOut(auth);
-          setStep('no-account');
-          setIsLoading(false);
-          return;
+      if (userSnap.exists()) {
+        if (mode === 'login') {
+          toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
+        } else {
+          toast({ title: 'Compte existant', description: 'Vous avez déjà un compte. Redirection...' });
         }
-        // ✅ Compte existant : connexion réussie
-        toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // Mode Signup
-        if (userSnap.exists()) {
-          toast({ title: 'Compte existant', description: 'Vous avez déjà un compte. Redirection...' });
-          router.push('/dashboard');
-        } else {
-          // ✅ Nouvel utilisateur : Rediriger vers la page complète d'inscription
-          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
-        }
+        // ✅ PAS DE COMPTE : Redirection vers /signup avec les params
+        toast({ title: mode === 'login' ? 'Compte introuvable' : 'Vérification réussie', description: 'Redirection vers inscription…' });
+        setLoadingMsg('Redirection vers inscription…');
+        router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
       }
     } catch (error: any) {
       console.error("Verification Error:", error);
@@ -241,40 +230,6 @@ export function PhoneLogin({ mode: initialMode }: PhoneLoginProps) {
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Valider</>}
           </Button>
           <Button variant="ghost" className="w-full text-[10px] font-black text-muted-foreground uppercase hover:text-accent" onClick={() => setStep('phone')} disabled={isLoading}>Changer le numéro</Button>
-        </div>
-      )}
-
-      {step === 'no-account' && (
-        <div className="space-y-6 animate-in zoom-in-95 duration-500 text-center py-4">
-          <div className="bg-destructive/10 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
-            <AlertCircle className="h-10 w-10 text-destructive" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-black text-foreground">Compte introuvable</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed px-4">
-              Désolé, aucun compte SuguMali n'est associé au numéro <span className="font-bold text-foreground">{selectedDialCode} {phoneNumber}</span>.
-            </p>
-          </div>
-          <div className="pt-4 space-y-3">
-            <Button 
-              className="w-full h-14 rounded-2xl font-black text-base bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
-              onClick={() => {
-                setMode('signup');
-                setStep('phone');
-                router.push('/signup');
-              }}
-            >
-              <UserPlus className="mr-2 h-5 w-5" />
-              Créer mon compte maintenant
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="w-full text-xs font-bold text-muted-foreground uppercase tracking-widest"
-              onClick={() => { setStep('phone'); setMode('login'); }}
-            >
-              Essayer un autre numéro
-            </Button>
-          </div>
         </div>
       )}
     </div>
