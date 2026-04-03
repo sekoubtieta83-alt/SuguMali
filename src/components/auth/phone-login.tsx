@@ -118,7 +118,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
 
       setLoadingMsg('Vérification de votre compte…');
       
-      // Petit délai pour assurer la synchro Firebase
+      // Petit délai pour assurer la synchro Firebase et l'affichage du message
       await new Promise(resolve => setTimeout(resolve, 600));
 
       const userRef = doc(firestore, 'users', user.uid);
@@ -161,7 +161,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-foreground">
       <div id="recaptcha-container" className="fixed opacity-0 pointer-events-none"></div>
       
       {step === 'phone' && (
@@ -171,7 +171,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             <div className="flex gap-2">
               <div className="w-[100px] shrink-0">
                 <Select value={selectedDialCode} onValueChange={setSelectedCountryCode}>
-                  <SelectTrigger className="h-14 rounded-2xl bg-muted border-none focus:ring-accent/20 font-bold text-foreground">
+                  <SelectTrigger className="h-14 rounded-2xl bg-muted border-none focus:ring-accent/20 font-bold">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl max-h-[300px]">
@@ -190,7 +190,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                   placeholder="79 05 28 86" 
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="h-14 rounded-2xl bg-muted border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg text-foreground"
+                  className="h-14 rounded-2xl bg-muted border-none pl-12 font-medium focus-visible:ring-accent/20 text-lg"
                   type="tel"
                 />
               </div>
@@ -207,7 +207,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       )}
 
       {step === 'otp' && (
-        <div className="space-y-5 animate-in slide-in-from-right-4 duration-500 text-foreground">
+        <div className="space-y-5 animate-in slide-in-from-right-4 duration-500">
           <div className="text-center space-y-1 mb-2">
             <h3 className="font-black text-lg">Vérification</h3>
             <p className="text-xs text-muted-foreground">Entrez le code envoyé au <span className="font-bold text-accent">{selectedDialCode} {phoneNumber}</span></p>
@@ -221,7 +221,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
-                className="h-14 rounded-2xl bg-muted border-none pl-12 text-center text-xl font-black tracking-[0.5em] focus-visible:ring-accent/20 text-foreground" 
+                className="h-14 rounded-2xl bg-muted border-none pl-12 text-center text-xl font-black tracking-[0.5em] focus-visible:ring-accent/20" 
               />
             </div>
           </div>
