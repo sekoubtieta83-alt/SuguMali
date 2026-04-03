@@ -12,7 +12,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, ShieldAlert } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from '@/lib/utils';
 
 interface PhoneLoginProps {
   mode: 'login' | 'signup';
@@ -107,7 +108,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
     
     setIsLoading(true);
     setStep('loading');
-    setLoadingMsg('Vérification du code…');
+    setLoadingMsg('Vérification en cours…');
 
     try {
       const result = await confirmationResult.confirm(otp);
@@ -116,23 +117,22 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       // Synchronisation forcée du token pour Firestore
       await user.getIdToken(true);
 
-      setLoadingMsg('Vérification de votre compte…');
-      
-      // Petit délai pour assurer la synchro Firebase et l'affichage du message
-      await new Promise(resolve => setTimeout(resolve, 600));
-
+      // Vérification de l'existence du compte dans Firestore
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        setLoadingMsg('Connexion en cours…');
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // CAS A: Le compte existe
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        setLoadingMsg('Redirection vers inscription…');
-        await new Promise(resolve => setTimeout(resolve, 400));
-        router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
+        // CAS B: Pas de compte
+        setLoadingMsg("Vous n'avez pas de compte enregistré sur ce numéro.");
+        
+        // Redirection automatique après 3 secondes vers la page d'inscription
+        setTimeout(() => {
+          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
+        }, 3000);
       }
     } catch (error: any) {
       console.error("OTP Verification Error:", error);
@@ -147,15 +147,34 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   };
 
   if (step === 'loading') {
+    const isNoAccountError = loadingMsg.includes("pas de compte");
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300">
         <div className="relative flex items-center justify-center">
-          <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
-          <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
-            <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
-          </div>
+          {isNoAccountError ? (
+            <div className="bg-destructive/10 p-4 rounded-full animate-bounce">
+              <ShieldAlert className="h-10 w-10 text-destructive" />
+            </div>
+          ) : (
+            <>
+              <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
+              <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+              </div>
+            </>
+          )}
         </div>
-        <p className="font-black text-base text-foreground animate-pulse">{loadingMsg}</p>
+        <p className={cn(
+          "font-black text-center max-w-xs transition-colors duration-500",
+          isNoAccountError ? "text-destructive text-sm" : "text-foreground text-base animate-pulse"
+        )}>
+          {loadingMsg}
+        </p>
+        {isNoAccountError && (
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest animate-pulse">
+            Redirection vers l'inscription...
+          </p>
+        )}
       </div>
     );
   }
@@ -197,7 +216,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             </div>
           </div>
           <Button 
-            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] mt-2 border-none" 
+            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 transition-all active:scale-[0.98] mt-2 border-none" 
             onClick={onSendOTP}
             disabled={isLoading || !phoneNumber}
           >
@@ -226,7 +245,7 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
             </div>
           </div>
           <Button 
-            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/20 transition-all active:scale-[0.98] border-none" 
+            className="w-full h-14 rounded-2xl font-black text-lg bg-accent hover:bg-accent/90 text-white shadow-xl shadow-accent/30 transition-all active:scale-[0.98] border-none" 
             onClick={onVerifyOTP}
             disabled={isLoading || otp.length < 6}
           >
