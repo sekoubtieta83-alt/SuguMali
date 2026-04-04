@@ -6,14 +6,14 @@ import {
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
   ConfirmationResult,
-  signOut // Ajout de signOut
+  signOut
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, ShieldAlert } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowRight, MessageSquareCode, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryCodes } from '@/lib/country-codes';
 import {
@@ -29,7 +29,7 @@ interface PhoneLoginProps {
   mode: 'login' | 'signup';
 }
 
-type Step = 'phone' | 'otp' | 'loading';
+type Step = 'phone' | 'otp' | 'loading' | 'error';
 
 export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [step, setStep] = useState<Step>('phone');
@@ -40,6 +40,8 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('Vérification en cours…');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -56,6 +58,20 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       }
     };
   }, []);
+
+  // Compteur de redirection
+  useEffect(() => {
+    if (step === 'error' && redirectCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRedirectCountdown(redirectCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+    
+    if (step === 'error' && redirectCountdown === 0) {
+      router.push(`/signup?phone=${encodeURIComponent(phoneNumber)}&uid=pending`);
+    }
+  }, [step, redirectCountdown, router, phoneNumber]);
 
   const initVerifier = () => {
     if (typeof window === 'undefined' || !auth) return;
@@ -115,27 +131,31 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // 1. On affiche le message de vérification Firestore
-      setLoadingMsg('Vérification de votre compte SuguMali…');
+      // ✅ ÉTAPE 1: Vérification du code OTP réussie
+      setLoadingMsg('Vérification de votre compte…');
       
+      // Attendre un peu pour que le message s'affiche bien
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // ✅ ÉTAPE 2: Vérifier si le compte existe dans Firestore
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        // CAS A: Le compte existe, tout est parfait
+        // ✅ COMPTE EXISTE: Succès et redirection
+        setLoadingMsg('Bienvenue ! Redirection en cours…');
+        await new Promise(resolve => setTimeout(resolve, 500));
         toast({ title: 'Bon retour !', description: 'Connexion réussie.' });
         router.push('/dashboard');
       } else {
-        // CAS B: Le numéro est bon mais PAS de profil Firestore
-        // TRÈS IMPORTANT : On déconnecte l'utilisateur de Auth pour ne pas créer de session fantôme
+        // ❌ COMPTE N'EXISTE PAS: Afficher message d'erreur
         await signOut(auth);
-
-        setLoadingMsg("Vous n'avez pas de compte enregistré sur ce numéro.");
         
-        // Redirection vers l'inscription après 3 secondes
-        setTimeout(() => {
-          router.push(`/signup?phone=${encodeURIComponent(user.phoneNumber || '')}&uid=${user.uid}`);
-        }, 3000);
+        // Changer l'état pour afficher la page d'erreur
+        setErrorMsg(`Aucun compte trouvé pour le numéro ${selectedDialCode} ${phoneNumber}`);
+        setStep('error');
+        setIsLoading(false);
+        setRedirectCountdown(3);
       }
     } catch (error: any) {
       console.error("OTP Verification Error:", error);
@@ -150,34 +170,76 @@ export function PhoneLogin({ mode }: PhoneLoginProps) {
   };
 
   if (step === 'loading') {
-    const isNoAccountError = loadingMsg.includes("pas de compte");
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300">
+      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in fade-in duration-300 min-h-screen">
         <div className="relative flex items-center justify-center">
-          {isNoAccountError ? (
-            <div className="bg-destructive/10 p-4 rounded-full animate-bounce">
-              <ShieldAlert className="h-10 w-10 text-destructive" />
-            </div>
-          ) : (
-            <>
-              <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
-              <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
-                <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
-              </div>
-            </>
-          )}
+          <div className="absolute h-24 w-24 rounded-full border-2 border-accent/10 animate-ping" />
+          <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+          </div>
         </div>
-        <p className={cn(
-          "font-black text-center max-w-xs transition-colors duration-500",
-          isNoAccountError ? "text-destructive text-sm" : "text-foreground text-base animate-pulse"
-        )}>
+        <p className="font-black text-base text-center px-4">
           {loadingMsg}
         </p>
-        {isNoAccountError && (
-          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest animate-pulse">
-            Redirection vers l'inscription...
+        <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest animate-pulse">
+          Veuillez patienter…
+        </p>
+      </div>
+    );
+  }
+
+  if (step === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-12 animate-in zoom-in-95 duration-300 min-h-screen px-4">
+        {/* Icône d'erreur */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-destructive/20 rounded-full blur-xl animate-pulse" />
+          <div className="relative bg-destructive/10 p-5 rounded-full">
+            <AlertCircle className="h-12 w-12 text-destructive animate-bounce" />
+          </div>
+        </div>
+
+        {/* Message d'erreur */}
+        <div className="space-y-3 text-center max-w-sm">
+          <h2 className="text-2xl font-black text-destructive">
+            Compte introuvable
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Nous n'avons trouvé aucun compte SuguMali associé au numéro <span className="font-bold text-foreground">{selectedDialCode} {phoneNumber}</span>
           </p>
-        )}
+        </div>
+
+        {/* Compteur de redirection */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className={cn(
+                  "h-2 w-2 rounded-full transition-all duration-300",
+                  redirectCountdown > index ? "bg-accent w-3" : "bg-muted"
+                )}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest animate-pulse">
+            Redirection dans {redirectCountdown}s…
+          </p>
+        </div>
+
+        {/* Message d'aide */}
+        <p className="text-[11px] text-muted-foreground text-center max-w-xs">
+          Vous allez être redirigé pour créer un compte SuguMali avec ce numéro.
+        </p>
+
+        {/* Bouton manuel de redirection */}
+        <Button
+          variant="outline"
+          className="text-xs font-black uppercase tracking-widest mt-2"
+          onClick={() => router.push(`/signup?phone=${encodeURIComponent(phoneNumber)}&uid=pending`)}
+        >
+          Aller à l'inscription maintenant
+        </Button>
       </div>
     );
   }
