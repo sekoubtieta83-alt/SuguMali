@@ -15,62 +15,57 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { type Post } from '@/lib/data';
 import { collection, onSnapshot, query, where, doc, setDoc, increment } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
+import { MediaPlayer } from '@/components/media-player';
 
 // ── Carte annonce compacte ──────────────────────────────────────────────────
 const FeaturedProductCard = ({
-  id, title, price, location, image, condition, sponsored
+  id, title, price, location, image, condition, sponsored, status
 }: {
   id: string; title: string; price: string; location: string;
-  image: string; condition?: string; sponsored?: boolean;
-}) => (
-  <Link
-    href={`/annonces/${id}`}
-    className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl p-2.5 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
-  >
-    {sponsored && (
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-yellow-400/90 text-yellow-900 px-1.5 py-0.5 rounded-full text-[8px] font-black shadow-lg">
-        <Star className="h-2 w-2 fill-yellow-900" />
-        Sponsorisé
-      </div>
-    )}
-
-    <div className="relative h-32 sm:h-44 bg-muted rounded-xl overflow-hidden flex items-center justify-center">
-      {image ? (
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-          onError={(e) => { 
-            (e.target as HTMLImageElement).style.display = 'none';
-            const parent = (e.target as HTMLImageElement).parentElement;
-            if (parent) {
-              const logoDiv = parent.querySelector('.logo-fallback');
-              if (logoDiv) (logoDiv as HTMLElement).style.display = 'flex';
-            }
-          }}
-        />
-      ) : null}
-      
-      <div className={`logo-fallback absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-muted to-muted/50 ${image ? 'hidden' : 'flex'}`}>
-        <Logo className="h-12 w-12 opacity-40 mb-2" />
-        <span className="text-[10px] font-black text-muted-foreground/40 tracking-widest uppercase">SuguMali</span>
-      </div>
-
-      {condition && (
-        <div className="absolute top-2 left-2 bg-accent text-white px-2 py-0.5 rounded-md text-[9px] font-bold shadow-lg">
-          {condition}
+  image: string; condition?: string; sponsored?: boolean; status?: string;
+}) => {
+  return (
+    <Link
+      href={`/annonces/${id}`}
+      className="group cursor-pointer block bg-card/40 border border-white/5 rounded-2xl p-2.5 shadow-sm hover:shadow-xl transition-all duration-300 relative h-full"
+    >
+      {sponsored && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-yellow-400/90 text-yellow-900 px-1.5 py-0.5 rounded-full text-[8px] font-black shadow-lg">
+          <Star className="h-2 w-2 fill-yellow-900" />
+          Sponsorisé
         </div>
       )}
-    </div>
-    <div className="mt-2.5 px-1">
-      <h3 className="font-bold text-foreground truncate text-sm sm:text-base leading-tight">{title}</h3>
-      <p className="text-accent font-black text-base sm:text-lg mt-0.5">{price}</p>
-      <div className="flex items-center gap-1 text-muted-foreground text-[9px] sm:text-xs mt-1">
-        <span className="truncate">📍 {location}</span>
+
+      <div className="relative h-32 sm:h-44 bg-muted rounded-xl overflow-hidden">
+        <MediaPlayer 
+          url={image} 
+          alt={title}
+          className={cn(status === 'sold' && "grayscale-[0.5] opacity-80")}
+        />
+
+        {status === 'sold' && (
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10">
+            <span className="bg-destructive text-white px-2 py-0.5 rounded font-black text-[10px] uppercase">Vendu</span>
+          </div>
+        )}
+
+        {condition && status !== 'sold' && (
+          <div className="absolute top-2 left-2 bg-accent text-white px-2 py-0.5 rounded-md text-[9px] font-bold shadow-lg z-10">
+            {condition}
+          </div>
+        )}
       </div>
-    </div>
-  </Link>
-);
+      <div className="mt-2.5 px-1">
+        <h3 className={cn("font-bold truncate text-sm sm:text-base leading-tight", status === 'sold' ? "text-muted-foreground" : "text-foreground")}>{title}</h3>
+        <p className={cn("text-accent font-black text-base sm:text-lg mt-0.5", status === 'sold' && "text-muted-foreground line-through")}>{price}</p>
+        <div className="flex items-center gap-1 text-muted-foreground text-[9px] sm:text-xs mt-1">
+          <span className="truncate">📍 {location}</span>
+        </div>
+      </div>
+    </Link>
+  );
+};
 
 function Header() {
   const router = useRouter();
@@ -143,22 +138,29 @@ function Header() {
 export default function HomePage() {
   const router = useRouter();
   const firestore = useFirestore();
+  const { user } = useUser();
   const [searchValue, setSearchValue] = useState('');
   const [featuredProducts, setFeaturedProducts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (firestore) {
-      const statsRef = doc(firestore, 'site_stats', 'counters');
-      setDoc(statsRef, { visits: increment(1) }, { merge: true }).catch(() => {});
+      // LOGIQUE D'EXCLUSION ADMIN
+      const isAdmin = user?.email === 'sekoubtieta83@gmail.com';
+      const isAdminDevice = typeof window !== 'undefined' && localStorage.getItem('isAdminDevice') === 'true';
+
+      if (!isAdmin && !isAdminDevice) {
+        const statsRef = doc(firestore, 'site_stats', 'counters');
+        setDoc(statsRef, { visits: increment(1) }, { merge: true }).catch(() => {});
+      }
     }
-  }, [firestore]);
+  }, [firestore, user]);
 
   useEffect(() => {
     if (!firestore) return;
 
     const annoncesRef = collection(firestore, 'annonces');
-    const q = query(annoncesRef, where('status', '==', 'approved'));
+    const q = query(annoncesRef, where('status', 'in', ['approved', 'sold']));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const posts = snapshot.docs.map(doc => {
@@ -194,25 +196,19 @@ export default function HomePage() {
       });
 
       const sorted = [...posts].sort((a, b) => {
-        // Tiers Premium : Sponsorisé, Boosté ou Vendeur Certifié
         const isPremiumA = a.sponsored || a.isPromoted || a.vendeurVerified;
         const isPremiumB = b.sponsored || b.isPromoted || b.vendeurVerified;
 
-        // Si l'un est Premium et pas l'autre, le Premium passe devant
         if (isPremiumA && !isPremiumB) return -1;
         if (!isPremiumA && isPremiumB) return 1;
 
-        // Si les deux sont Premium, on définit des sous-niveaux mais on n'applique pas le filtre date
         if (isPremiumA && isPremiumB) {
           const priorityA = (a.sponsored || a.isPromoted) ? 1 : 0;
           const priorityB = (b.sponsored || b.isPromoted) ? 1 : 0;
           if (priorityA !== priorityB) return priorityB - priorityA;
-          
-          // Si même niveau de priorité premium, on garde l'ordre original (pas de date)
           return 0;
         }
 
-        // Si aucun n'est Premium, on applique le filtre date classique (plus récent en premier)
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -299,6 +295,7 @@ export default function HomePage() {
                   image={post.image || (post.media && post.media[0]?.url) || ''}
                   condition={post.etat || post.condition}
                   sponsored={post.sponsored || post.isPromoted}
+                  status={post.status}
                 />
               ))}
             </div>
