@@ -4,19 +4,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ChevronLeft, X, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { countryCodes } from '@/lib/country-codes';
 import { useFirestore, useAuth } from '@/firebase';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { categories } from '@/lib/categories';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
-import { logActivity } from '@/lib/audit';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 const CLOUDINARY_CLOUD_NAME = "dfunyyw6g";
 const CLOUDINARY_UPLOAD_PRESET = "video_upload_preset";
-const MAX_IMAGE_RES = 3840;
+const MAX_IMAGE_RES = 1920;
 const MAX_VIDEO_DURATION = 60; // secondes
 
 // ✅ Tronque la vidéo à 60s côté navigateur
@@ -84,7 +81,7 @@ const uploadVideoToCloudinary = async (file: File): Promise<string> => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error?.message || "Upload échoué.");
+    throw new Error(errorData.error?.message || "Upload vidéo échoué.");
   }
 
   const data = await response.json();
@@ -107,7 +104,7 @@ const resizeImage = (base64Str: string, maxWidth = MAX_IMAGE_RES, maxHeight = MA
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
     img.onerror = () => resolve(base64Str);
   });
@@ -120,37 +117,15 @@ export default function SellPage() {
   const auth = useAuth();
   const db = useFirestore();
 
-  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video'; uploading?: boolean; uploadLabel?: string }[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video'; uploading?: boolean; file?: File; firebaseInProgress?: boolean }>([]);
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
-  const [countryCode, setCountryCode] = useState('+223');
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [condition, setCondition] = useState<'Neuf' | 'Comme neuf' | 'Occasion'>('Neuf');
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [moderationMessage, setModerationMessage] = useState('');
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      setIsFetchingLocation(true);
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=fr`);
-          const data = await response.json();
-          if (data.locality || data.city) setLocation(data.locality || data.city);
-        } catch (error) {
-          console.error('Error fetching address:', error);
-        } finally {
-          setIsFetchingLocation(false);
-        }
-      }, () => setIsFetchingLocation(false));
-    }
-  }, []);
 
   const analyzeWithMami = async (imageBase64: string) => {
     try {
@@ -169,42 +144,43 @@ export default function SellPage() {
     }
   };
 
+  const uploadImageToFirebase = async (base64: string): Promise<string> => {
+    if (!auth.currentUser) throw new Error("Connectez-vous pour continuer.");
+    const storage = getStorage(getApp());
+    const storageRef = ref(storage, `annonces/${auth.currentUser.uid}/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`);
+    await uploadString(storageRef, base64, 'data_url');
+    return await getDownloadURL(storageRef);
+  };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    let firstImageProcessed = false;
-
     for (const file of Array.from(files)) {
       if (file.type.startsWith('video/')) {
-        setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true, uploadLabel: 'Préparation...' }]);
-
+        setMediaPreviews(prev => [...prev, { url: '', type: 'video', uploading: true }]);
         try {
           const trimmedFile = await trimVideoTo60s(file);
           const videoUrl = await uploadVideoToCloudinary(trimmedFile);
-
           setMediaPreviews(prev => {
             const updated = [...prev];
-            const idx = updated.findIndex(p => p.uploading && p.url === '');
+            const idx = updated.findIndex(p => p.uploading && p.type === 'video' && p.url === '');
             if (idx !== -1) updated[idx] = { url: videoUrl, type: 'video', uploading: false };
             return updated;
           });
-
-          toast({ title: "Vidéo ajoutée ✅" });
         } catch (e: any) {
-          setMediaPreviews(prev => prev.filter(p => !(p.uploading && p.url === '')));
+          setMediaPreviews(prev => prev.filter(p => !p.uploading));
           toast({ variant: "destructive", title: "Erreur vidéo", description: e.message });
         }
       } else if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = async (e) => {
-          let resultUrl = await resizeImage(e.target?.result as string);
+          let base64 = e.target?.result as string;
+          let resized = await resizeImage(base64);
+          
           setMediaPreviews(prev => {
-            if (prev.length === 0 && !firstImageProcessed) {
-              firstImageProcessed = true;
-              analyzeWithMami(resultUrl);
-            }
-            return [...prev, { url: resultUrl, type: 'image' }];
+            if (prev.length === 0) analyzeWithMami(resized);
+            return [...prev, { url: resized, type: 'image' }];
           });
         };
         reader.readAsDataURL(file);
@@ -217,47 +193,57 @@ export default function SellPage() {
     if (!db || !auth.currentUser) return;
 
     setIsLoading(true);
-    setModerationMessage("Mami vérifie l'annonce...");
+    setModerationMessage("Téléchargement des images...");
 
     try {
-      // 1. Vérifier si le vendeur est certifié (badge orange)
+      // 1. Upload des images vers Firebase Storage (les vidéos sont déjà sur Cloudinary)
+      const finalMedia: { url: string; type: 'image' | 'video' }[] = [];
+      
+      for (const media of mediaPreviews) {
+        if (media.type === 'image') {
+          // C'est un base64 -> on l'envoie sur Firebase Storage
+          const firebaseUrl = await uploadImageToFirebase(media.url);
+          finalMedia.push({ url: firebaseUrl, type: 'image' });
+        } else {
+          // C'est déjà une URL Cloudinary
+          finalMedia.push({ url: media.url, type: 'video' });
+        }
+      }
+
+      setModerationMessage("Mami vérifie l'annonce...");
+
+      // 2. Vérification vendeur
       const userRef = doc(db, "users", auth.currentUser.uid);
       const userSnap = await getDoc(userRef);
       const isVerified = userSnap.exists() ? Boolean(userSnap.data().isVerified) : false;
 
-      // 2. Modération IA
-      const moderateImageFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
-      const modResult: any = await moderateImageFn({ titre: title, description, prix: `${price} FCFA` });
+      // 3. Modération IA
+      const moderateFn = httpsCallable(getFunctions(getApp(), 'europe-west1'), 'moderateAnnonce');
+      const modResult: any = await moderateFn({ titre: title, description, prix: `${price} FCFA` });
 
       const isApproved = modResult.data.approved;
-      const cleanWhatsapp = `${countryCode}${whatsappNumber.replace(/\D/g, '')}`;
 
-      // 3. Enregistrement
+      // 4. Enregistrement Firestore
       await addDoc(collection(db, "annonces"), {
         titre: title,
         prix: `${price} FCFA`,
-        media: mediaPreviews.map(m => ({ url: m.url, type: m.type })),
+        media: finalMedia,
         vendeurId: auth.currentUser.uid,
-        vendeurVerified: isVerified, // ON ENREGISTRE LE STATUT ICI
+        vendeurVerified: isVerified,
         status: isApproved ? 'approved' : 'rejected',
         moderationReason: modResult.data.reason || '',
         description,
         localisation: location,
-        whatsapp: cleanWhatsapp,
-        categorie: category || "Autre",
-        etat: condition,
+        whatsapp: whatsappNumber,
         createdAt: serverTimestamp(),
         views: 0
       });
 
-      if (!isApproved) {
-        toast({ variant: "destructive", title: "Annonce en attente", description: "Mami a détecté un problème. Un admin va vérifier." });
-      } else {
-        toast({ title: "Succès !", description: "Votre annonce est enregistrée." });
-      }
+      toast({ title: isApproved ? "Annonce publiée !" : "Annonce en vérification" });
       router.push('/dashboard');
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erreur", description: "Échec de la publication." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Erreur", description: error.message || "Échec de la publication." });
     } finally {
       setIsLoading(false);
     }
@@ -266,75 +252,95 @@ export default function SellPage() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="bg-background border-b p-4 sticky top-0 z-30 flex items-center gap-4">
-        <button type="button" onClick={() => router.back()} className="p-2"><ChevronLeft /></button>
-        <h1 className="text-xl font-bold">Vendre sur SuguMali</h1>
+        <button type="button" onClick={() => router.back()} className="p-2 hover:bg-muted rounded-full transition-colors"><ChevronLeft /></button>
+        <h1 className="text-xl font-bold">Vendre un article</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 space-y-6">
         <section className="space-y-4">
-          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Photos & Vidéos (Max 1 min)
+          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+            Photos et Vidéo
           </Label>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
             {mediaPreviews.map((m, i) => (
-              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border bg-muted">
+              <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border bg-muted shadow-sm group">
                 {m.uploading ? (
                   <div className="flex h-full items-center justify-center flex-col gap-2 p-2 text-center">
-                    <Loader2 className="animate-spin text-orange-500" />
-                    <span className="text-xs text-muted-foreground text-[10px]">{m.uploadLabel || 'Chargement...'}</span>
+                    <Loader2 className="animate-spin text-accent" />
+                    <span className="text-[10px] font-bold text-muted-foreground">Vidéo...</span>
                   </div>
                 ) : m.type === 'image' ? (
                   <img src={m.url} className="h-full w-full object-cover" alt="" />
                 ) : (
-                  <video src={m.url} className="h-full w-full object-cover" muted autoPlay loop />
+                  <video src={m.url} className="h-full w-full object-cover" muted autoPlay loop playsInline />
                 )}
-                {!m.uploading && (
-                  <button
-                    type="button"
-                    onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setMediaPreviews(prev => prev.filter((_, idx) => idx !== i))}
+                  className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X size={12} />
+                </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="aspect-square border-2 border-dashed rounded-xl flex items-center justify-center hover:border-orange-400 transition-colors"
-            >
-              <Camera className="text-muted-foreground" />
-            </button>
+            {mediaPreviews.length < 5 && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-square border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-muted hover:border-accent transition-all text-muted-foreground hover:text-accent"
+              >
+                <Camera size={24} />
+                <span className="text-[10px] font-bold">Ajouter</span>
+              </button>
+            )}
           </div>
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,video/*" className="hidden" />
         </section>
 
-        <div className="bg-card p-6 rounded-2xl border shadow-sm space-y-4">
+        <div className="bg-card p-6 rounded-3xl border shadow-sm space-y-5">
           <div className="space-y-2">
-            <Label>Titre {isAnalyzing && <span className="text-orange-500 text-xs">Mami analyse...</span>}</Label>
-            <input type="text" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={title} onChange={e => setTitle(e.target.value)} required />
+            <Label className="font-bold ml-1">Titre de l'annonce {isAnalyzing && <span className="text-accent text-xs italic animate-pulse"> (Mami analyse...)</span>}</Label>
+            <input type="text" className="w-full bg-muted/40 p-4 rounded-xl outline-none focus:ring-2 focus:ring-accent/20 transition-all font-medium" value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: iPhone 15 Pro Max Neuf" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Prix (FCFA)</Label>
-              <input type="number" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={price} onChange={e => setPrice(e.target.value)} required />
+              <Label className="font-bold ml-1">Prix (FCFA)</Label>
+              <input type="number" className="w-full bg-muted/40 p-4 rounded-xl outline-none focus:ring-2 focus:ring-accent/20 transition-all font-bold" value={price} onChange={e => setPrice(e.target.value)} required placeholder="0" />
             </div>
             <div className="space-y-2">
-              <Label>WhatsApp</Label>
-              <input type="tel" className="w-full bg-muted/40 p-4 rounded-xl outline-none" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} required />
+              <Label className="font-bold ml-1">Localisation (Ville / Quartier)</Label>
+              <input type="text" className="w-full bg-muted/40 p-4 rounded-xl outline-none focus:ring-2 focus:ring-accent/20 transition-all font-medium" value={location} onChange={e => setLocation(e.target.value)} required placeholder="Ex: Bamako, Hamdallaye ACI" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Description</Label>
-            <textarea rows={4} className="w-full bg-muted/40 p-4 rounded-xl outline-none resize-none" value={description} onChange={e => setDescription(e.target.value)} required />
+            <Label className="font-bold ml-1">Description</Label>
+            <textarea rows={4} className="w-full bg-muted/40 p-4 rounded-xl outline-none resize-none focus:ring-2 focus:ring-accent/20 transition-all font-medium" value={description} onChange={e => setDescription(e.target.value)} required placeholder="Détaillez l'état de l'article, ses caractéristiques..." />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-bold ml-1">Votre numéro WhatsApp</Label>
+            <input type="tel" className="w-full bg-muted/40 p-4 rounded-xl outline-none focus:ring-2 focus:ring-accent/20 transition-all font-bold" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} required placeholder="+22370000000" />
           </div>
         </div>
 
-        <button type="submit" disabled={isLoading || mediaPreviews.some(m => m.uploading)} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-5 rounded-2xl flex flex-col items-center gap-2 disabled:opacity-50 transition-colors">
-          {isLoading ? <><Loader2 className="animate-spin" /><span>{moderationMessage}</span></> : <><Sparkles size={20} /><span>Publier l'annonce</span></>}
+        <button 
+          type="submit" 
+          disabled={isLoading || mediaPreviews.some(m => m.uploading)} 
+          className="w-full bg-accent hover:bg-accent/90 text-white font-black py-5 rounded-2xl flex flex-col items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-xl shadow-accent/20 active:scale-[0.98]"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="animate-spin h-6 w-6" />
+              <span className="text-sm">{moderationMessage}</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={20} />
+              <span className="text-lg">Publier sur SuguMali</span>
+            </>
+          )}
         </button>
       </form>
     </div>
